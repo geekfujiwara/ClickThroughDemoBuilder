@@ -35,6 +35,7 @@ import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { exportDemoToFolder } from '@/services/exportService';
 import * as groupService from '@/services/groupService';
+import * as creatorService from '@/services/creatorService';
 import { validateVideoFile } from '@/utils/validation';
 import { saveVideo, extractVideoMetadata, generateThumbnail, getVideoUrl } from '@/services/videoService';
 import { MSG } from '@/constants/messages';
@@ -45,7 +46,7 @@ import Timeline from '@/components/designer/Timeline';
 import PropertyPanel from '@/components/designer/PropertyPanel';
 import ClickPointList from '@/components/designer/ClickPointList';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import type { DemoGroup, VideoInfo } from '@/types';
+import type { DemoCreator, DemoGroup, VideoInfo } from '@/types';
 
 const useStyles = makeStyles({
   root: {
@@ -162,6 +163,7 @@ export default function DesignerPage() {
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
   const [groups, setGroups] = useState<DemoGroup[]>([]);
+  const [creators, setCreators] = useState<DemoCreator[]>([]);
 
   // requestAnimationFrame で高精度にcurrentTimeを追跡 (~60Hz)
   useEffect(() => {
@@ -220,6 +222,19 @@ export default function DesignerPage() {
   useEffect(() => {
     void loadGroups();
   }, [loadGroups]);
+
+  const loadCreators = useCallback(async () => {
+    try {
+      const all = await creatorService.getAllCreators();
+      setCreators(all);
+    } catch {
+      setCreators([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCreators();
+  }, [loadCreators]);
 
   // 動画URL管理 (SAS URL)
   useEffect(() => {
@@ -444,6 +459,18 @@ export default function DesignerPage() {
                   <option value="">{MSG.projectsNoGroup}</option>
                   {groups.map((group) => (
                     <option key={group.id} value={group.id}>{group.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className={classes.settingsField}>
+                <Label>{MSG.projectsCreatorFilter}</Label>
+                <Select
+                  value={currentProject?.creatorId ?? ''}
+                  onChange={(_, data) => updateProjectMeta({ creatorId: data.value || undefined })}
+                >
+                  <option value="">{MSG.projectsNoCreator}</option>
+                  {creators.map((creator) => (
+                    <option key={creator.id} value={creator.id}>{creator.name}</option>
                   ))}
                 </Select>
               </div>

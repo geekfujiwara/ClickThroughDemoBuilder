@@ -115,6 +115,26 @@ export async function putGroupMasterJson(json: string): Promise<void> {
   });
 }
 
+export async function getCreatorMasterJson(): Promise<string | null> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('creators.json');
+  try {
+    const buf = await blob.downloadToBuffer();
+    return buf.toString('utf-8');
+  } catch (e: unknown) {
+    if ((e as { statusCode?: number }).statusCode === 404) return null;
+    throw e;
+  }
+}
+
+export async function putCreatorMasterJson(json: string): Promise<void> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('creators.json');
+  await blob.upload(json, Buffer.byteLength(json, 'utf-8'), {
+    blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
+  });
+}
+
 export async function putUsageLogJson(path: string, json: string): Promise<void> {
   const c = await ensureContainer('usage-logs');
   const blob = c.getBlockBlobClient(path);

@@ -34,8 +34,9 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useProjectStore } from '@/stores/projectStore';
 import { exportDemoToFolder, exportAllDemosToFolder } from '@/services/exportService';
 import * as groupService from '@/services/groupService';
+import * as creatorService from '@/services/creatorService';
 import { MSG } from '@/constants/messages';
-import type { DemoGroup, DemoProject } from '@/types';
+import type { DemoCreator, DemoGroup, DemoProject } from '@/types';
 
 type SortKey = 'updatedAt' | 'createdAt' | 'title';
 
@@ -111,7 +112,9 @@ export default function ProjectsPage() {
 
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
+  const [creatorFilter, setCreatorFilter] = useState('all');
   const [groups, setGroups] = useState<DemoGroup[]>([]);
+  const [creators, setCreators] = useState<DemoCreator[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
   const [deleteTarget, setDeleteTarget] = useState<DemoProject | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -132,7 +135,8 @@ export default function ProjectsPage() {
       const q = search.toLowerCase();
       const hitKeyword = p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
       const hitGroup = groupFilter === 'all' ? true : (groupFilter === 'none' ? !p.groupId : p.groupId === groupFilter);
-      return hitKeyword && hitGroup;
+      const hitCreator = creatorFilter === 'all' ? true : (creatorFilter === 'none' ? !p.creatorId : p.creatorId === creatorFilter);
+      return hitKeyword && hitGroup && hitCreator;
     })
     .sort((a, b) => {
       if (sortKey === 'title') return a.title.localeCompare(b.title, 'ja');
@@ -187,11 +191,25 @@ export default function ProjectsPage() {
     void loadGroups();
   }, [loadGroups]);
 
+  const loadCreators = useCallback(async () => {
+    const all = await creatorService.getAllCreators();
+    setCreators(all);
+  }, []);
+
+  useEffect(() => {
+    void loadCreators();
+  }, [loadCreators]);
+
   const handleAssignGroup = useCallback(async (projectId: string, value: string) => {
     await updateProject(projectId, { groupId: value || undefined });
   }, [updateProject]);
 
+  const handleAssignCreator = useCallback(async (projectId: string, value: string) => {
+    await updateProject(projectId, { creatorId: value || undefined });
+  }, [updateProject]);
+
   const groupMap = new Map(groups.map((g) => [g.id, g.name]));
+  const creatorMap = new Map(creators.map((c) => [c.id, c.name]));
 
   return (
     <>
@@ -227,6 +245,17 @@ export default function ProjectsPage() {
           <option value="none">{MSG.projectsNoGroup}</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>{group.name}</option>
+          ))}
+        </Select>
+        <Select
+          className={classes.groupFilter}
+          value={creatorFilter}
+          onChange={(_, data) => setCreatorFilter(data.value)}
+        >
+          <option value="all">{MSG.projectsCreatorAll}</option>
+          <option value="none">{MSG.projectsNoCreator}</option>
+          {creators.map((creator) => (
+            <option key={creator.id} value={creator.id}>{creator.name}</option>
           ))}
         </Select>
         <Select
@@ -300,6 +329,9 @@ export default function ProjectsPage() {
                       <Caption1>
                         {MSG.projectsGroupFilter}: {project.groupId ? (groupMap.get(project.groupId) ?? MSG.projectsNoGroup) : MSG.projectsNoGroup}
                       </Caption1>
+                      <Caption1>
+                        {MSG.projectsCreatorFilter}: {project.creatorId ? (creatorMap.get(project.creatorId) ?? MSG.projectsNoCreator) : MSG.projectsNoCreator}
+                      </Caption1>
                     </div>
                   </>
                 }
@@ -356,6 +388,18 @@ export default function ProjectsPage() {
                     <option value="">{MSG.projectsNoGroup}</option>
                     {groups.map((group) => (
                       <option key={group.id} value={group.id}>{group.name}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>{MSG.projectsCreatorFilter}</Label>
+                  <Select
+                    value={project.creatorId ?? ''}
+                    onChange={(_, data) => void handleAssignCreator(project.id, data.value)}
+                  >
+                    <option value="">{MSG.projectsNoCreator}</option>
+                    {creators.map((creator) => (
+                      <option key={creator.id} value={creator.id}>{creator.name}</option>
                     ))}
                   </Select>
                 </div>

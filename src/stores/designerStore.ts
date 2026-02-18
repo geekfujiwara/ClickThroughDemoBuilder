@@ -38,7 +38,7 @@ interface DesignerStoreActions {
   bulkUpdateDescriptionStyle: (style: DescriptionStyle) => void;
 
   // プロジェクトメタデータ更新（タイトル、説明、エクスポート情報等）
-  updateProjectMeta: (updates: Partial<Pick<DemoProject, 'title' | 'groupId' | 'description' | 'lastExportFolderName' | 'lastExportedAt'>>) => void;
+  updateProjectMeta: (updates: Partial<Pick<DemoProject, 'title' | 'groupId' | 'creatorId' | 'description' | 'lastExportFolderName' | 'lastExportedAt'>>) => void;
 
   // Undo/Redo
   undo: () => void;

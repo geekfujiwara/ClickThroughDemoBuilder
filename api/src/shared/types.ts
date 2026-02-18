@@ -7,6 +7,7 @@ export interface DemoProject {
   demoNumber: number;
   title: string;
   groupId?: string;
+  creatorId?: string;
   description: string;
   createdAt: string;
   updatedAt: string;
@@ -77,6 +78,13 @@ export interface AuthResult {
 }
 
 export interface DemoGroup {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DemoCreator {
   id: string;
   name: string;
   createdAt: string;

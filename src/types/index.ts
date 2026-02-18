@@ -7,6 +7,7 @@ export interface DemoProject {
   demoNumber: number; // 自動付番
   title: string;
   groupId?: string;
+  creatorId?: string;
   description: string;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
@@ -169,6 +170,13 @@ export function createDefaultProject(partial: {
 export type PlayerState = 'INIT' | 'PLAYING' | 'WAITING' | 'COMPLETE';
 
 export interface DemoGroup {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DemoCreator {
   id: string;
   name: string;
   createdAt: string;

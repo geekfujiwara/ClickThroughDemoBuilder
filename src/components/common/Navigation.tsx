@@ -45,6 +45,7 @@ export default function Navigation() {
   const location = useLocation();
   const isProjectsPage = location.pathname === '/projects';
   const isGroupsPage = location.pathname === '/groups';
+  const isCreatorsPage = location.pathname === '/creators';
   const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = async () => {
@@ -74,6 +75,14 @@ export default function Navigation() {
           size="small"
         >
           {MSG.navGroups}
+        </Button>
+      </Link>
+      <Link to="/creators" className={classes.link}>
+        <Button
+          appearance={isCreatorsPage ? 'primary' : 'subtle'}
+          size="small"
+        >
+          {MSG.navCreators}
         </Button>
       </Link>
       <Button className={classes.logout} appearance="subtle" size="small" onClick={() => void handleLogout()}>
