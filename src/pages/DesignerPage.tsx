@@ -17,6 +17,7 @@ import {
   PopoverSurface,
   Label,
   Select,
+  Spinner,
 } from '@fluentui/react-components';
 import {
   ArrowLeftRegular,
@@ -134,6 +135,13 @@ const useStyles = makeStyles({
     overflow: 'hidden',
     padding: tokens.spacingVerticalM,
   },
+  loadingState: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
   controlsArea: {
     borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
@@ -158,6 +166,7 @@ export default function DesignerPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isVideoUrlLoading, setIsVideoUrlLoading] = useState(false);
   const [showVideoReplaceConfirm, setShowVideoReplaceConfirm] = useState(false);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
@@ -226,11 +235,29 @@ export default function DesignerPage() {
   useEffect(() => {
     if (!currentProject?.video?.videoId) {
       setVideoUrl(null);
+      setIsVideoUrlLoading(false);
       return;
     }
-    getVideoUrl(currentProject.video.videoId).then((url) => {
-      if (url) setVideoUrl(url);
-    });
+    setVideoUrl(null);
+    setIsVideoUrlLoading(true);
+    let cancelled = false;
+    void getVideoUrl(currentProject.video.videoId)
+      .then((url) => {
+        if (cancelled) return;
+        if (url) {
+          setVideoUrl(url);
+        } else {
+          setIsVideoUrlLoading(false);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIsVideoUrlLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentProject?.video?.videoId]);
 
   // 自動保存 (3秒デバウンス)
@@ -605,10 +632,14 @@ export default function DesignerPage() {
                 videoUrl={videoUrl}
                 currentTime={currentTime}
                 onTimeUpdate={handleTimeUpdate}
+                onVideoLoaded={() => setIsVideoUrlLoading(false)}
+                onVideoLoadError={() => setIsVideoUrlLoading(false)}
               />
-            ) : (
-              <Text>{MSG.loading}</Text>
-            )}
+            ) : isVideoUrlLoading || !videoUrl ? (
+              <div className={classes.loadingState}>
+                <Spinner label={MSG.loading} size="large" />
+              </div>
+            ) : null}
           </div>
           {currentProject?.video && (
             <div className={classes.controlsArea}>

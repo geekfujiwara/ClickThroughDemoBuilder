@@ -1,5 +1,5 @@
 import { type RefObject, useCallback, useRef, useState, useEffect } from 'react';
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles, tokens, Spinner } from '@fluentui/react-components';
 import { useDesignerStore } from '@/stores/designerStore';
 import { toPercent, toPixel, getScale } from '@/utils/coordinates';
 import { validateClickPointAdd } from '@/utils/validation';
@@ -15,6 +15,20 @@ const useStyles = makeStyles({
     maxWidth: '100%',
     maxHeight: '100%',
     borderRadius: tokens.borderRadiusLarge,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: tokens.borderRadiusLarge,
+    zIndex: 20,
+    pointerEvents: 'none',
   },
   overlay: {
     position: 'absolute',
@@ -87,6 +101,8 @@ interface DesignerCanvasProps {
   videoUrl: string;
   currentTime: number;
   onTimeUpdate: () => void;
+  onVideoLoaded?: () => void;
+  onVideoLoadError?: () => void;
 }
 
 export default function DesignerCanvas({
@@ -94,10 +110,13 @@ export default function DesignerCanvas({
   videoUrl,
   currentTime,
   onTimeUpdate,
+  onVideoLoaded,
+  onVideoLoadError,
 }: DesignerCanvasProps) {
   const classes = useStyles();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [wrapperSize, setWrapperSize] = useState({ width: 0, height: 0 });
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
 
   // CP ドラッグ状態
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -137,6 +156,10 @@ export default function DesignerCanvas({
   const scale = currentProject?.video
     ? getScale(wrapperSize.width, currentProject.video.width)
     : 1;
+
+  useEffect(() => {
+    setIsVideoLoading(true);
+  }, [videoUrl]);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -298,9 +321,23 @@ export default function DesignerCanvas({
         src={videoUrl}
         className={classes.video}
         onTimeUpdate={onTimeUpdate}
+        onLoadStart={() => setIsVideoLoading(true)}
+        onLoadedData={() => {
+          setIsVideoLoading(false);
+          onVideoLoaded?.();
+        }}
+        onError={() => {
+          setIsVideoLoading(false);
+          onVideoLoadError?.();
+        }}
         onPause={() => {}}
         onPlay={() => {}}
       />
+      {isVideoLoading && (
+        <div className={classes.loadingOverlay}>
+          <Spinner size="large" />
+        </div>
+      )}
       <div className={classes.overlay} onClick={handleOverlayClick}>
         {currentProject?.clickPoints
           .filter((cp) => Math.abs(cp.timestamp - currentTime) < 0.15)
