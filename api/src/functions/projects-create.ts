@@ -1,0 +1,31 @@
+/**
+ * POST /api/projects
+ * プロジェクト作成 (designer のみ)
+ */
+import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
+import { requireRole } from '../middleware/auth.js';
+import * as projectService from '../services/projectService.js';
+import type { DemoProject } from '../shared/types.js';
+
+async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
+  const auth = requireRole(req, 'designer');
+  if ('status' in auth) return auth;
+
+  try {
+    const body = (await req.json()) as DemoProject;
+    if (!body.id) {
+      return { status: 400, jsonBody: { error: 'id は必須です' } };
+    }
+    await projectService.createProject(body);
+    return { status: 201, jsonBody: body };
+  } catch (e) {
+    return { status: 500, jsonBody: { error: (e as Error).message } };
+  }
+}
+
+app.http('projects-create', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'projects',
+  handler,
+});

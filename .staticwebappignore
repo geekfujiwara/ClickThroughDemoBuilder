@@ -1,0 +1,31 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore source files
+src/
+api/src/
+
+# Ignore build config
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+eslint.config.js
+.prettierrc
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore docs
+docs/
+DESIGN.md
+
+# Ignore logs and temp files
+*.log
+.vscode/
+.idea/
+
+# Include only these folders/files for deployment:
+# - dist/ (frontend build output)
+# - api-deploy/ (API deployment folder)
+# - staticwebapp.config.json (SWA config)

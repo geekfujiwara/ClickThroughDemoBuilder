@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
+    "VIEWER_PASSWORD": "<SET_LOCAL_VIEWER_PASSWORD>",
+    "DESIGNER_PASSWORD": "<SET_LOCAL_DESIGNER_PASSWORD>",
+    "JWT_SECRET": "<SET_LOCAL_JWT_SECRET_MIN_32_CHARS>",
+    "IP_SITE_RULES": "[{\"prefix\":\"203.0.113.\",\"site\":\"Tokyo HQ\"}]",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": ""
+  }
+}

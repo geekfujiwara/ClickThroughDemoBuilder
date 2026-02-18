@@ -1,0 +1,20 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/assets/*"]
+  },
+  "routes": [
+    { "route": "/", "redirect": "/Click-Through-Demo-Builder/", "statusCode": 302 },
+    { "route": "/viewer/login", "allowedRoles": ["anonymous"] },
+    { "route": "/admin/login", "allowedRoles": ["anonymous"] },
+    { "route": "/api/*", "allowedRoles": ["anonymous"] },
+    { "route": "/player/*", "allowedRoles": ["anonymous"] },
+    { "route": "/*", "allowedRoles": ["anonymous"] }
+  ],
+  "responseOverrides": {
+    "401": { "redirect": "/Click-Through-Demo-Builder/viewer/login" }
+  },
+  "platform": {
+    "apiRuntime": "node:20"
+  }
+}
