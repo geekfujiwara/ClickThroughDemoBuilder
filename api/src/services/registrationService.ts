@@ -3,17 +3,28 @@
  * Blob Storage の pending-registrations.json に保存する
  */
 import { BlobServiceClient } from '@azure/storage-blob';
+import { DefaultAzureCredential } from '@azure/identity';
 import { randomUUID } from 'crypto';
 import type { PendingRegistration } from '../shared/types.js';
 
 const CONTAINER = 'clickthrough-data';
 const BLOB_NAME = 'pending-registrations.json';
 
-async function getContainerClient() {
+function getBlobServiceClient(): BlobServiceClient {
+  const accountName = process.env.STORAGE_ACCOUNT_NAME;
+  if (accountName) {
+    return new BlobServiceClient(
+      `https://${accountName}.blob.core.windows.net`,
+      new DefaultAzureCredential(),
+    );
+  }
   const connStr = process.env.STORAGE_CONNECTION_STRING;
   if (!connStr) throw new Error('STORAGE_CONNECTION_STRING is not set');
-  const client = BlobServiceClient.fromConnectionString(connStr);
-  const container = client.getContainerClient(CONTAINER);
+  return BlobServiceClient.fromConnectionString(connStr);
+}
+
+async function getContainerClient() {
+  const container = getBlobServiceClient().getContainerClient(CONTAINER);
   await container.createIfNotExists();
   return container;
 }
