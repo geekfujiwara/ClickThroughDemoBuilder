@@ -189,6 +189,7 @@ export default function DesignerPage() {
     redo,
     markSaved,
     replaceVideo,
+    resetDesigner,
   } = useDesignerStore();
 
   const { getProject, updateProject, createProject, deleteProject } = useProjectStore();
@@ -199,8 +200,13 @@ export default function DesignerPage() {
       getProject(projectId).then((p) => {
         if (p) setProject(p);
       });
+      return;
     }
-  }, [projectId, getProject, setProject]);
+    resetDesigner();
+    setVideoUrl(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }, [projectId, getProject, setProject, resetDesigner]);
 
   const loadGroups = useCallback(async () => {
     try {
