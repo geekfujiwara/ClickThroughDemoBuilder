@@ -147,4 +147,5 @@ export const MSG = {
   // ---------- Navigation ----------
   navHome: 'ホーム',
   navProjects: 'プロジェクト',
+  navGroups: 'グループマスター',
 } as const;

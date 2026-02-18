@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const ProjectsPage = lazy(() => import('@/pages/ProjectsPage'));
+const GroupMasterPage = lazy(() => import('@/pages/GroupMasterPage'));
 const DesignerPage = lazy(() => import('@/pages/DesignerPage'));
 const PlayerPage = lazy(() => import('@/pages/PlayerPage'));
 const ViewerLoginPage = lazy(() => import('@/components/auth/ViewerLoginPage'));
@@ -46,6 +47,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/groups" element={<GroupMasterPage />} />
           </Route>
           <Route path="/designer" element={<DesignerPage />} />
           <Route path="/designer/:projectId" element={<DesignerPage />} />

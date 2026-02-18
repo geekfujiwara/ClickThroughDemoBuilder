@@ -61,42 +61,6 @@ const useStyles = makeStyles({
   groupFilter: {
     minWidth: '220px',
   },
-  groupMaster: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalS,
-    marginBottom: tokens.spacingVerticalL,
-    padding: tokens.spacingVerticalS,
-    border: `1px solid ${tokens.colorNeutralStroke2}`,
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground1,
-  },
-  groupMasterHeader: {
-    marginBottom: tokens.spacingVerticalXS,
-  },
-  groupCreateRow: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalS,
-    flexWrap: 'wrap',
-    alignItems: 'center',
-  },
-  groupInput: {
-    minWidth: '200px',
-  },
-  groupList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
-  },
-  groupRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
-    flexWrap: 'wrap',
-  },
-  groupNameInput: {
-    minWidth: '180px',
-  },
   groupTag: {
     marginTop: tokens.spacingVerticalXXS,
   },
@@ -148,8 +112,6 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   const [groups, setGroups] = useState<DemoGroup[]>([]);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [groupEdits, setGroupEdits] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
   const [deleteTarget, setDeleteTarget] = useState<DemoProject | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -163,22 +125,6 @@ export default function ProjectsPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const all = await groupService.getAllGroups();
-        setGroups(all);
-        const init: Record<string, string> = {};
-        for (const group of all) {
-          init[group.id] = group.name;
-        }
-        setGroupEdits(init);
-      } catch {
-        setGroups([]);
-      }
-    })();
-  }, []);
 
   // フィルタ + ソート
   const filtered = projects
@@ -235,53 +181,11 @@ export default function ProjectsPage() {
   const loadGroups = useCallback(async () => {
     const all = await groupService.getAllGroups();
     setGroups(all);
-    const init: Record<string, string> = {};
-    for (const group of all) {
-      init[group.id] = group.name;
-    }
-    setGroupEdits(init);
   }, []);
 
-  const handleCreateGroup = useCallback(async () => {
-    const name = newGroupName.trim();
-    if (!name) return;
-    try {
-      await groupService.createGroup(name);
-      setNewGroupName('');
-      await loadGroups();
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }, [newGroupName, loadGroups]);
-
-  const handleSaveGroup = useCallback(async (groupId: string) => {
-    const name = (groupEdits[groupId] ?? '').trim();
-    if (!name) return;
-    try {
-      await groupService.updateGroup(groupId, name);
-      await loadGroups();
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }, [groupEdits, loadGroups]);
-
-  const handleDeleteGroup = useCallback(async (group: DemoGroup) => {
-    if (!confirm(MSG.projectsGroupDeleteConfirm(group.name))) return;
-    try {
-      await groupService.deleteGroup(group.id);
-      await loadGroups();
-
-      const targets = projects.filter((p) => p.groupId === group.id);
-      for (const project of targets) {
-        await updateProject(project.id, { groupId: undefined });
-      }
-      if (groupFilter === group.id) {
-        setGroupFilter('all');
-      }
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }, [groupFilter, loadGroups, projects, updateProject]);
+  useEffect(() => {
+    void loadGroups();
+  }, [loadGroups]);
 
   const handleAssignGroup = useCallback(async (projectId: string, value: string) => {
     await updateProject(projectId, { groupId: value || undefined });
@@ -345,36 +249,6 @@ export default function ProjectsPage() {
           </Button>
         </Tooltip>
       </div>
-
-      <section className={classes.groupMaster}>
-        <Text as="h3" weight="semibold" className={classes.groupMasterHeader}>{MSG.projectsGroupMaster}</Text>
-        <div className={classes.groupCreateRow}>
-          <Input
-            className={classes.groupInput}
-            value={newGroupName}
-            placeholder={MSG.projectsGroupNamePlaceholder}
-            onChange={(_, data) => setNewGroupName(data.value)}
-          />
-          <Button appearance="primary" onClick={handleCreateGroup}>{MSG.projectsGroupCreate}</Button>
-        </div>
-        <div className={classes.groupList}>
-          {groups.map((group) => (
-            <div key={group.id} className={classes.groupRow}>
-              <Input
-                className={classes.groupNameInput}
-                value={groupEdits[group.id] ?? group.name}
-                onChange={(_, data) => setGroupEdits((prev) => ({ ...prev, [group.id]: data.value }))}
-              />
-              <Button size="small" appearance="subtle" onClick={() => void handleSaveGroup(group.id)}>
-                {MSG.projectsGroupSave}
-              </Button>
-              <Button size="small" appearance="subtle" onClick={() => void handleDeleteGroup(group)}>
-                {MSG.delete}
-              </Button>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* コンテンツ */}
       {isLoading ? (

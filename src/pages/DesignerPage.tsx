@@ -88,15 +88,6 @@ const useStyles = makeStyles({
     flexDirection: 'column' as const,
     gap: tokens.spacingVerticalXS,
   },
-  groupMasterRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
-    flexWrap: 'wrap',
-  },
-  groupMasterInput: {
-    minWidth: '180px',
-  },
   body: {
     display: 'flex',
     flex: 1,
@@ -171,8 +162,6 @@ export default function DesignerPage() {
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
   const [groups, setGroups] = useState<DemoGroup[]>([]);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [groupEdits, setGroupEdits] = useState<Record<string, string>>({});
 
   // requestAnimationFrame で高精度にcurrentTimeを追跡 (~60Hz)
   useEffect(() => {
@@ -217,11 +206,6 @@ export default function DesignerPage() {
     try {
       const all = await groupService.getAllGroups();
       setGroups(all);
-      const next: Record<string, string> = {};
-      for (const group of all) {
-        next[group.id] = group.name;
-      }
-      setGroupEdits(next);
     } catch {
       setGroups([]);
     }
@@ -392,42 +376,6 @@ export default function DesignerPage() {
     navigate('/projects');
   }, [currentProject?.id, deleteProject, navigate]);
 
-  const handleCreateGroup = useCallback(async () => {
-    const name = newGroupName.trim();
-    if (!name) return;
-    try {
-      await groupService.createGroup(name);
-      setNewGroupName('');
-      await loadGroups();
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }, [newGroupName, loadGroups]);
-
-  const handleSaveGroup = useCallback(async (groupId: string) => {
-    const name = (groupEdits[groupId] ?? '').trim();
-    if (!name) return;
-    try {
-      await groupService.updateGroup(groupId, name);
-      await loadGroups();
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }, [groupEdits, loadGroups]);
-
-  const handleDeleteGroup = useCallback(async (group: DemoGroup) => {
-    if (!confirm(MSG.projectsGroupDeleteConfirm(group.name))) return;
-    try {
-      await groupService.deleteGroup(group.id);
-      if (currentProject?.groupId === group.id) {
-        updateProjectMeta({ groupId: undefined });
-      }
-      await loadGroups();
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  }, [currentProject?.groupId, loadGroups, updateProjectMeta]);
-
   return (
     <div className={classes.root}>
       {/* トップバー */}
@@ -492,35 +440,6 @@ export default function DesignerPage() {
                     <option key={group.id} value={group.id}>{group.name}</option>
                   ))}
                 </Select>
-              </div>
-              <div className={classes.settingsField}>
-                <Label>{MSG.projectsGroupMaster}</Label>
-                <div className={classes.groupMasterRow}>
-                  <Input
-                    className={classes.groupMasterInput}
-                    value={newGroupName}
-                    placeholder={MSG.projectsGroupNamePlaceholder}
-                    onChange={(_, data) => setNewGroupName(data.value)}
-                  />
-                  <Button appearance="primary" size="small" onClick={handleCreateGroup}>
-                    {MSG.projectsGroupCreate}
-                  </Button>
-                </div>
-                {groups.map((group) => (
-                  <div key={group.id} className={classes.groupMasterRow}>
-                    <Input
-                      className={classes.groupMasterInput}
-                      value={groupEdits[group.id] ?? group.name}
-                      onChange={(_, data) => setGroupEdits((prev) => ({ ...prev, [group.id]: data.value }))}
-                    />
-                    <Button size="small" appearance="subtle" onClick={() => void handleSaveGroup(group.id)}>
-                      {MSG.projectsGroupSave}
-                    </Button>
-                    <Button size="small" appearance="subtle" onClick={() => void handleDeleteGroup(group)}>
-                      {MSG.delete}
-                    </Button>
-                  </div>
-                ))}
               </div>
               {currentProject?.demoNumber ? (
                 <div className={classes.settingsField}>
