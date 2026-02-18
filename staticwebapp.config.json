@@ -1,7 +1,7 @@
 {
   "navigationFallback": {
-    "rewrite": "/Click-Through-Demo-Builder/index.html",
-    "exclude": ["/api/*", "/Click-Through-Demo-Builder/assets/*"]
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/assets/*"]
   },
   "routes": [
     { "route": "/", "redirect": "/Click-Through-Demo-Builder/", "statusCode": 302 },
