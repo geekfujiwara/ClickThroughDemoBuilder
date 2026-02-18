@@ -61,11 +61,12 @@ const useStyles = makeStyles({
     padding: '32px',
   },
   header: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     textAlign: 'center',
     marginBottom: '24px',
-  },
-  headerText: {
-    textAlign: 'center',
   },
   icon: {
     display: 'flex',
@@ -123,8 +124,8 @@ export default function AdminLoginPage() {
                 <span className={styles.icon}>
                   <AppSymbol size={52} />
                 </span>
-                <Title2 block className={styles.headerText}>デザイナーログイン</Title2>
-                <Body1 className={styles.headerText}>デザイナーパスワードを入力してください</Body1>
+                <Title2 block>デザイナーログイン</Title2>
+                <Body1>デザイナーパスワードを入力してください</Body1>
               </div>
             }
           />
