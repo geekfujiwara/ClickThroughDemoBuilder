@@ -44,12 +44,11 @@ export default function Navigation() {
   const classes = useStyles();
   const location = useLocation();
   const isProjectsPage = location.pathname === '/projects';
-  const role = useAuthStore((s) => s.role);
   const logout = useAuthStore((s) => s.logout);
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = role === 'viewer' ? '/viewer/login' : '/admin/login';
+    window.location.assign('/');
   };
 
   return (
