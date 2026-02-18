@@ -7,7 +7,7 @@ import nodemailer from 'nodemailer';
 function getAppUrl(): string {
   return (
     process.env.APP_URL ??
-    'https://agreeable-island-071ec5400.4.azurestaticapps.net/Click-Through-Demo-Builder'
+    'https://agreeable-island-071ec5400.4.azurestaticapps.net'
   );
 }
 

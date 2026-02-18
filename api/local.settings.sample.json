@@ -9,7 +9,7 @@
     "JWT_SECRET": "<SET_LOCAL_JWT_SECRET_MIN_32_CHARS>",
     "IP_SITE_RULES": "[{\"prefix\":\"203.0.113.\",\"site\":\"Tokyo HQ\"}]",
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
-    "APP_URL": "http://localhost:4280/Click-Through-Demo-Builder",
+    "APP_URL": "http://localhost:4280",
     "SMTP_HOST": "",
     "SMTP_PORT": "587",
     "SMTP_USER": "",

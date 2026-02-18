@@ -7,7 +7,7 @@ import { initTelemetry } from './services/telemetry';
 import './styles/global.css';
 import './styles/animations.css';
 
-const APP_BASE_PATH = '/Click-Through-Demo-Builder';
+const APP_BASE_PATH = '/';
 
 function normalizeBasePath(path: string): string {
   const trimmed = path.trim();

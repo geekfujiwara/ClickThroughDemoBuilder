@@ -4,14 +4,13 @@
     "exclude": ["/api/*", "/assets/*"]
   },
   "routes": [
-    { "route": "/", "redirect": "/Click-Through-Demo-Builder/", "statusCode": 302 },
-    { "route": "/Click-Through-Demo-Builder/creators", "redirect": "/Click-Through-Demo-Builder/users", "statusCode": 301 },
-    { "route": "/Click-Through-Demo-Builder/groups", "redirect": "/Click-Through-Demo-Builder/users", "statusCode": 301 },
+    { "route": "/creators", "redirect": "/users", "statusCode": 301 },
+    { "route": "/groups", "redirect": "/users", "statusCode": 301 },
     { "route": "/api/*", "allowedRoles": ["anonymous"] },
-    { "route": "/Click-Through-Demo-Builder/*", "allowedRoles": ["anonymous"] }
+    { "route": "/*", "allowedRoles": ["anonymous"] }
   ],
   "responseOverrides": {
-    "401": { "redirect": "/Click-Through-Demo-Builder/login" }
+    "401": { "redirect": "/login" }
   },
   "platform": {
     "apiRuntime": "node:20"
