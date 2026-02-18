@@ -7,13 +7,16 @@ import { requireRole } from '../middleware/auth.js';
 import * as creatorService from '../services/creatorService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
-  const auth = requireRole(req, 'designer');
+  const auth = requireRole(req, 'viewer', 'designer');
   if ('status' in auth) return auth;
 
   try {
-    const body = (await req.json()) as { name?: string };
+    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; password?: string };
     const name = body.name ?? '';
-    const creator = await creatorService.createCreator(name);
+    const groupId = typeof body.groupId === 'string' && body.groupId.trim() ? body.groupId : undefined;
+    const language = body.language === 'en' ? 'en' : 'ja';
+    const password = typeof body.password === 'string' && body.password ? body.password : undefined;
+    const creator = await creatorService.createCreator({ name, groupId, language, password });
     return { status: 201, jsonBody: creator };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

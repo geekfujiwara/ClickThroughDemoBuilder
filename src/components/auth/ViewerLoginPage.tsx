@@ -95,9 +95,9 @@ export default function ViewerLoginPage() {
     setLoading(true);
     try {
       await login('viewer', password);
-      navigate('/viewer/demos', { replace: true });
+      navigate('/creator/select', { replace: true });
     } catch {
-      setError('パスワードが正しくありません');
+      setError('Incorrect password.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ export default function ViewerLoginPage() {
     <div className={styles.container}>
       <Link to="/admin/login" className={styles.adminLink}>
         <Button appearance="subtle" size="small">
-          管理者ログイン
+          Admin Login
         </Button>
       </Link>
       <div className={styles.content}>
@@ -119,8 +119,8 @@ export default function ViewerLoginPage() {
                 <span className={styles.icon}>
                   <AppSymbol size={52} />
                 </span>
-                <Body1>クリック操作付きのデモを視聴できるアプリです。</Body1>
-                <Body1>Viewer パスワードを入力してログインしてください。</Body1>
+                <Body1>View interactive demos with click annotations.</Body1>
+                <Body1>Enter your Viewer password to log in.</Body1>
               </div>
             }
           />
@@ -131,19 +131,19 @@ export default function ViewerLoginPage() {
               </MessageBar>
             )}
             <div>
-              <Label htmlFor="password">パスワード</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(_, data) => setPassword(data.value)}
-                placeholder="パスワードを入力"
+                placeholder="Enter password"
                 style={{ width: '100%' }}
                 autoFocus
               />
             </div>
             <Button type="submit" appearance="primary" disabled={loading || !password.trim()}>
-              {loading ? 'ログイン中...' : 'ログイン'}
+              {loading ? 'Logging in...' : 'Log In'}
             </Button>
           </form>
         </Card>

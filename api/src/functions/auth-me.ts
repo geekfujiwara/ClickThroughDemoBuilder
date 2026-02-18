@@ -12,7 +12,7 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   }
   return {
     status: 200,
-    jsonBody: { authenticated: true, role: payload.role },
+    jsonBody: { authenticated: true, role: payload.role, creatorId: payload.creatorId ?? null },
   };
 }
 

@@ -38,9 +38,11 @@ export function verifyPassword(role: UserRole, password: string): boolean {
 /**
  * JWT トークン生成
  */
-export function createToken(role: UserRole): string {
+export function createToken(role: UserRole, creatorId?: string): string {
   const expiresIn = role === 'viewer' ? '24h' : '8h';
-  return jwt.sign({ role } satisfies Pick<JwtPayload, 'role'>, JWT_SECRET, { expiresIn });
+  const payload: Pick<JwtPayload, 'role' | 'creatorId'> = { role };
+  if (creatorId) payload.creatorId = creatorId;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
 /**

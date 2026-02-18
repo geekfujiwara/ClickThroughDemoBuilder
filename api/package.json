@@ -11,14 +11,16 @@
     "start": "func start"
   },
   "dependencies": {
-    "@azure/identity": "^4.5.0",
     "@azure/functions": "^4.6.0",
+    "@azure/identity": "^4.5.0",
     "@azure/storage-blob": "^12.26.0",
-    "jsonwebtoken": "^9.0.0"
+    "jsonwebtoken": "^9.0.0",
+    "nodemailer": "^8.0.1"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^20.0.0",
+    "@types/nodemailer": "^7.0.10",
     "typescript": "^5.6.0"
   }
 }

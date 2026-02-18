@@ -4,10 +4,11 @@ import {
   tokens,
   Text,
   Button,
+  Badge,
 } from '@fluentui/react-components';
-import { MSG } from '@/constants/messages';
 import { useAuthStore } from '@/stores/authStore';
 import AppSymbol from './AppSymbol';
+import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
   nav: {
@@ -33,6 +34,11 @@ const useStyles = makeStyles({
   link: {
     textDecoration: 'none',
   },
+  userBadge: {
+    fontSize: tokens.fontSizeBase200,
+    marginLeft: tokens.spacingHorizontalXS,
+    cursor: 'pointer',
+  },
   logout: {
     position: 'absolute',
     top: '8px',
@@ -42,15 +48,24 @@ const useStyles = makeStyles({
 
 export default function Navigation() {
   const classes = useStyles();
+  const MSG = useMsg();
   const location = useLocation();
-  const isProjectsPage = location.pathname === '/projects';
-  const isGroupsPage = location.pathname === '/groups';
-  const isCreatorsPage = location.pathname === '/creators';
   const logout = useAuthStore((s) => s.logout);
+  const selectedCreator = useAuthStore((s) => s.selectedCreator);
+  const clearSelectedCreator = useAuthStore((s) => s.clearSelectedCreator);
+
+  const isProjectsPage = location.pathname === '/projects';
+  const isUsersPage = location.pathname === '/users';
+  const isProfilePage = location.pathname === '/profile';
 
   const handleLogout = async () => {
     await logout();
     window.location.assign('/');
+  };
+
+  const handleSwitchUser = () => {
+    clearSelectedCreator();
+    window.location.assign('/creator/select');
   };
 
   return (
@@ -62,31 +77,32 @@ export default function Navigation() {
         </Text>
       </Link>
       <Link to="/projects" className={classes.link}>
-        <Button
-          appearance={isProjectsPage ? 'primary' : 'subtle'}
-          size="small"
-        >
+        <Button appearance={isProjectsPage ? 'primary' : 'subtle'} size="small">
           {MSG.navProjects}
         </Button>
       </Link>
-      <Link to="/groups" className={classes.link}>
-        <Button
-          appearance={isGroupsPage ? 'primary' : 'subtle'}
-          size="small"
-        >
-          {MSG.navGroups}
+      <Link to="/users" className={classes.link}>
+        <Button appearance={isUsersPage ? 'primary' : 'subtle'} size="small">
+          {MSG.navUsers}
         </Button>
       </Link>
-      <Link to="/creators" className={classes.link}>
-        <Button
-          appearance={isCreatorsPage ? 'primary' : 'subtle'}
-          size="small"
-        >
-          {MSG.navCreators}
+      <Link to="/profile" className={classes.link}>
+        <Button appearance={isProfilePage ? 'primary' : 'subtle'} size="small">
+          {MSG.navProfile}
         </Button>
       </Link>
+      {selectedCreator && (
+        <Badge
+          className={classes.userBadge}
+          appearance="outline"
+          color="brand"
+          onClick={handleSwitchUser}
+        >
+          {selectedCreator.name}
+        </Badge>
+      )}
       <Button className={classes.logout} appearance="subtle" size="small" onClick={() => void handleLogout()}>
-        ログアウト
+        {MSG.logout}
       </Button>
     </nav>
   );

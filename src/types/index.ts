@@ -179,6 +179,10 @@ export interface DemoGroup {
 export interface DemoCreator {
   id: string;
   name: string;
+  groupId?: string;
+  language: 'ja' | 'en';
+  email?: string;
+  hasPassword: boolean;
   createdAt: string;
   updatedAt: string;
 }

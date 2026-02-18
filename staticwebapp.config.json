@@ -1,18 +1,17 @@
 {
   "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/api/*", "/assets/*"]
+    "rewrite": "/Click-Through-Demo-Builder/index.html",
+    "exclude": ["/api/*", "/Click-Through-Demo-Builder/assets/*"]
   },
   "routes": [
     { "route": "/", "redirect": "/Click-Through-Demo-Builder/", "statusCode": 302 },
-    { "route": "/viewer/login", "allowedRoles": ["anonymous"] },
-    { "route": "/admin/login", "allowedRoles": ["anonymous"] },
+    { "route": "/Click-Through-Demo-Builder/creators", "redirect": "/Click-Through-Demo-Builder/users", "statusCode": 301 },
+    { "route": "/Click-Through-Demo-Builder/groups", "redirect": "/Click-Through-Demo-Builder/users", "statusCode": 301 },
     { "route": "/api/*", "allowedRoles": ["anonymous"] },
-    { "route": "/player/*", "allowedRoles": ["anonymous"] },
-    { "route": "/*", "allowedRoles": ["anonymous"] }
+    { "route": "/Click-Through-Demo-Builder/*", "allowedRoles": ["anonymous"] }
   ],
   "responseOverrides": {
-    "401": { "redirect": "/Click-Through-Demo-Builder/viewer/login" }
+    "401": { "redirect": "/Click-Through-Demo-Builder/login" }
   },
   "platform": {
     "apiRuntime": "node:20"

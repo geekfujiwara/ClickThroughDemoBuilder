@@ -69,12 +69,26 @@ export type UserRole = 'viewer' | 'designer';
 
 export interface JwtPayload {
   role: UserRole;
+  creatorId?: string;  // email ログイン時に設定
   iat: number;
   exp: number;
 }
 
 export interface AuthResult {
   role: UserRole;
+  creatorId?: string;
+}
+
+/** メール認証待ちの登録情報 */
+export interface PendingRegistration {
+  token: string;
+  email: string;
+  name: string;
+  passwordHash: string;
+  language: 'ja' | 'en';
+  groupId?: string;
+  createdAt: string;
+  expiresAt: string;  // 24時間有効
 }
 
 export interface DemoGroup {
@@ -84,9 +98,26 @@ export interface DemoGroup {
   updatedAt: string;
 }
 
+/** ストレージ内部用（passwordHash を含む） */
+export interface DemoCreatorRecord {
+  id: string;
+  name: string;
+  groupId?: string;
+  language: 'ja' | 'en';
+  email?: string;         // @microsoft.com のみ許可
+  passwordHash?: string;  // SHA-256 hex
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** API レスポンス用（passwordHash を除外、hasPassword を追加） */
 export interface DemoCreator {
   id: string;
   name: string;
+  groupId?: string;
+  language: 'ja' | 'en';
+  email?: string;
+  hasPassword: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,7 +1,5 @@
 /**
  * AuthGuard — 認証ガードコンポーネント
- *
- * 指定ロールが認証済みでなければログインページへリダイレクト。
  */
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -10,12 +8,11 @@ import { useAuthStore } from '@/stores/authStore';
 import type { UserRole } from '@/services/authService';
 
 interface Props {
-  /** 許可するロール */
   role: UserRole;
 }
 
 export default function AuthGuard({ role }: Props) {
-  const { isAuthenticated, role: currentRole, isLoading } = useAuthStore();
+  const { isAuthenticated, role: currentRole, isLoading, selectedCreator } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,31 +20,34 @@ export default function AuthGuard({ role }: Props) {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      // 未認証 → ルートURLは viewer ログインへ、それ以外は従来どおりロール別へ
-      if (role === 'designer' && location.pathname === '/') {
-        navigate('/viewer/login', { replace: true });
-      } else {
-        navigate(role === 'viewer' ? '/viewer/login' : '/admin/login', { replace: true });
-      }
+      // designer は新しい統合ログインページへ
+      const loginPath = role === 'viewer' ? '/viewer/login' : '/login';
+      navigate(loginPath, { replace: true });
       return;
     }
 
-    // viewer がデザイナー専用ページにアクセスしようとした場合
     if (role === 'designer' && currentRole !== 'designer') {
       navigate('/viewer/demos', { replace: true });
+      return;
     }
-  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname]);
+
+    // 認証済みだが作成者未選択 → 選択ページへ
+    if (!selectedCreator) {
+      navigate('/creator/select', { replace: true });
+    }
+  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator]);
 
   if (isLoading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <Spinner size="large" label="認証確認中..." />
+        <Spinner size="large" label="Loading..." />
       </div>
     );
   }
 
   if (!isAuthenticated) return null;
   if (role === 'designer' && currentRole !== 'designer') return null;
+  if (!selectedCreator) return null;
 
   return <Outlet />;
 }

@@ -33,6 +33,7 @@ import {
 } from '@fluentui/react-icons';
 import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAuthStore } from '@/stores/authStore';
 import { exportDemoToFolder } from '@/services/exportService';
 import * as groupService from '@/services/groupService';
 import * as creatorService from '@/services/creatorService';
@@ -195,6 +196,7 @@ export default function DesignerPage() {
   } = useDesignerStore();
 
   const { getProject, updateProject, createProject, deleteProject } = useProjectStore();
+  const selectedCreator = useAuthStore((s) => s.selectedCreator);
 
   // プロジェクト読み込み
   useEffect(() => {
@@ -306,10 +308,10 @@ export default function DesignerPage() {
       await updateProject(currentProject.id, currentProject);
     } else {
       const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = currentProject;
-      await createProject(rest);
+      await createProject({ ...rest, creatorId: rest.creatorId || selectedCreator?.id });
     }
     markSaved();
-  }, [currentProject, updateProject, createProject, markSaved]);
+  }, [currentProject, updateProject, createProject, markSaved, selectedCreator]);
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current;

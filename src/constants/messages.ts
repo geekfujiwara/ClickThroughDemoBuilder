@@ -1,9 +1,6 @@
-// ============================================================
-// 全UI テキスト（日本語） — 将来の i18n に備えて集約
-// ============================================================
+import { getCurrentLanguage } from './i18n';
 
-export const MSG = {
-  // ---------- 共通 ----------
+const JA = {
   appName: 'Click Through Demo Builder',
   loading: '読み込み中...',
   save: '保存',
@@ -15,8 +12,10 @@ export const MSG = {
   confirm: '確認',
   error: 'エラー',
   retry: '再試行',
+  logout: 'ログアウト',
+  updatedLabel: '更新',
+  play: '再生',
 
-  // ---------- ホーム ----------
   homeHeroTitle: 'インタラクティブなデモを、\n動画から簡単に作成。',
   homeNewProject: '新規作成',
   homeViewProjects: 'プロジェクト一覧を見る',
@@ -24,7 +23,6 @@ export const MSG = {
   homeEmptyTitle: 'まだデモがありません。',
   homeEmptyDescription: '「新規作成」から始めましょう。',
 
-  // ---------- プロジェクト一覧 ----------
   projectsTitle: 'プロジェクト一覧',
   projectsNew: '新規作成',
   projectsSearch: '検索...',
@@ -49,31 +47,25 @@ export const MSG = {
   projectsSortTitle: 'タイトル',
   projectsEmptyTitle: 'プロジェクトがありません。',
   projectsEmptyAction: '新規デモを作成する',
-  projectsDeleteConfirm: (title: string) =>
-    `「${title}」を削除しますか？この操作は取り消せません。`,
+  projectsDeleteConfirm: (title: string) => `「${title}」を削除しますか？この操作は取り消せません。`,
   projectsSteps: (n: number) => `${n} ステップ`,
 
-  // ---------- デザイナー ----------
   designerBack: '← 戻る',
   designerPreview: 'プレビュー',
   designerSaving: '保存中...',
   designerSaved: '保存済み',
   designerUnsaved: '未保存の変更があります',
 
-  // ツールパネル
   toolVideo: '動画',
   toolClickPoint: 'クリックポイント',
   toolSettings: '設定',
 
-  // 動画アップロード
   uploadDropzone: '動画をドラッグ＆ドロップ\nまたはクリックして選択',
   uploadInvalidType: 'MP4 または WebM 形式の動画を選択してください。',
   uploadTooLarge: 'ファイルサイズは 500MB 以下にしてください。',
   uploadFailed: '動画の読み込みに失敗しました。',
-  uploadReplaceConfirm:
-    '動画を差し替えると、すべてのクリックポイントが削除されます。続行しますか？',
+  uploadReplaceConfirm: '動画を差し替えると、すべてのクリックポイントが削除されます。続行しますか？',
 
-  // クリックポイント
   cpAdd: 'クリックポイント追加',
   cpListTitle: 'クリックポイント一覧',
   cpMaxReached: 'クリックポイントは最大50個までです。',
@@ -84,7 +76,6 @@ export const MSG = {
   cpDeleteAll: '全削除',
   cpDeleteSelected: '選択削除',
 
-  // プロパティ
   propTimestamp: 'タイムスタンプ',
   propPosition: '位置',
   propShape: '形状',
@@ -106,7 +97,6 @@ export const MSG = {
   propBgColor: '背景色',
   propBorderColor: '枠線色',
 
-  // 設定
   settingsTitle: 'デモ設定',
   settingsDemoTitle: 'デモタイトル',
   settingsDescription: '説明文',
@@ -115,12 +105,10 @@ export const MSG = {
   settingsShowProgress: 'プログレスバー表示',
   settingsAllowSkip: 'スキップ許可',
 
-  // デザイナー操作
   designerDeleteProject: 'プロジェクト削除',
   designerDeleteProjectConfirm: 'このプロジェクトを削除しますか？この操作は取り消せません。',
   designerReplaceVideo: '動画を変更',
 
-  // デモ番号 / エクスポート
   demoNumber: 'デモ番号',
   exportDemo: 'エクスポート',
   exportSuccess: 'エクスポートが完了しました。',
@@ -138,7 +126,6 @@ export const MSG = {
   exportAllProgress: (done: number, total: number) => `エクスポート中... ${done} / ${total}`,
   exportNoProjects: 'エクスポート対象のプロジェクトがありません。',
 
-  // ---------- プレーヤー ----------
   playerStep: (current: number, total: number) => `ステップ ${current} / ${total}`,
   playerComplete: 'デモ完了！',
   playerRestart: 'もう一度',
@@ -152,9 +139,225 @@ export const MSG = {
   playerPrevClickPoint: '前のクリックポイントへ',
   playerTimelineLabel: '再生位置',
 
-  // ---------- Navigation ----------
   navHome: 'ホーム',
   navProjects: 'プロジェクト',
   navGroups: 'グループマスター',
   navCreators: '作成者マスター',
-} as const;
+  navUsers: 'ユーザーマスター',
+
+  userMasterTitle: 'ユーザーマスター',
+  organizationMasterTitle: '組織（グループ）管理',
+  creatorMasterTitle: '作成者（ユーザー）管理',
+  creatorLanguage: '表示言語',
+  creatorGroup: '所属組織',
+  languageJapanese: '日本語 (Japanese)',
+  languageEnglish: 'English',
+  goToUserMaster: 'ユーザーマスターへ',
+  navProfile: 'プロフィール',
+  profileTitle: 'プロフィール設定',
+  profileName: '表示名',
+  profileEmail: 'メールアドレス（@microsoft.com）',
+  profileLanguage: '表示言語',
+  profilePasswordSection: 'パスワード変更',
+  profileCurrentPassword: '現在のパスワード',
+  profileNewPassword: '新しいパスワード',
+  profileConfirmPassword: '新しいパスワード（確認）',
+  profileSaveInfo: 'プロフィールを保存',
+  profileSavePassword: 'パスワードを変更',
+  profilePasswordMismatch: 'パスワードが一致しません。',
+  profileEmailInvalid: '@microsoft.com のメールアドレスを入力してください。',
+  profileSaved: '保存しました。',
+
+  viewerDemosTitle: 'デモ一覧',
+  viewerNoDemosTitle: 'まだデモがありません',
+  viewerNoDemosDesc: 'デザイナーがデモを作成するまでお待ちください。',
+  viewerLoadingDemos: 'デモを読み込んでいます...',
+};
+
+type MessageCatalog = typeof JA;
+
+const EN: Partial<MessageCatalog> = {
+  loading: 'Loading...',
+  save: 'Save',
+  cancel: 'Cancel',
+  delete: 'Delete',
+  duplicate: 'Duplicate',
+  edit: 'Edit',
+  close: 'Close',
+  confirm: 'Confirm',
+  error: 'Error',
+  retry: 'Retry',
+  logout: 'Logout',
+  updatedLabel: 'Updated',
+  play: 'Play',
+
+  homeHeroTitle: 'Create interactive demos\nfrom videos in minutes.',
+  homeNewProject: 'New Project',
+  homeViewProjects: 'View Projects',
+  homeRecentProjects: 'Recent Projects',
+  homeEmptyTitle: 'No demos yet.',
+  homeEmptyDescription: 'Start from "New Project".',
+
+  projectsTitle: 'Projects',
+  projectsNew: 'New Project',
+  projectsSearch: 'Search...',
+  projectsGroupFilter: 'Organization',
+  projectsGroupAll: 'All organizations',
+  projectsNoGroup: 'No organization',
+  projectsGroupMaster: 'Organization Master',
+  projectsGroupNamePlaceholder: 'New organization name',
+  projectsGroupCreate: 'Create Organization',
+  projectsGroupSave: 'Save Name',
+  projectsGroupDeleteConfirm: (name: string) => `Delete organization "${name}"?`,
+  projectsCreatorFilter: 'Creator',
+  projectsCreatorAll: 'All creators',
+  projectsNoCreator: 'No creator',
+  projectsCreatorMaster: 'Creator Master',
+  projectsCreatorNamePlaceholder: 'New creator name',
+  projectsCreatorCreate: 'Add Creator',
+  projectsCreatorSave: 'Save',
+  projectsCreatorDeleteConfirm: (name: string) => `Delete creator "${name}"?`,
+  projectsSortUpdated: 'Updated',
+  projectsSortCreated: 'Created',
+  projectsSortTitle: 'Title',
+  projectsEmptyTitle: 'No projects found.',
+  projectsEmptyAction: 'Create Demo',
+  projectsDeleteConfirm: (title: string) => `Delete "${title}"? This action cannot be undone.`,
+  projectsSteps: (n: number) => `${n} steps`,
+
+  designerBack: '← Back',
+  designerPreview: 'Preview',
+  designerSaving: 'Saving...',
+  designerSaved: 'Saved',
+  designerUnsaved: 'Unsaved changes',
+
+  toolVideo: 'Video',
+  toolClickPoint: 'Click Points',
+  toolSettings: 'Settings',
+
+  uploadDropzone: 'Drag and drop video\nor click to select',
+  uploadInvalidType: 'Please select MP4 or WebM video.',
+  uploadTooLarge: 'File size must be 500MB or less.',
+  uploadFailed: 'Failed to load video.',
+  uploadReplaceConfirm: 'Replacing video will remove all click points. Continue?',
+
+  cpAdd: 'Add Click Point',
+  cpListTitle: 'Click Point List',
+  cpMaxReached: 'Maximum 50 click points.',
+  cpTimestampDuplicate: 'A click point already exists at this timestamp.',
+  cpDeleteConfirm: 'Delete this click point?',
+  cpDeleteSelectedConfirm: (n: number) => `Delete ${n} selected click points?`,
+  cpDeleteAllConfirm: 'Delete all click points? This action cannot be undone.',
+  cpDeleteAll: 'Delete All',
+  cpDeleteSelected: 'Delete Selected',
+
+  propTimestamp: 'Timestamp',
+  propPosition: 'Position',
+  propShape: 'Shape',
+  propCircle: 'Circle',
+  propRectangle: 'Rectangle',
+  propRadius: 'Radius',
+  propWidth: 'Width',
+  propHeight: 'Height',
+  propDescription: 'Description',
+  propDescriptionPosition: 'Description Position',
+  propOrder: 'Order',
+  propPulseSpeed: 'Pulse Speed',
+  propDescriptionStyle: 'Description Style',
+  propTemplate: 'Template',
+  propApplyAll: 'Apply to all',
+  propSetDefault: 'Set as default',
+  propFontSize: 'Font Size',
+  propTextColor: 'Text Color',
+  propBgColor: 'Background Color',
+  propBorderColor: 'Border Color',
+
+  settingsTitle: 'Demo Settings',
+  settingsDemoTitle: 'Demo Title',
+  settingsDescription: 'Description',
+  settingsCompletionMsg: 'Completion Message',
+  settingsAutoStart: 'Autoplay',
+  settingsShowProgress: 'Show Progress Bar',
+  settingsAllowSkip: 'Allow Skip',
+
+  designerDeleteProject: 'Delete Project',
+  designerDeleteProjectConfirm: 'Delete this project? This action cannot be undone.',
+  designerReplaceVideo: 'Replace Video',
+
+  demoNumber: 'Demo Number',
+  exportDemo: 'Export',
+  exportSuccess: 'Export completed.',
+  exportFailed: 'Export failed.',
+  exportFolder: 'Export Folder',
+  exportNotYet: 'Not exported yet',
+  exportOpenFolder: 'Open Folder',
+  saveFolder: 'Save Folder',
+  saveFolderNotSet: 'Not set',
+  saveFolderSelect: 'Select Folder',
+  saveFolderChange: 'Change',
+  exportAll: 'Export All',
+  exportAllSuccess: (n: number) => `Exported ${n} demos.`,
+  exportAllFailed: 'Failed to export all demos.',
+  exportAllProgress: (done: number, total: number) => `Exporting... ${done} / ${total}`,
+  exportNoProjects: 'No projects to export.',
+
+  playerStep: (current: number, total: number) => `Step ${current} / ${total}`,
+  playerComplete: 'Demo Complete!',
+  playerRestart: 'Restart',
+  playerBackHome: 'Back to Home',
+  playerVideoError: 'Failed to load video.',
+  playerNoClickPoints: 'No click points found. Playing as a normal video.',
+  playerLoading: 'Loading demo...',
+  playerLoadingVideo: 'Loading video...',
+  playerStartOverlay: 'Start Playback',
+  playerRestartFromBeginning: 'Restart from beginning',
+  playerPrevClickPoint: 'Previous click point',
+  playerTimelineLabel: 'Playback position',
+
+  navHome: 'Home',
+  navProjects: 'Projects',
+  navGroups: 'Organization Master',
+  navCreators: 'Creator Master',
+  navUsers: 'User Master',
+
+  userMasterTitle: 'User Master',
+  organizationMasterTitle: 'Organization Management',
+  creatorMasterTitle: 'Creator Management',
+  creatorLanguage: 'Language',
+  creatorGroup: 'Organization',
+  languageJapanese: '日本語 (Japanese)',
+  languageEnglish: 'English',
+  goToUserMaster: 'Go to User Master',
+  navProfile: 'Profile',
+  profileTitle: 'Profile Settings',
+  profileName: 'Display Name',
+  profileEmail: 'Email (@microsoft.com)',
+  profileLanguage: 'Language',
+  profilePasswordSection: 'Change Password',
+  profileCurrentPassword: 'Current Password',
+  profileNewPassword: 'New Password',
+  profileConfirmPassword: 'Confirm New Password',
+  profileSaveInfo: 'Save Profile',
+  profileSavePassword: 'Change Password',
+  profilePasswordMismatch: 'Passwords do not match.',
+  profileEmailInvalid: 'Please enter a @microsoft.com email address.',
+  profileSaved: 'Saved successfully.',
+
+  viewerDemosTitle: 'Demo List',
+  viewerNoDemosTitle: 'No demos yet',
+  viewerNoDemosDesc: 'Please wait until a designer creates demos.',
+  viewerLoadingDemos: 'Loading demos...',
+};
+
+function getValue<K extends keyof MessageCatalog>(key: K): MessageCatalog[K] {
+  if (getCurrentLanguage() === 'en' && key in EN) {
+    return EN[key] as MessageCatalog[K];
+  }
+  return JA[key];
+}
+
+export const MSG = new Proxy({} as MessageCatalog, {
+  get: (_target, key: string) => {
+    return getValue(key as keyof MessageCatalog);
+  },
+}) as MessageCatalog;

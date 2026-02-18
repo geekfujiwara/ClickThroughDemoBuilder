@@ -100,9 +100,9 @@ export default function AdminLoginPage() {
     setLoading(true);
     try {
       await login('designer', password);
-      navigate('/', { replace: true });
+      navigate('/creator/select', { replace: true });
     } catch {
-      setError('パスワードが正しくありません');
+      setError('Incorrect password.');
     } finally {
       setLoading(false);
     }
@@ -112,7 +112,7 @@ export default function AdminLoginPage() {
     <div className={styles.container}>
       <Link to="/viewer/login" className={styles.viewerLink}>
         <Button appearance="subtle" size="small">
-          通常ログインへ戻る
+          Back to Viewer Login
         </Button>
       </Link>
       <div className={styles.content}>
@@ -124,8 +124,8 @@ export default function AdminLoginPage() {
                 <span className={styles.icon}>
                   <AppSymbol size={52} />
                 </span>
-                <Title2 block>デザイナーログイン</Title2>
-                <Body1>デザイナーパスワードを入力してください</Body1>
+                <Title2 block>Designer Login</Title2>
+                <Body1>Enter your Designer password to log in.</Body1>
               </div>
             }
           />
@@ -136,19 +136,19 @@ export default function AdminLoginPage() {
               </MessageBar>
             )}
             <div>
-              <Label htmlFor="password">パスワード</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(_, data) => setPassword(data.value)}
-                placeholder="パスワードを入力"
+                placeholder="Enter password"
                 style={{ width: '100%' }}
                 autoFocus
               />
             </div>
             <Button type="submit" appearance="primary" disabled={loading || !password.trim()}>
-              {loading ? 'ログイン中...' : 'ログイン'}
+              {loading ? 'Logging in...' : 'Log In'}
             </Button>
           </form>
         </Card>
