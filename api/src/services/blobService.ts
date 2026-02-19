@@ -19,19 +19,26 @@ import { DefaultAzureCredential } from '@azure/identity';
 const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
 const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
 
+/** 実際の接続文字列（AccountKey 付き）かどうかを判定 */
+function isRealConnectionString(cs: string): boolean {
+  return cs.includes('AccountKey=') && !cs.includes('UseDevelopmentStorage');
+}
+
 let _client: BlobServiceClient | null = null;
 
 function getClient(): BlobServiceClient {
   if (!_client) {
-    const parsedConn = parseConnectionString(connectionString);
-    if (storageAccountName) {
+    if (isRealConnectionString(connectionString)) {
+      // 接続文字列（AccountKey）が設定されている場合は最優先で使用
+      _client = BlobServiceClient.fromConnectionString(connectionString);
+    } else if (storageAccountName) {
+      // 接続文字列がない場合のみ DefaultAzureCredential（マネージド ID）を使用
       _client = new BlobServiceClient(
         `https://${storageAccountName}.blob.core.windows.net`,
         new DefaultAzureCredential(),
       );
-    } else if (parsedConn.accountName && parsedConn.accountKey) {
-      _client = BlobServiceClient.fromConnectionString(connectionString);
     } else {
+      // ローカル開発: Azurite
       _client = BlobServiceClient.fromConnectionString(connectionString);
     }
   }
