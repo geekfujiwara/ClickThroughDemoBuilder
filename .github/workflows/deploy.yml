@@ -27,6 +27,7 @@ jobs:
       - name: Build frontend
         run: npm run build
         env:
+          VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
           VITE_APPINSIGHTS_CONNECTION_STRING: ${{ secrets.APPINSIGHTS_CONNECTION_STRING }}
 
       - name: Copy SWA config to dist
