@@ -14,7 +14,7 @@ import {
   ContainerClient,
   type BlobSASSignatureValues,
 } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
+import { DefaultAzureCredential, ClientSecretCredential } from '@azure/identity';
 
 const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
 const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
@@ -26,14 +26,30 @@ function isRealConnectionString(cs: string): boolean {
 
 let _client: BlobServiceClient | null = null;
 
+/**
+ * Azure AD 認証用クレデンシャルを返す。
+ * AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が揃っていれば
+ * ClientSecretCredential（サービスプリンシパル）を使用。
+ * それ以外は DefaultAzureCredential（マネージド ID 等）にフォールバック。
+ */
+function getCredential(): ClientSecretCredential | DefaultAzureCredential {
+  const clientId = process.env.AZURE_CLIENT_ID?.trim();
+  const clientSecret = process.env.AZURE_CLIENT_SECRET?.trim();
+  const tenantId = process.env.AZURE_TENANT_ID?.trim();
+  if (clientId && clientSecret && tenantId) {
+    return new ClientSecretCredential(tenantId, clientId, clientSecret);
+  }
+  return new DefaultAzureCredential();
+}
+
 function getClient(): BlobServiceClient {
   if (!_client) {
     if (storageAccountName) {
-      // STORAGE_ACCOUNT_NAME が設定されている場合は DefaultAzureCredential を最優先で使用
+      // STORAGE_ACCOUNT_NAME が設定されている場合は AAD 認証を最優先で使用
       // （ストレージアカウントで共有キー認証が無効でも動作する）
       _client = new BlobServiceClient(
         `https://${storageAccountName}.blob.core.windows.net`,
-        new DefaultAzureCredential(),
+        getCredential(),
       );
     } else if (isRealConnectionString(connectionString)) {
       // STORAGE_ACCOUNT_NAME なし・AccountKey あり: ローカル環境でキー認証が有効な場合のみ
