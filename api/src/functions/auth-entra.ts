@@ -8,7 +8,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { createToken, buildSessionCookie } from '../middleware/auth.js';
 import * as creatorService from '../services/creatorService.js';
 
-const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID ?? '9d6c95c2-7455-498a-a16b-154ca67e6258';
+const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID ?? '';
 const ALLOWED_DOMAIN = '@microsoft.com';
 
 type TokenClaims = {
@@ -21,13 +21,18 @@ type TokenClaims = {
 
 async function handler(
   req: HttpRequest,
-  _context: InvocationContext,
+  context: InvocationContext,
 ): Promise<HttpResponseInit> {
   try {
     const body = (await req.json()) as { idToken?: string };
     const idToken = body.idToken?.trim();
     if (!idToken) {
       return { status: 400, jsonBody: { error: 'idToken is required.' } };
+    }
+
+    if (!ENTRA_CLIENT_ID) {
+      context.error('ENTRA_CLIENT_ID is not configured.');
+      return { status: 500, jsonBody: { error: 'Server configuration error: ENTRA_CLIENT_ID missing.' } };
     }
 
     // ① JWT ヘッダー/ペイロードを検証なしでデコードして tid を取得
@@ -49,14 +54,20 @@ async function handler(
     }
 
     // ② テナント固有の JWKS で署名を検証
-    const JWKS = createRemoteJWKSet(
-      new URL(`https://login.microsoftonline.com/${tid}/discovery/v2.0/keys`),
-    );
-
-    const { payload } = await jwtVerify<TokenClaims>(idToken, JWKS, {
-      audience: ENTRA_CLIENT_ID,
-      issuer: `https://login.microsoftonline.com/${tid}/v2.0`,
-    });
+    let payload: TokenClaims;
+    try {
+      const JWKS = createRemoteJWKSet(
+        new URL(`https://login.microsoftonline.com/${tid}/discovery/v2.0/keys`),
+      );
+      const result = await jwtVerify<TokenClaims>(idToken, JWKS, {
+        audience: ENTRA_CLIENT_ID,
+        issuer: `https://login.microsoftonline.com/${tid}/v2.0`,
+      });
+      payload = result.payload;
+    } catch (e) {
+      context.warn('Entra token verification failed:', (e as Error).message);
+      return { status: 401, jsonBody: { error: 'Token verification failed.' } };
+    }
 
     // ③ メールアドレスを確認（preferred_username または email クレーム）
     const email = (
@@ -71,25 +82,29 @@ async function handler(
     }
 
     // ④ クリエイターを検索、なければ自動作成
-    let creator = await creatorService.findCreatorByEmail(email);
+    let creator;
+    try {
+      creator = await creatorService.findCreatorByEmail(email);
 
-    if (!creator) {
-      const displayName = (payload.name ?? email.split('@')[0]) ?? 'Unknown';
+      if (!creator) {
+        const displayName = (payload.name ?? email.split('@')[0]) ?? 'Unknown';
+        const allCreators = await creatorService.getAllCreators();
+        const nameExists = allCreators.some(
+          (c) => c.name.toLowerCase() === displayName.toLowerCase(),
+        );
+        const finalName = nameExists
+          ? `${displayName} (${email.split('@')[0]})`
+          : displayName;
 
-      // 同名が存在する場合はメールのローカル部でフォールバック
-      const allCreators = await creatorService.getAllCreators();
-      const nameExists = allCreators.some(
-        (c) => c.name.toLowerCase() === displayName.toLowerCase(),
-      );
-      const finalName = nameExists
-        ? `${displayName} (${email.split('@')[0]})`
-        : displayName;
-
-      creator = await creatorService.createCreator({
-        name: finalName,
-        email,
-        language: 'ja',
-      });
+        creator = await creatorService.createCreator({
+          name: finalName,
+          email,
+          language: 'ja',
+        });
+      }
+    } catch (e) {
+      context.error('Creator service error:', (e as Error).message, (e as Error).stack ?? '');
+      return { status: 500, jsonBody: { error: `Storage error: ${(e as Error).message}` } };
     }
 
     // ⑤ セッション JWT を発行して Cookie にセット
@@ -99,11 +114,11 @@ async function handler(
       headers: { 'Set-Cookie': buildSessionCookie(token, 8 * 3600) },
       jsonBody: { role: 'designer', creatorId: creator.id, name: creator.name },
     };
-  } catch {
-    // S-04: 内部エラーの詳細はクライアントに漏洩しない
+  } catch (e) {
+    context.error('Unexpected error in auth-entra:', (e as Error).message, (e as Error).stack ?? '');
     return {
-      status: 401,
-      jsonBody: { error: 'Authentication failed.' },
+      status: 500,
+      jsonBody: { error: `Internal server error: ${(e as Error).message}` },
     };
   }
 }
