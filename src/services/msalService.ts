@@ -14,28 +14,31 @@ import {
  * ビルド時に VITE_ENTRA_CLIENT_ID 環境変数（GitHub Secret）から注入する。
  */
 const ENTRA_CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID as string | undefined;
-if (!ENTRA_CLIENT_ID) {
-  throw new Error('VITE_ENTRA_CLIENT_ID is not set. Add it to your .env.local or GitHub Secrets.');
-}
 
-const msalInstance = new PublicClientApplication({
-  auth: {
-    clientId: ENTRA_CLIENT_ID,
-    authority: 'https://login.microsoftonline.com/common',
-    redirectUri: window.location.origin,
-  },
-  cache: {
-    cacheLocation: 'sessionStorage',
-  },
-});
-
+let msalInstance: PublicClientApplication | null = null;
 let initialized = false;
 
-async function ensureInitialized(): Promise<void> {
+async function ensureInitialized(): Promise<PublicClientApplication> {
+  if (!ENTRA_CLIENT_ID) {
+    throw new Error('VITE_ENTRA_CLIENT_ID is not configured. Set it in .env.local or GitHub Secrets.');
+  }
+  if (!msalInstance) {
+    msalInstance = new PublicClientApplication({
+      auth: {
+        clientId: ENTRA_CLIENT_ID,
+        authority: 'https://login.microsoftonline.com/common',
+        redirectUri: window.location.origin,
+      },
+      cache: {
+        cacheLocation: 'sessionStorage',
+      },
+    });
+  }
   if (!initialized) {
     await msalInstance.initialize();
     initialized = true;
   }
+  return msalInstance;
 }
 
 const loginRequest: PopupRequest = {
@@ -47,17 +50,17 @@ const loginRequest: PopupRequest = {
  * @returns ID トークン文字列
  */
 export async function signInWithMicrosoft(): Promise<AuthenticationResult> {
-  await ensureInitialized();
-  return msalInstance.loginPopup(loginRequest);
+  const client = await ensureInitialized();
+  return client.loginPopup(loginRequest);
 }
 
 /**
  * Microsoft アカウントからサインアウト（MSAL キャッシュをクリア）
  */
 export async function signOutFromMicrosoft(): Promise<void> {
-  await ensureInitialized();
-  const accounts = msalInstance.getAllAccounts();
+  const client = await ensureInitialized();
+  const accounts = client.getAllAccounts();
   if (accounts.length > 0) {
-    await msalInstance.logoutPopup({ account: accounts[0] });
+    await client.logoutPopup({ account: accounts[0] });
   }
 }
