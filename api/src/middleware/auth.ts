@@ -1,6 +1,7 @@
 /**
  * 認証ミドルウェア — JWT Cookie の検証・ロールチェック
  */
+import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { HttpRequest } from '@azure/functions';
 import type { JwtPayload, UserRole } from '../shared/types.js';
@@ -27,12 +28,23 @@ function parseCookie(req: HttpRequest, key: string): string | undefined {
 }
 
 /**
- * パスワード検証
+ * パスワード検証（定数時間比較でタイミング攻撃を防止）
  */
 export function verifyPassword(role: UserRole, password: string): boolean {
-  if (role === 'viewer') return password === VIEWER_PASSWORD;
-  if (role === 'designer') return password === DESIGNER_PASSWORD;
-  return false;
+  const expected = role === 'viewer' ? VIEWER_PASSWORD : role === 'designer' ? DESIGNER_PASSWORD : '';
+  if (!expected) return false;
+  try {
+    const a = Buffer.from(expected);
+    const b = Buffer.from(password);
+    if (a.length !== b.length) {
+      // 長さが異なる場合も定数時間ダミー比較してから false を返す
+      crypto.timingSafeEqual(Buffer.alloc(a.length), Buffer.alloc(a.length));
+      return false;
+    }
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 /**

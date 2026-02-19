@@ -7,7 +7,7 @@ import { requireRole } from '../middleware/auth.js';
 import * as creatorService from '../services/creatorService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
-  const auth = requireRole(req, 'viewer', 'designer');
+  const auth = requireRole(req, 'designer'); // S-06: viewer に作成者作成権限指定は誤りだったため修正
   if ('status' in auth) return auth;
 
   try {

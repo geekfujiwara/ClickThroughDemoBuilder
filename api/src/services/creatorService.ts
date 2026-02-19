@@ -13,8 +13,43 @@ interface CreatorMasterData {
 
 const EMPTY_DATA: CreatorMasterData = { version: 1, creators: [] };
 
+/**
+ * scrypt でパスワードをハッシュ化する（ランダムソルト付き）
+ * 出力形式: "scrypt:<16-byte-hex-salt>:<32-byte-hex-hash>"
+ * 後方互換: 旧 SHA-256 ハッシュ（64 hex 文字、プレフィックスなし）も verifyPasswordHash で検証可能
+ */
 export function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = (crypto.scryptSync(password, salt, 32) as Buffer).toString('hex');
+  return `scrypt:${salt}:${hash}`;
+}
+
+/**
+ * ハッシュとパスワードの一致を定数時間で検証する
+ * 旧 SHA-256 形式（プレフィックスなし）にも対応する
+ */
+export function verifyPasswordHash(storedHash: string, candidate: string): boolean {
+  try {
+    if (storedHash.startsWith('scrypt:')) {
+      const parts = storedHash.split(':');
+      const salt = parts[1];
+      const hash = parts[2];
+      if (!salt || !hash) return false;
+      const candidateBuf = crypto.scryptSync(candidate, salt, 32) as Buffer;
+      const storedBuf = Buffer.from(hash, 'hex');
+      if (candidateBuf.length !== storedBuf.length) return false;
+      return crypto.timingSafeEqual(candidateBuf, storedBuf);
+    }
+    // 後方互換: 旧 SHA-256 ハッシュ（移行期間用）
+    const candidateSha = Buffer.from(
+      crypto.createHash('sha256').update(candidate).digest('hex'),
+    );
+    const storedSha = Buffer.from(storedHash);
+    if (candidateSha.length !== storedSha.length) return false;
+    return crypto.timingSafeEqual(candidateSha, storedSha);
+  } catch {
+    return false;
+  }
 }
 
 function generateRandomPassword(length = 10): string {
@@ -132,7 +167,7 @@ export async function updateCreator(
   // 現在のパスワードが指定された場合は検証する
   if (currentPassword !== undefined) {
     const existing0 = data.creators[index]!;
-    if (existing0.passwordHash && existing0.passwordHash !== hashPassword(currentPassword)) {
+    if (existing0.passwordHash && !verifyPasswordHash(existing0.passwordHash, currentPassword)) {
       throw new Error('現在のパスワードが正しくありません');
     }
   }
@@ -178,8 +213,8 @@ export async function verifyCreatorPassword(creatorId: string, password: string)
   const data = await loadMaster();
   const record = data.creators.find((c) => c.id === creatorId);
   if (!record) return false;
-  if (!record.passwordHash) return true; // パスワード未設定は誰でも通過
-  return record.passwordHash === hashPassword(password);
+  if (!record.passwordHash) return false; // パスワード未設定はログイン不可（S-02 修正）
+  return verifyPasswordHash(record.passwordHash, password);
 }
 
 /** email でクリエイターを検索（email login 用）。見つからなければ null */
@@ -195,7 +230,7 @@ export async function verifyCreatorPasswordById(creatorId: string, password: str
   const data = await loadMaster();
   const record = data.creators.find((c) => c.id === creatorId);
   if (!record || !record.passwordHash) return false; // パスワード未設定はログイン不可
-  return record.passwordHash === hashPassword(password);
+  return verifyPasswordHash(record.passwordHash, password);
 }
 
 /** ID でクリエイターを取得 */

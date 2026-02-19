@@ -44,6 +44,10 @@ async function handler(
     if (!tid) {
       return { status: 400, jsonBody: { error: 'Missing tenant ID (tid) in token.' } };
     }
+    // S-03: SSRF 防止 — tid は UUID 形式のみ許可
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tid)) {
+      return { status: 400, jsonBody: { error: 'Invalid token format.' } };
+    }
 
     // ② テナント固有の JWKS で署名を検証
     const JWKS = createRemoteJWKSet(
@@ -96,10 +100,11 @@ async function handler(
       headers: { 'Set-Cookie': buildSessionCookie(token, 8 * 3600) },
       jsonBody: { role: 'designer', creatorId: creator.id, name: creator.name },
     };
-  } catch (e) {
+  } catch {
+    // S-04: 内部エラーの詳細はクライアントに漏洩しない
     return {
       status: 401,
-      jsonBody: { error: `Authentication failed: ${(e as Error).message}` },
+      jsonBody: { error: 'Authentication failed.' },
     };
   }
 }
