@@ -9,7 +9,6 @@ import { createToken, buildSessionCookie } from '../middleware/auth.js';
 import * as creatorService from '../services/creatorService.js';
 
 const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID;
-if (!ENTRA_CLIENT_ID) throw new Error('ENTRA_CLIENT_ID environment variable is required');
 const ALLOWED_DOMAIN = '@microsoft.com';
 
 type TokenClaims = {
@@ -25,6 +24,10 @@ async function handler(
   _context: InvocationContext,
 ): Promise<HttpResponseInit> {
   try {
+    if (!ENTRA_CLIENT_ID) {
+      return { status: 500, jsonBody: { error: 'Server configuration error.' } };
+    }
+
     const body = (await req.json()) as { idToken?: string };
     const idToken = body.idToken?.trim();
     if (!idToken) {

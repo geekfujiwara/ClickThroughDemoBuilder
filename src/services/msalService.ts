@@ -14,32 +14,38 @@ const loginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email'],
 };
 let msalInstance: PublicClientApplication | null = null;
-let initialized = false;
+let initPromise: Promise<PublicClientApplication> | null = null;
 
-async function ensureInitialized(): Promise<PublicClientApplication> {
+function ensureInitialized(): Promise<PublicClientApplication> {
+  if (initPromise) return initPromise;
+
   if (!ENTRA_CLIENT_ID) {
-    throw new Error('VITE_ENTRA_CLIENT_ID is not configured. Set it in .env.local or GitHub Secrets.');
+    return Promise.reject(
+      new Error('VITE_ENTRA_CLIENT_ID is not configured. Set it in .env.local or GitHub Secrets.'),
+    );
   }
 
-  if (!msalInstance) {
-    msalInstance = new PublicClientApplication({
-      auth: {
-        clientId: ENTRA_CLIENT_ID,
-        authority: 'https://login.microsoftonline.com/common',
-        redirectUri: window.location.origin,
-      },
-      cache: {
-        cacheLocation: 'sessionStorage',
-      },
-    });
-  }
+  const instance = new PublicClientApplication({
+    auth: {
+      clientId: ENTRA_CLIENT_ID,
+      authority: 'https://login.microsoftonline.com/common',
+      redirectUri: window.location.origin,
+    },
+    cache: {
+      cacheLocation: 'sessionStorage',
+    },
+  });
 
-  if (!initialized) {
-    await msalInstance.initialize();
-    initialized = true;
-  }
+  initPromise = instance.initialize().then(() => {
+    msalInstance = instance;
+    return instance;
+  });
 
-  return msalInstance;
+  return initPromise;
+}
+
+if (ENTRA_CLIENT_ID && typeof window !== 'undefined') {
+  void ensureInitialized();
 }
 
 /**
