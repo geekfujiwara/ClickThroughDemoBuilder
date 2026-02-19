@@ -50,14 +50,25 @@ function isMsalCallbackPopup(): boolean {
 void initTelemetry();
 
 if (isMsalCallbackPopup()) {
-  // This is the popup callback window. Do NOT initialize MSAL or modify
-  // the URL in any way. The main window's loginPopup() is polling
-  // popup.location.hash — it will read the auth code, exchange it for
-  // tokens, and close this popup automatically.
+  // MSAL v5 popup flow: the main window's loginPopup() waits for the popup
+  // to broadcast the auth response via BroadcastChannel. We must call
+  // broadcastResponseToMainFrame() from the redirect-bridge module.
+  // This parses the auth code from the URL hash, sends it to the main
+  // window via BroadcastChannel, and closes this popup automatically.
   const root = document.getElementById('root');
   if (root) {
     root.textContent = 'Completing sign-in...';
   }
+
+  import('@azure/msal-browser/redirect-bridge')
+    .then(({ broadcastResponseToMainFrame }) => {
+      return broadcastResponseToMainFrame();
+    })
+    .catch((err) => {
+      console.error('MSAL redirect-bridge error:', err);
+      // Fallback: try to close the popup anyway
+      window.close();
+    });
 } else {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
