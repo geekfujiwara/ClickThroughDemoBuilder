@@ -58,11 +58,26 @@ if (ENTRA_CLIENT_ID && typeof window !== 'undefined') {
 }
 
 /**
+ * 前回のポップアップが中断された際に残る MSAL のインタラクションロックを削除する。
+ * セッションストレージ内の `*.interaction.status` キーをクリアする。
+ */
+function clearStaleInteractionLocks(): void {
+  for (const key of Object.keys(sessionStorage)) {
+    if (key.endsWith('.interaction.status')) {
+      sessionStorage.removeItem(key);
+    }
+  }
+}
+
+/**
  * Microsoft アカウントでポップアップサインイン
- * @returns ID トークン文字列
+ * @returns 認証結果（idToken を含む）
  */
 export async function signInWithMicrosoft(): Promise<AuthenticationResult> {
   const client = await getInitPromise();
+  // ポップアップを閉じるなどで前回のインタラクションが未完了のまま残っている場合、
+  // MSAL は interaction_in_progress を throw するため、事前にロックを解除する
+  clearStaleInteractionLocks();
   return client.loginPopup(loginRequest);
 }
 
