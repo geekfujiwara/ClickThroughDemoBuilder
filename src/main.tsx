@@ -50,29 +50,14 @@ function isMsalCallbackPopup(): boolean {
 void initTelemetry();
 
 if (isMsalCallbackPopup()) {
+  // This is the popup callback window. Do NOT initialize MSAL or modify
+  // the URL in any way. The main window's loginPopup() is polling
+  // popup.location.hash — it will read the auth code, exchange it for
+  // tokens, and close this popup automatically.
   const root = document.getElementById('root');
   if (root) {
     root.textContent = 'Completing sign-in...';
   }
-
-  // Wait for MSAL to process the auth callback (handleRedirectPromise),
-  // then force-close the popup. MSAL's internal BroadcastChannel mechanism
-  // should have already sent the auth response back to the main window.
-  import('./services/msalService').then(async ({ getInitializationPromise }) => {
-    try {
-      await getInitializationPromise();
-    } catch {
-      // Even if init fails, ensure the popup closes
-    }
-    // Force close — MSAL's auto-close may not fire in all browsers
-    window.close();
-    // If window.close() is blocked by the browser, show a helpful message
-    setTimeout(() => {
-      if (root) {
-        root.textContent = 'サインインが完了しました。このウィンドウを閉じてください。';
-      }
-    }, 2000);
-  });
 } else {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

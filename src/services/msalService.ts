@@ -16,6 +16,18 @@ const loginRequest: PopupRequest = {
 let msalInstance: PublicClientApplication | null = null;
 let initPromise: Promise<PublicClientApplication> | null = null;
 
+/**
+ * Detect if the current window is a popup callback from Microsoft auth.
+ * When true, we must NOT initialize MSAL here — the main window's loginPopup()
+ * needs to read popup.location.hash to extract the auth code. If we initialize
+ * MSAL or call handleRedirectPromise() here, the hash gets consumed/cleared
+ * before the main window can read it, causing loginPopup() to never resolve.
+ */
+function isPopupCallbackWindow(): boolean {
+  const hash = window.location.hash;
+  return /(^|[&#?])code=/.test(hash) && /(^|[&#?])state=/.test(hash);
+}
+
 function isInteractionInProgressError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const err = error as { errorCode?: string; message?: string };
@@ -53,17 +65,10 @@ function ensureInitialized(): Promise<PublicClientApplication> {
     },
   });
 
-  initPromise = instance.initialize().then(async () => {
-    // handleRedirectPromise MUST be called on every page load, including popups.
-    // In popup windows, this detects the auth response hash, communicates
-    // it back to the main window, and closes the popup automatically.
-    try {
-      await instance.handleRedirectPromise();
-    } catch (e) {
-      // In popup windows, handleRedirectPromise may throw after closing.
-      // In the main window, errors here are non-fatal for popup flow.
-      console.warn('handleRedirectPromise error (non-fatal):', e);
-    }
+  // Only call initialize() — do NOT call handleRedirectPromise().
+  // We use popup flow exclusively. loginPopup() in the main window handles
+  // the full auth code exchange via popup URL monitoring.
+  initPromise = instance.initialize().then(() => {
     msalInstance = instance;
     return instance;
   });
@@ -71,20 +76,11 @@ function ensureInitialized(): Promise<PublicClientApplication> {
   return initPromise;
 }
 
-if (ENTRA_CLIENT_ID && typeof window !== 'undefined') {
+// Eager initialization — but ONLY in the main window.
+// In popup callback windows, MSAL must NOT initialize or the URL hash
+// (containing the auth code) gets consumed before the main window can read it.
+if (ENTRA_CLIENT_ID && typeof window !== 'undefined' && !isPopupCallbackWindow()) {
   void ensureInitialized();
-}
-
-/**
- * Wait for MSAL initialization (including handleRedirectPromise) to complete.
- * Used by popup callback handler in main.tsx to ensure MSAL processes the auth
- * response before the popup window is closed.
- */
-export function getInitializationPromise(): Promise<void> {
-  if (!initPromise) {
-    return ensureInitialized().then(() => {});
-  }
-  return initPromise.then(() => {});
 }
 
 /**
