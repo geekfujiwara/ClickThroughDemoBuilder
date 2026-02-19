@@ -28,15 +28,16 @@ let _client: BlobServiceClient | null = null;
 
 function getClient(): BlobServiceClient {
   if (!_client) {
-    if (isRealConnectionString(connectionString)) {
-      // 接続文字列（AccountKey）が設定されている場合は最優先で使用
-      _client = BlobServiceClient.fromConnectionString(connectionString);
-    } else if (storageAccountName) {
-      // 接続文字列がない場合のみ DefaultAzureCredential（マネージド ID）を使用
+    if (storageAccountName) {
+      // STORAGE_ACCOUNT_NAME が設定されている場合は DefaultAzureCredential を最優先で使用
+      // （ストレージアカウントで共有キー認証が無効でも動作する）
       _client = new BlobServiceClient(
         `https://${storageAccountName}.blob.core.windows.net`,
         new DefaultAzureCredential(),
       );
+    } else if (isRealConnectionString(connectionString)) {
+      // STORAGE_ACCOUNT_NAME なし・AccountKey あり: ローカル環境でキー認証が有効な場合のみ
+      _client = BlobServiceClient.fromConnectionString(connectionString);
     } else {
       // ローカル開発: Azurite
       _client = BlobServiceClient.fromConnectionString(connectionString);
