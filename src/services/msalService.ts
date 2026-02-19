@@ -16,6 +16,23 @@ const loginRequest: PopupRequest = {
 let msalInstance: PublicClientApplication | null = null;
 let initPromise: Promise<PublicClientApplication> | null = null;
 
+function isInteractionInProgressError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { errorCode?: string; message?: string };
+  return err.errorCode === 'interaction_in_progress' || err.message?.includes('interaction_in_progress') === true;
+}
+
+function clearInteractionLock(): void {
+  for (const storage of [sessionStorage, localStorage]) {
+    const keys = Object.keys(storage);
+    for (const key of keys) {
+      if (key.includes('interaction.status')) {
+        storage.removeItem(key);
+      }
+    }
+  }
+}
+
 function ensureInitialized(): Promise<PublicClientApplication> {
   if (initPromise) return initPromise;
 
@@ -54,7 +71,15 @@ if (ENTRA_CLIENT_ID && typeof window !== 'undefined') {
  */
 export async function signInWithMicrosoft(): Promise<AuthenticationResult> {
   const client = await ensureInitialized();
-  return client.loginPopup(loginRequest);
+  try {
+    return await client.loginPopup(loginRequest);
+  } catch (error) {
+    if (!isInteractionInProgressError(error)) {
+      throw error;
+    }
+    clearInteractionLock();
+    return client.loginPopup(loginRequest);
+  }
 }
 
 /**
