@@ -76,6 +76,18 @@ if (ENTRA_CLIENT_ID && typeof window !== 'undefined') {
 }
 
 /**
+ * Wait for MSAL initialization (including handleRedirectPromise) to complete.
+ * Used by popup callback handler in main.tsx to ensure MSAL processes the auth
+ * response before the popup window is closed.
+ */
+export function getInitializationPromise(): Promise<void> {
+  if (!initPromise) {
+    return ensureInitialized().then(() => {});
+  }
+  return initPromise.then(() => {});
+}
+
+/**
  * Microsoft アカウントでポップアップサインイン
  * @returns 認証結果（idToken を含む）
  */

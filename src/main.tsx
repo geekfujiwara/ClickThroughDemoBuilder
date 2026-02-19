@@ -54,6 +54,25 @@ if (isMsalCallbackPopup()) {
   if (root) {
     root.textContent = 'Completing sign-in...';
   }
+
+  // Wait for MSAL to process the auth callback (handleRedirectPromise),
+  // then force-close the popup. MSAL's internal BroadcastChannel mechanism
+  // should have already sent the auth response back to the main window.
+  import('./services/msalService').then(async ({ getInitializationPromise }) => {
+    try {
+      await getInitializationPromise();
+    } catch {
+      // Even if init fails, ensure the popup closes
+    }
+    // Force close — MSAL's auto-close may not fire in all browsers
+    window.close();
+    // If window.close() is blocked by the browser, show a helpful message
+    setTimeout(() => {
+      if (root) {
+        root.textContent = 'サインインが完了しました。このウィンドウを閉じてください。';
+      }
+    }, 2000);
+  });
 } else {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
