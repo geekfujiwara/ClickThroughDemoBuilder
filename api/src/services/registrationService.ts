@@ -1,42 +1,17 @@
 /**
  * 仮登録 (pending registration) 管理サービス
  * Blob Storage の pending-registrations.json に保存する
+ * 認証は blobService の共通クライアントを使用
  */
-import { BlobServiceClient } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
 import { randomUUID } from 'crypto';
 import type { PendingRegistration } from '../shared/types.js';
-
-const CONTAINER = 'clickthrough-data';
-const BLOB_NAME = 'pending-registrations.json';
-
-function getBlobServiceClient(): BlobServiceClient {
-  const accountName = process.env.STORAGE_ACCOUNT_NAME;
-  if (accountName) {
-    return new BlobServiceClient(
-      `https://${accountName}.blob.core.windows.net`,
-      new DefaultAzureCredential(),
-    );
-  }
-  const connStr = process.env.STORAGE_CONNECTION_STRING;
-  if (!connStr) throw new Error('STORAGE_CONNECTION_STRING is not set');
-  return BlobServiceClient.fromConnectionString(connStr);
-}
-
-async function getContainerClient() {
-  const container = getBlobServiceClient().getContainerClient(CONTAINER);
-  await container.createIfNotExists();
-  return container;
-}
+import { getPendingRegistrationsJson, putPendingRegistrationsJson } from './blobService.js';
 
 async function loadPending(): Promise<PendingRegistration[]> {
   try {
-    const container = await getContainerClient();
-    const blob = container.getBlockBlobClient(BLOB_NAME);
-    if (!(await blob.exists())) return [];
-    const buf = await blob.downloadToBuffer();
-    const all = JSON.parse(buf.toString()) as PendingRegistration[];
-    // 期限切れを除外
+    const json = await getPendingRegistrationsJson();
+    if (!json) return [];
+    const all = JSON.parse(json) as PendingRegistration[];
     const now = new Date();
     return all.filter((r) => new Date(r.expiresAt) > now);
   } catch {
@@ -45,13 +20,7 @@ async function loadPending(): Promise<PendingRegistration[]> {
 }
 
 async function savePending(list: PendingRegistration[]): Promise<void> {
-  const container = await getContainerClient();
-  const blob = container.getBlockBlobClient(BLOB_NAME);
-  const content = JSON.stringify(list, null, 2);
-  await blob.upload(content, Buffer.byteLength(content), {
-    blobHTTPHeaders: { blobContentType: 'application/json' },
-    conditions: {},
-  });
+  await putPendingRegistrationsJson(JSON.stringify(list, null, 2));
 }
 
 /** 仮登録を作成してトークンを返す */

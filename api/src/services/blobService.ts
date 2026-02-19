@@ -143,6 +143,28 @@ export async function putUsageLogJson(path: string, json: string): Promise<void>
   });
 }
 
+// ── Pending Registrations ──────────────────────────────────
+
+export async function getPendingRegistrationsJson(): Promise<string | null> {
+  const c = await ensureContainer('clickthrough-data');
+  const blob = c.getBlockBlobClient('pending-registrations.json');
+  try {
+    const buf = await blob.downloadToBuffer();
+    return buf.toString('utf-8');
+  } catch (e: unknown) {
+    if ((e as { statusCode?: number }).statusCode === 404) return null;
+    throw e;
+  }
+}
+
+export async function putPendingRegistrationsJson(json: string): Promise<void> {
+  const c = await ensureContainer('clickthrough-data');
+  const blob = c.getBlockBlobClient('pending-registrations.json');
+  await blob.upload(json, Buffer.byteLength(json, 'utf-8'), {
+    blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
+  });
+}
+
 // ── Videos ──────────────────────────────────────────────────
 
 function videoBlobName(projectId: string, ext: string): string {
