@@ -2,7 +2,7 @@
 import { useNavigate, Link } from "react-router-dom";
 import {
   Button, Input, Label, MessageBar, MessageBarBody,
-  Spinner, Text, makeStyles, tokens,
+  Divider, Spinner, Text, makeStyles, tokens,
 } from "@fluentui/react-components";
 import { MailRegular, LockClosedRegular } from "@fluentui/react-icons";
 import AppSymbol from "@/components/common/AppSymbol";
@@ -53,11 +53,26 @@ export default function LoginPage() {
   const styles = useStyles();
   const navigate = useNavigate();
   const loginWithEmail = useAuthStore((s) => s.loginWithEmail);
+  const loginWithEntra = useAuthStore((s) => s.loginWithEntra);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [entraLoading, setEntraLoading] = useState(false);
+
+  const handleMicrosoftLogin = async () => {
+    setError(null);
+    setEntraLoading(true);
+    try {
+      await loginWithEntra();
+      navigate("/");
+    } catch (err) {
+      setError((err as Error).message || "Microsoft sign-in failed. Please try again.");
+    } finally {
+      setEntraLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +98,28 @@ export default function LoginPage() {
             Click Through{"\n"}Demo Builder
           </Text>
         </div>
+
+        {/* Microsoft SSO Button */}
+        <Button
+          appearance="outline"
+          size="large"
+          disabled={entraLoading || loading}
+          onClick={() => void handleMicrosoftLogin()}
+          style={{ width: "100%", justifyContent: "center" }}
+          icon={
+            <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+              <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+              <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+              <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+            </svg>
+          }
+        >
+          {entraLoading ? <Spinner size="tiny" label="Signing in..." /> : "Sign in with Microsoft"}
+        </Button>
+
+        <Divider>or sign in with email</Divider>
+
         <form onSubmit={(e) => void handleLogin(e)}
           style={{ display: "flex", flexDirection: "column", gap: tokens.spacingVerticalM }}>
           <div className={styles.field}>

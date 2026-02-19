@@ -6,6 +6,7 @@ import type { UserRole } from '@/services/authService';
 import type { DemoCreator } from '@/types';
 import * as authService from '@/services/authService';
 import * as creatorService from '@/services/creatorService';
+import * as msalService from '@/services/msalService';
 import { setCurrentLanguage } from '@/constants/i18n';
 
 interface AuthState {
@@ -19,6 +20,8 @@ interface AuthActions {
   init: () => Promise<void>;
   login: (role: UserRole, password: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
+  /** Microsoft SSO でログイン */
+  loginWithEntra: () => Promise<void>;
   /** メール確認完了後に認証状態を反映する */
   setVerified: (role: UserRole, creator: DemoCreator) => void;
   logout: () => Promise<void>;
@@ -57,6 +60,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   loginWithEmail: async (email, password) => {
     const { role, creatorId } = await authService.loginWithEmail(email, password);
+    const creator = await creatorService.getCreator(creatorId);
+    setCurrentLanguage(creator.language);
+    set({ isAuthenticated: true, role, selectedCreator: creator });
+  },
+
+  loginWithEntra: async () => {
+    const result = await msalService.signInWithMicrosoft();
+    const { role, creatorId } = await authService.loginWithEntra(result.idToken);
     const creator = await creatorService.getCreator(creatorId);
     setCurrentLanguage(creator.language);
     set({ isAuthenticated: true, role, selectedCreator: creator });

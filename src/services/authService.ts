@@ -33,15 +33,23 @@ export async function loginWithEmail(
   return { role: res.role as UserRole, creatorId: res.creatorId!, name: res.name! };
 }
 
-/** 新規登録: メール確認リンクを送信 */
+/** 新規登録: @microsoft.com ドメインを確認して即時アカウント作成 */
 export async function register(input: {
   email: string;
   name: string;
   password: string;
   language: 'ja' | 'en';
   groupId?: string;
-}): Promise<{ message: string }> {
-  return apiPost<{ message: string }>('/auth/register', input);
+}): Promise<{ role: UserRole; creatorId: string; name: string }> {
+  return apiPost<{ role: UserRole; creatorId: string; name: string }>('/auth/register', input);
+}
+
+/** Microsoft Entra ID トークンでログイン（SSO） */
+export async function loginWithEntra(
+  idToken: string,
+): Promise<{ role: UserRole; creatorId: string; name: string }> {
+  const res = await apiPost<LoginResponse>('/auth/entra', { idToken });
+  return { role: res.role as UserRole, creatorId: res.creatorId!, name: res.name! };
 }
 
 /** 確認トークンでアカウントを正式作成・ログイン */

@@ -1,13 +1,12 @@
 /**
  * POST /api/auth/register
- * 新規アカウント仮登録 → 確認メール送信
+ * 新規アカウント登録（@microsoft.com ドメインのみ許可、即時有効化）
  * リクエスト: { email, name, password, language, groupId? }
- * レスポンス: { message }
+ * レスポンス: { role, creatorId, name }
  */
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import * as creatorService from '../services/creatorService.js';
-import * as registrationService from '../services/registrationService.js';
-import * as emailService from '../services/emailService.js';
+import { createToken, buildSessionCookie } from '../middleware/auth.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   try {
@@ -40,22 +39,22 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
       return { status: 409, jsonBody: { error: 'An account with this email already exists.' } };
     }
 
-    // 仮登録作成
-    const pwHash = creatorService.hashPassword(password);
-    const token = await registrationService.createPendingRegistration({
+    // アカウントを即時作成
+    const passwordHash = creatorService.hashPassword(password);
+    const creator = await creatorService.createCreatorFromVerification({
       email,
       name,
-      passwordHash: pwHash,
+      passwordHash,
       language,
       groupId,
     });
 
-    // 確認メール送信
-    await emailService.sendVerificationEmail(email, token, name);
-
+    // JWT 発行してそのままログイン状態に
+    const jwt = createToken('designer', creator.id);
     return {
       status: 200,
-      jsonBody: { message: `Verification email sent to ${email}. Please check your inbox.` },
+      headers: { 'Set-Cookie': buildSessionCookie(jwt, 8 * 3600) },
+      jsonBody: { role: 'designer', creatorId: creator.id, name: creator.name },
     };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };
