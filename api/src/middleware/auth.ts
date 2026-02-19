@@ -6,6 +6,10 @@ import jwt from 'jsonwebtoken';
 import type { HttpRequest } from '@azure/functions';
 import type { JwtPayload, UserRole } from '../shared/types.js';
 
+/**
+ * 環境変数を取得する。未設定の場合はエラーをスローする。
+ * モジュール初期化時ではなく、各関数が呼ばれたタイミングで評価する（遅延評価）。
+ */
 function getRequiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -13,10 +17,6 @@ function getRequiredEnv(name: string): string {
   }
   return value;
 }
-
-const JWT_SECRET = getRequiredEnv('JWT_SECRET');
-const VIEWER_PASSWORD = getRequiredEnv('VIEWER_PASSWORD');
-const DESIGNER_PASSWORD = getRequiredEnv('DESIGNER_PASSWORD');
 
 /**
  * Cookie ヘッダーから指定キーの値を取り出す
@@ -29,9 +29,13 @@ function parseCookie(req: HttpRequest, key: string): string | undefined {
 
 /**
  * パスワード検証（定数時間比較でタイミング攻撃を防止）
+ * VIEWER_PASSWORD / DESIGNER_PASSWORD は呼び出し時に読み込む（遅延評価）
  */
 export function verifyPassword(role: UserRole, password: string): boolean {
-  const expected = role === 'viewer' ? VIEWER_PASSWORD : role === 'designer' ? DESIGNER_PASSWORD : '';
+  // 未設定の場合はパスワード認証不可として false を返す
+  const viewerPw = process.env['VIEWER_PASSWORD']?.trim() ?? '';
+  const designerPw = process.env['DESIGNER_PASSWORD']?.trim() ?? '';
+  const expected = role === 'viewer' ? viewerPw : role === 'designer' ? designerPw : '';
   if (!expected) return false;
   try {
     const a = Buffer.from(expected);
@@ -51,10 +55,11 @@ export function verifyPassword(role: UserRole, password: string): boolean {
  * JWT トークン生成
  */
 export function createToken(role: UserRole, creatorId?: string): string {
+  const secret = getRequiredEnv('JWT_SECRET');
   const expiresIn = role === 'viewer' ? '24h' : '8h';
   const payload: Pick<JwtPayload, 'role' | 'creatorId'> = { role };
   if (creatorId) payload.creatorId = creatorId;
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, secret, { expiresIn });
 }
 
 /**
@@ -78,7 +83,8 @@ export function authenticate(req: HttpRequest): JwtPayload | null {
   const token = parseCookie(req, 'session');
   if (!token) return null;
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const secret = getRequiredEnv('JWT_SECRET');
+    const payload = jwt.verify(token, secret) as JwtPayload;
     if (!payload.role) return null;
     return payload;
   } catch {
