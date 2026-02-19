@@ -1,5 +1,13 @@
 # Click Through Demo Builder — Azure デプロイ設計書
 
+> **⚠️ このドキュメントは v1 設計書です（歴史的記録用）**
+> 現在の実装は認証方式が変更されています。
+> - v1: 固定パスワード認証（VIEWER_PASSWORD / DESIGNER_PASSWORD）
+> - 現在: Microsoft Entra ID SSO（`@microsoft.com` アカウント限定）
+> 最新の設定・デプロイ手順は [README.md](../README.md) を参照してください。
+
+---
+
 ## 1. 概要
 
 Click Through Demo Builder を Azure 上にサーバーレス構成でデプロイする。
@@ -72,7 +80,7 @@ Azure 移行により以下を実現する。
 |---|---|---|---|
 | Resource Group | `rg-clickthrough-prod` | — | 全リソースの格納 |
 | Static Web Apps | `swa-clickthrough-prod` | Free プラン | SPA + API ホスティング |
-| Storage Account | `stclickthroughprod` | Standard LRS / Hot | 動画・プロジェクト JSON |
+| Storage Account | `st<appname>prod` | Standard LRS / Hot | 動画・プロジェクト JSON |
 | Application Insights | `appi-clickthrough-prod` | — | テレメトリ・利用状況可視化 |
 | Log Analytics Workspace | `log-clickthrough-prod` | Per-GB (従量課金) | AI のバックエンド |
 | Key Vault | `kv-clickthrough-prod` | Standard | シークレット管理 |
@@ -247,7 +255,7 @@ api/
 ### 7.1 コンテナ設計
 
 ```
-Storage Account: stclickthroughprod
+Storage Account: st<appname>prod
 ├── Container: projects     (Private)
 │   ├── {projectId}.json            ← プロジェクト設定 (JSON)
 │   ├── {projectId}.json            
@@ -449,7 +457,7 @@ az account set --subscription <YOUR_SUBSCRIPTION_ID>
 RG="rg-clickthrough-prod"
 LOCATION="japaneast"
 SWA_NAME="swa-clickthrough-prod"
-STORAGE_NAME="stclickthroughprod"
+STORAGE_NAME="st<appname>prod"
 AI_NAME="appi-clickthrough-prod"
 LOG_NAME="log-clickthrough-prod"
 KV_NAME="kv-clickthrough-prod"

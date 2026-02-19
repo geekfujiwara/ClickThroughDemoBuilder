@@ -8,8 +8,8 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { createToken, buildSessionCookie } from '../middleware/auth.js';
 import * as creatorService from '../services/creatorService.js';
 
-const ENTRA_CLIENT_ID =
-  process.env.ENTRA_CLIENT_ID ?? '9d6c95c2-7455-498a-a16b-154ca67e6258';
+const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID;
+if (!ENTRA_CLIENT_ID) throw new Error('ENTRA_CLIENT_ID environment variable is required');
 const ALLOWED_DOMAIN = '@microsoft.com';
 
 type TokenClaims = {

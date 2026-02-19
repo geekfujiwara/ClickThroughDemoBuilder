@@ -3,6 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "node",
+    "STORAGE_ACCOUNT_NAME": "",
     "STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
     "VIEWER_PASSWORD": "<SET_LOCAL_VIEWER_PASSWORD>",
     "DESIGNER_PASSWORD": "<SET_LOCAL_DESIGNER_PASSWORD>",
@@ -10,11 +11,11 @@
     "IP_SITE_RULES": "[{\"prefix\":\"203.0.113.\",\"site\":\"Tokyo HQ\"}]",
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "APP_URL": "http://localhost:4280",
-    "SMTP_HOST": "",
-    "SMTP_PORT": "587",
-    "SMTP_USER": "",
-    "SMTP_PASS": "",
-    "SMTP_FROM": "\"Click Through Demo Builder\" <noreply@microsoft.com>",
+    "ENTRA_CLIENT_ID": "<YOUR_AZURE_APP_REGISTRATION_CLIENT_ID>",
+    "AZURE_TENANT_ID": "<YOUR_AZURE_TENANT_ID>",
+    "AZURE_CLIENT_ID": "<YOUR_AZURE_CLIENT_ID>",
+    "AZURE_CLIENT_SECRET": "<YOUR_AZURE_CLIENT_SECRET>",
+    "GRAPH_SENDER": "<YOUR_SENDER_UPN_eg_noreply@yourtenant.onmicrosoft.com>",
     "GITHUB_URL": "https://github.com/your-org/click-through-demo-builder"
   }
 }

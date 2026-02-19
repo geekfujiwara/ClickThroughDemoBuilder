@@ -8,8 +8,15 @@ import {
   type PopupRequest,
 } from '@azure/msal-browser';
 
-/** アプリ登録のクライアントID（公開情報のため直書きOK） */
-const ENTRA_CLIENT_ID = '9d6c95c2-7455-498a-a16b-154ca67e6258';
+/**
+ * アプリ登録のクライアントID
+ * SPA の OAuth フローではクライアントIDはブラウザに必ず公開される公開情報。
+ * ビルド時に VITE_ENTRA_CLIENT_ID 環境変数（GitHub Secret）から注入する。
+ */
+const ENTRA_CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID as string | undefined;
+if (!ENTRA_CLIENT_ID) {
+  throw new Error('VITE_ENTRA_CLIENT_ID is not set. Add it to your .env.local or GitHub Secrets.');
+}
 
 const msalInstance = new PublicClientApplication({
   auth: {

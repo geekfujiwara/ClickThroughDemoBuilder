@@ -13,7 +13,6 @@ local.settings.json
 api/local.settings.json
 
 # IDE
-
 .idea/
 *.swp
 *.swo
@@ -30,4 +29,9 @@ logs/
 
 # API build output
 api/dist/
-node_modules
+
+# Temporary / debug files
+response*.txt
+body.json
+result.json
+*.tmp

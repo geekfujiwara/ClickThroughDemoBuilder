@@ -1,9 +1,13 @@
 import { BlobServiceClient } from '@azure/storage-blob';
 import { DefaultAzureCredential } from '@azure/identity';
 
-// Uses DefaultAzureCredential - set AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET env vars
-// or run with az login / managed identity
-const accountUrl = process.env.AZURE_STORAGE_ACCOUNT_URL ?? 'https://stclickthroughprod.blob.core.windows.net';
+// Uses DefaultAzureCredential (az login, managed identity, or AZURE_* env vars)
+// Set AZURE_STORAGE_ACCOUNT_URL to your storage account endpoint
+const accountUrl = process.env.AZURE_STORAGE_ACCOUNT_URL;
+if (!accountUrl) {
+  console.error('ERROR: Set AZURE_STORAGE_ACCOUNT_URL=https://<account>.blob.core.windows.net');
+  process.exit(1);
+}
 const client = new BlobServiceClient(accountUrl, new DefaultAzureCredential());
 const containers = ['masters', 'projects', 'videos', 'clickthrough-data'];
 

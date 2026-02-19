@@ -6,17 +6,17 @@
 import { ClientSecretCredential } from '@azure/identity';
 
 function getAppUrl(): string {
-  return (
-    process.env.APP_URL ??
-    'https://agreeable-island-071ec5400.4.azurestaticapps.net'
-  );
+  return process.env.APP_URL ?? 'https://your-app.azurestaticapps.net';
 }
 
 async function sendViaGraph(to: string, subject: string, body: { text: string; html: string }): Promise<void> {
   const tenantId = process.env.AZURE_TENANT_ID;
   const clientId = process.env.AZURE_CLIENT_ID;
   const clientSecret = process.env.AZURE_CLIENT_SECRET;
-  const sender = process.env.GRAPH_SENDER ?? 'admin@M365x45121568.onmicrosoft.com';
+  const sender = process.env.GRAPH_SENDER;
+  if (!sender) {
+    throw new Error('GRAPH_SENDER environment variable is required');
+  }
 
   if (!tenantId || !clientId || !clientSecret) {
     throw new Error('AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET are required for Graph mail');
