@@ -1,6 +1,10 @@
-/**
+﻿/**
  * Microsoft Entra ID (Azure AD) SSO サービス
  * @azure/msal-browser を使用してポップアップ認証を行う
+ *
+ * 重要: MSAL v5 のポップアップフローでは、ポップアップ内に読み込まれた SPA でも
+ * initialize() を呼ぶ必要があります。モジュールロード時に即時初期化することで、
+ * ポップアップがコールバック URL に遷移した際に自動的にレスポンスを処理して閉じます。
  */
 import {
   PublicClientApplication,
@@ -8,49 +12,57 @@ import {
   type PopupRequest,
 } from '@azure/msal-browser';
 
-/**
- * アプリ登録のクライアントID
- * SPA の OAuth フローではクライアントIDはブラウザに必ず公開される公開情報。
- * ビルド時に VITE_ENTRA_CLIENT_ID 環境変数（GitHub Secret）から注入する。
- */
 const ENTRA_CLIENT_ID = import.meta.env.VITE_ENTRA_CLIENT_ID as string | undefined;
-
-let msalInstance: PublicClientApplication | null = null;
-let initialized = false;
-
-async function ensureInitialized(): Promise<PublicClientApplication> {
-  if (!ENTRA_CLIENT_ID) {
-    throw new Error('VITE_ENTRA_CLIENT_ID is not configured. Set it in .env.local or GitHub Secrets.');
-  }
-  if (!msalInstance) {
-    msalInstance = new PublicClientApplication({
-      auth: {
-        clientId: ENTRA_CLIENT_ID,
-        authority: 'https://login.microsoftonline.com/common',
-        redirectUri: window.location.origin,
-      },
-      cache: {
-        cacheLocation: 'sessionStorage',
-      },
-    });
-  }
-  if (!initialized) {
-    await msalInstance.initialize();
-    initialized = true;
-  }
-  return msalInstance;
-}
 
 const loginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email'],
 };
+
+// MSAL インスタンスと初期化 Promise を即座に作成する
+// ポップアップウィンドウ内でも initialize() が呼ばれることで、
+// MSAL がポップアップ応答を自動処理してウィンドウを閉じられる
+let msalInstance: PublicClientApplication | null = null;
+let initPromise: Promise<PublicClientApplication> | null = null;
+
+function getInitPromise(): Promise<PublicClientApplication> {
+  if (initPromise) return initPromise;
+
+  if (!ENTRA_CLIENT_ID) {
+    return Promise.reject(
+      new Error('VITE_ENTRA_CLIENT_ID is not configured. Set it in .env.local or GitHub Secrets.'),
+    );
+  }
+
+  const instance = new PublicClientApplication({
+    auth: {
+      clientId: ENTRA_CLIENT_ID,
+      authority: 'https://login.microsoftonline.com/common',
+      redirectUri: window.location.origin,
+    },
+    cache: {
+      cacheLocation: 'sessionStorage',
+    },
+  });
+
+  initPromise = instance.initialize().then(() => {
+    msalInstance = instance;
+    return instance;
+  });
+
+  return initPromise;
+}
+
+// モジュールロード時に即時初期化を開始する（ポップアップ内での自動クローズに必要）
+if (ENTRA_CLIENT_ID && typeof window !== 'undefined') {
+  void getInitPromise();
+}
 
 /**
  * Microsoft アカウントでポップアップサインイン
  * @returns ID トークン文字列
  */
 export async function signInWithMicrosoft(): Promise<AuthenticationResult> {
-  const client = await ensureInitialized();
+  const client = await getInitPromise();
   return client.loginPopup(loginRequest);
 }
 
@@ -58,9 +70,10 @@ export async function signInWithMicrosoft(): Promise<AuthenticationResult> {
  * Microsoft アカウントからサインアウト（MSAL キャッシュをクリア）
  */
 export async function signOutFromMicrosoft(): Promise<void> {
-  const client = await ensureInitialized();
-  const accounts = client.getAllAccounts();
+  if (!msalInstance) return;
+  const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
-    await client.logoutPopup({ account: accounts[0] });
+    await msalInstance.logoutPopup({ account: accounts[0] });
   }
+  msalInstance.clearCache();
 }
