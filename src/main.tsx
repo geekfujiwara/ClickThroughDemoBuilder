@@ -18,15 +18,32 @@ function normalizeBasePath(path: string): string {
 
 const BASENAME = normalizeBasePath(APP_BASE_PATH);
 
+function isMsalCallbackPopup(): boolean {
+  if (!window.opener) return false;
+  const hash = window.location.hash;
+  const search = window.location.search;
+  const hasAuthParams =
+    /(^|[&#?])(code|id_token|access_token|state)=/.test(hash) ||
+    /(^|[&#?])(code|id_token|access_token|state)=/.test(search);
+  return hasAuthParams;
+}
+
 // Application Insights 初期化 (接続文字列がある場合のみ)
 void initTelemetry();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <BrowserRouter basename={BASENAME === '/' ? undefined : BASENAME}>
-      <FluentProvider theme={webLightTheme}>
-        <App />
-      </FluentProvider>
-    </BrowserRouter>
-  </React.StrictMode>,
-);
+if (isMsalCallbackPopup()) {
+  const root = document.getElementById('root');
+  if (root) {
+    root.textContent = 'Completing sign-in...';
+  }
+} else {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <BrowserRouter basename={BASENAME === '/' ? undefined : BASENAME}>
+        <FluentProvider theme={webLightTheme}>
+          <App />
+        </FluentProvider>
+      </BrowserRouter>
+    </React.StrictMode>,
+  );
+}
