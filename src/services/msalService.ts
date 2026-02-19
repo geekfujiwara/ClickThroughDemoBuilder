@@ -26,7 +26,7 @@ async function ensureInitialized(): Promise<PublicClientApplication> {
       auth: {
         clientId: ENTRA_CLIENT_ID,
         authority: 'https://login.microsoftonline.com/common',
-        redirectUri: `${window.location.origin}/auth-popup.html`,
+        redirectUri: window.location.origin,
       },
       cache: {
         cacheLocation: 'sessionStorage',
