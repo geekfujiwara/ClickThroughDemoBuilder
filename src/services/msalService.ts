@@ -53,7 +53,17 @@ function ensureInitialized(): Promise<PublicClientApplication> {
     },
   });
 
-  initPromise = instance.initialize().then(() => {
+  initPromise = instance.initialize().then(async () => {
+    // handleRedirectPromise MUST be called on every page load, including popups.
+    // In popup windows, this detects the auth response hash, communicates
+    // it back to the main window, and closes the popup automatically.
+    try {
+      await instance.handleRedirectPromise();
+    } catch (e) {
+      // In popup windows, handleRedirectPromise may throw after closing.
+      // In the main window, errors here are non-fatal for popup flow.
+      console.warn('handleRedirectPromise error (non-fatal):', e);
+    }
     msalInstance = instance;
     return instance;
   });
