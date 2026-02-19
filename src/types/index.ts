@@ -17,6 +17,11 @@ export interface DemoProject {
   version: number; // スキーマバージョン
   lastExportFolderName?: string; // 最後にエクスポートしたフォルダパス
   lastExportedAt?: string; // 最後にエクスポートした日時 (ISO 8601)
+  // ソーシャルカウント
+  likeCount?: number;
+  commentCount?: number;
+  playCount?: number;
+  totalPlayDuration?: number;
 }
 
 // ============================================================
@@ -181,7 +186,50 @@ export interface DemoCreator {
   name: string;
   groupId?: string;
   language: 'ja' | 'en';
+  role: 'viewer' | 'designer';
   email?: string;
+  designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
+  designerApplicationDate?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================================
+// ソーシャル機能
+// ============================================================
+
+export interface DemoLike {
+  id: string;
+  demoId: string;
+  creatorId: string;
+  createdAt: string;
+}
+
+export interface DemoComment {
+  id: string;
+  demoId: string;
+  creatorId: string;
+  creatorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface DemoFavorite {
+  id: string;
+  demoId: string;
+  creatorId: string;
+  createdAt: string;
+}
+
+export type FeedEventType = 'like' | 'comment' | 'new_demo' | 'new_designer';
+
+export interface FeedEntry {
+  id: string;
+  eventType: FeedEventType;
+  actorId: string;
+  actorName: string;
+  demoId?: string;
+  demoTitle?: string;
+  commentBody?: string;
+  createdAt: string;
 }

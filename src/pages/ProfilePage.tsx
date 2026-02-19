@@ -19,6 +19,8 @@ import {
 } from '@fluentui/react-components';
 import { useAuthStore } from '@/stores/authStore';
 import * as creatorService from '@/services/creatorService';
+import * as groupService from '@/services/groupService';
+import type { DemoGroup } from '@/types';
 import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
@@ -48,16 +50,23 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [language, setLanguage] = useState<'ja' | 'en'>('ja');
+  const [groupId, setGroupId] = useState<string>('');
+  const [groups, setGroups] = useState<DemoGroup[]>([]);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [infoError, setInfoError] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    void groupService.getAllGroups().then(setGroups);
+  }, []);
+
+  useEffect(() => {
     if (selectedCreator) {
       setName(selectedCreator.name);
       setEmail(selectedCreator.email ?? '');
       setLanguage(selectedCreator.language);
+      setGroupId(selectedCreator.groupId ?? '');
     }
   }, [selectedCreator]);
 
@@ -78,6 +87,7 @@ export default function ProfilePage() {
         // Entra ユーザーはメール変更不可（現在値をそのまま送らない）
         ...(!isEntraUser && { email: email.trim() || undefined }),
         language,
+        groupId: groupId || undefined,
       });
       // 選択中のクリエイター情報を更新（言語切り替えも含む）
       selectCreator(updated);
@@ -89,7 +99,7 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  }, [selectedCreator, name, email, language, isEntraUser, MSG, selectCreator]);
+  }, [selectedCreator, name, email, language, groupId, isEntraUser, MSG, selectCreator]);
 
   if (!selectedCreator) return <Spinner label="Loading..." />;
 
@@ -128,6 +138,15 @@ export default function ProfilePage() {
               onChange={(_, d) => setEmail(d.value)}
             />
           )}
+        </div>
+        <div className={styles.field}>
+          <Label>{MSG.creatorGroup}</Label>
+          <Select value={groupId} onChange={(_, d) => setGroupId(d.value)}>
+            <option value="">{MSG.projectsNoGroup}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </Select>
         </div>
         <div className={styles.field}>
           <Label>{MSG.profileLanguage}</Label>

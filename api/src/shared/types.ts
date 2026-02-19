@@ -15,6 +15,11 @@ export interface DemoProject {
   clickPoints: ClickPoint[];
   settings: DemoSettings;
   version: number;
+  // ソーシャルカウント（集計値、実データは socialService で管理）
+  likeCount?: number;
+  playCount?: number;
+  totalPlayDuration?: number;
+  commentCount?: number;
 }
 
 export interface VideoInfo {
@@ -92,8 +97,12 @@ export interface DemoCreatorRecord {
   name: string;
   groupId?: string;
   language: 'ja' | 'en';
+  role?: UserRole;        // 未設定の場合は既存ユーザーのため 'designer' にフォールバック
   email?: string;         // @microsoft.com のみ許可
   passwordHash?: string;  // 後方互換用（新規作成には使わない）
+  designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
+  designerApplicationReason?: string;
+  designerApplicationDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -104,7 +113,48 @@ export interface DemoCreator {
   name: string;
   groupId?: string;
   language: 'ja' | 'en';
+  role: UserRole;
   email?: string;
+  designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
+  designerApplicationDate?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ── ソーシャル機能 ──────────────────────────────────────────
+
+export interface DemoLike {
+  id: string;
+  demoId: string;
+  creatorId: string;
+  createdAt: string;
+}
+
+export interface DemoComment {
+  id: string;
+  demoId: string;
+  creatorId: string;
+  creatorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface DemoFavorite {
+  id: string;
+  demoId: string;
+  creatorId: string;
+  createdAt: string;
+}
+
+export type FeedEventType = 'like' | 'comment' | 'new_demo' | 'new_designer';
+
+export interface FeedEntry {
+  id: string;
+  eventType: FeedEventType;
+  actorId: string;
+  actorName: string;
+  demoId?: string;
+  demoTitle?: string;
+  commentBody?: string;
+  createdAt: string;
 }

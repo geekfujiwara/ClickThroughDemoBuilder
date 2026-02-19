@@ -96,10 +96,12 @@ async function handler(
           ? `${displayName} (${email.split('@')[0]})`
           : displayName;
 
+        // 新規ユーザーは viewer ロールで作成
         creator = await creatorService.createCreator({
           name: finalName,
           email,
           language: 'ja',
+          role: 'viewer',
         });
       }
     } catch (e) {
@@ -107,12 +109,14 @@ async function handler(
       return { status: 500, jsonBody: { error: `Storage error: ${(e as Error).message}` } };
     }
 
-    // ⑤ セッション JWT を発行して Cookie にセット
-    const token = createToken('designer', creator.id);
+    // ⑤ クリエイターのロールを使って JWT を発行
+    const creatorRole = creator.role ?? 'designer';
+    const tokenMaxAge = creatorRole === 'designer' ? 8 * 3600 : 24 * 3600;
+    const token = createToken(creatorRole, creator.id);
     return {
       status: 200,
-      headers: { 'Set-Cookie': buildSessionCookie(token, 8 * 3600) },
-      jsonBody: { role: 'designer', creatorId: creator.id, name: creator.name },
+      headers: { 'Set-Cookie': buildSessionCookie(token, tokenMaxAge) },
+      jsonBody: { role: creatorRole, creatorId: creator.id, name: creator.name },
     };
   } catch (e) {
     context.error('Unexpected error in auth-entra:', (e as Error).message, (e as Error).stack ?? '');

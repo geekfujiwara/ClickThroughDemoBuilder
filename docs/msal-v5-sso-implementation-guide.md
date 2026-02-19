@@ -3,6 +3,8 @@
 > **対象**: `@azure/msal-browser` v5.x + React SPA + Azure Static Web Apps  
 > **認証フロー**: ポップアップ（Popup）方式  
 > **このドキュメントの目的**: 正しい設計パターンと、試行錯誤で判明した「やってはいけないこと」をまとめ、次回以降の実装を短時間で完了できるようにする。
+>
+> **v2 追記**: Azure Blob Storage アクセス権限設定（共有キー認証無効環境での `ClientSecretCredential` 利用・RBAC ロール・パブリックネットワーク設定）を追加。
 
 ---
 
@@ -10,7 +12,7 @@
 
 1. [アーキテクチャ概要](#1-アーキテクチャ概要)
 2. [MSAL v5 ポップアップフローの仕組み](#2-msal-v5-ポップアップフローの仕組み)
-3. [正しい実装（3 ファイル）](#3-正しい実装3-ファイル)
+3. [正しい実装（4 ファイル）](#3-正しい実装4-ファイル)
 4. [Azure 側の設定](#4-azure-側の設定)
 5. [やってはいけないこと（失敗パターン集）](#5-やってはいけないこと失敗パターン集)
 6. [トラブルシューティング](#6-トラブルシューティング)
@@ -110,7 +112,7 @@
 
 ---
 
-## 3. 正しい実装（3 ファイル）
+## 3. 正しい実装（4 ファイル）
 
 ### 3-1. `src/services/msalService.ts` — MSAL サービス
 
@@ -311,6 +313,69 @@ app.http('auth-entra', {
 
 ---
 
+### 3-4. `api/src/services/blobService.ts` — Blob Storage サービス
+
+共有キー認証が無効なストレージアカウントに対して、サービスプリンシパル（`ClientSecretCredential`）で接続する。
+
+```typescript
+import { BlobServiceClient } from '@azure/storage-blob';
+import { DefaultAzureCredential, ClientSecretCredential } from '@azure/identity';
+
+const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
+const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
+
+/**
+ * Azure AD 認証用クレデンシャルを返す。
+ * AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が揃っていれば
+ * ClientSecretCredential（サービスプリンシパル）を使用。
+ * それ以外は DefaultAzureCredential（マネージド ID 等）にフォールバック。
+ */
+function getCredential(): ClientSecretCredential | DefaultAzureCredential {
+  const clientId = process.env.AZURE_CLIENT_ID?.trim();
+  const clientSecret = process.env.AZURE_CLIENT_SECRET?.trim();
+  const tenantId = process.env.AZURE_TENANT_ID?.trim();
+  if (clientId && clientSecret && tenantId) {
+    return new ClientSecretCredential(tenantId, clientId, clientSecret);
+  }
+  return new DefaultAzureCredential();
+}
+
+function getClient(): BlobServiceClient {
+  if (storageAccountName) {
+    // ★ STORAGE_ACCOUNT_NAME が設定されている場合は AAD 認証を最優先
+    //   （ストレージアカウントで共有キー認証が無効でも動作する）
+    return new BlobServiceClient(
+      `https://${storageAccountName}.blob.core.windows.net`,
+      getCredential(),
+    );
+  }
+  // ローカル開発: Azurite（接続文字列）
+  return BlobServiceClient.fromConnectionString(connectionString);
+}
+```
+
+#### SAS URL 生成（ユーザー委任キー方式）
+
+共有キー認証が無効な場合、SAS URL の生成には `StorageSharedKeyCredential` ではなく `getUserDelegationKey` を使う。これには **`Storage Blob Delegator`** ロールが必要（`Storage Blob Data Contributor` だけでは不足）。
+
+```typescript
+// ❌ 共有キー認証無効環境では動作しない
+const cred = new StorageSharedKeyCredential(accountName, accountKey);
+const sasToken = generateBlobSASQueryParameters(sasValues, cred).toString();
+
+// ✅ ユーザー委任キーを使う（AAD 認証 + Storage Blob Delegator ロールが必要）
+const startsOn = new Date(Date.now() - 5 * 60 * 1000);
+const expiresOn = new Date(Date.now() + 60 * 60 * 1000);
+const userDelegationKey = await getClient().getUserDelegationKey(startsOn, expiresOn);
+const sasToken = generateBlobSASQueryParameters(
+  sasValues,
+  userDelegationKey,
+  storageAccountName,
+).toString();
+```
+
+---
+
 ## 4. Azure 側の設定
 
 ### 4-1. Entra ID アプリ登録
@@ -330,8 +395,48 @@ app.http('auth-entra', {
 |------|--------|-----|
 | フロントエンド（`.env.local` / GitHub Secrets） | `VITE_ENTRA_CLIENT_ID` | `9d6c95c2-...` |
 | バックエンド（SWA Application Settings） | `ENTRA_CLIENT_ID` | `9d6c95c2-...` |
+| バックエンド（SWA Application Settings） | `AZURE_CLIENT_ID` | SP のクライアント ID |
+| バックエンド（SWA Application Settings） | `AZURE_CLIENT_SECRET` | SP のクライアントシークレット |
+| バックエンド（SWA Application Settings） | `AZURE_TENANT_ID` | Entra テナント ID |
+| バックエンド（SWA Application Settings） | `STORAGE_ACCOUNT_NAME` | ストレージアカウント名 |
 
-### 4-3. `staticwebapp.config.json`
+> `STORAGE_CONNECTION_STRING`（AccountKey 付き）を設定しても、`STORAGE_ACCOUNT_NAME` が設定されている場合は接続文字列は無視され `ClientSecretCredential` が使われる。
+
+### 4-3. Storage Account 設定（共有キー認証を無効にする環境）
+
+#### 必須の Azure 設定
+
+| 設定 | 値 | 理由 |
+|------|-----|------|
+| `allowSharedKeyAccess` | `false` | ポリシー準拠。AccountKey 接続を禁止 |
+| `publicNetworkAccess` | `Enabled` | SWA Free プランは VNet 非対応のためパブリック接続が必須 |
+
+> ⚠️ **`publicNetworkAccess: Disabled` にすると SWA Free プランから接続できない**。  
+> Azure Functions が VNet に統合できるのは Standard プラン以上のみ。
+
+#### 必須の RBAC ロール（サービスプリンシパルに付与）
+
+| ロール | 用途 |
+|--------|------|
+| `Storage Blob Data Contributor` | Blob の読み書き・削除 |
+| `Storage Blob Delegator` | `getUserDelegationKey` による SAS URL 生成 |
+
+```bash
+# ロール付与（SP の Object ID を指定）
+az role assignment create \
+  --role "Storage Blob Data Contributor" \
+  --assignee-object-id <SP_OBJECT_ID> \
+  --assignee-principal-type ServicePrincipal \
+  --scope "/subscriptions/<SUB>/resourceGroups/<RG>/providers/Microsoft.Storage/storageAccounts/<ACCOUNT>"
+
+az role assignment create \
+  --role "Storage Blob Delegator" \
+  --assignee-object-id <SP_OBJECT_ID> \
+  --assignee-principal-type ServicePrincipal \
+  --scope "/subscriptions/<SUB>/resourceGroups/<RG>/providers/Microsoft.Storage/storageAccounts/<ACCOUNT>"
+```
+
+### 4-4. `staticwebapp.config.json`
 
 ```json
 {
@@ -422,6 +527,83 @@ if (!CLIENT_ID) throw new Error('ENTRA_CLIENT_ID is required'); // ← モジュ
 
 **正しくは**: フォールバック値を使うか、リクエストハンドラー内でエラーを返す。
 
+### ❌ パターン 7: `STORAGE_ACCOUNT_NAME` があっても接続文字列（AccountKey）を優先する
+
+```typescript
+// ❌ 間違い
+function getClient() {
+  if (connectionString.includes('AccountKey=')) {
+    return BlobServiceClient.fromConnectionString(connectionString); // ← キー認証が無効なら 403
+  }
+  if (storageAccountName) {
+    return new BlobServiceClient(url, new DefaultAzureCredential());
+  }
+}
+```
+
+**結果**: `allowSharedKeyAccess: false` のストレージアカウントに接続文字列でアクセスすると
+`This request is not authorized to perform this operation` (403) エラーになる。
+
+**正しくは**:
+```typescript
+// ✅ STORAGE_ACCOUNT_NAME が設定されていれば常に AAD 認証を最優先
+function getClient() {
+  if (storageAccountName) {
+    return new BlobServiceClient(
+      `https://${storageAccountName}.blob.core.windows.net`,
+      getCredential(), // ClientSecretCredential または DefaultAzureCredential
+    );
+  }
+  return BlobServiceClient.fromConnectionString(connectionString); // Azurite のみ
+}
+```
+
+### ❌ パターン 8: `DefaultAzureCredential` をそのまま使い SP が選ばれることを期待する
+
+```typescript
+// ❌ 信頼性が低い
+const credential = new DefaultAzureCredential();
+```
+
+**結果**: `DefaultAzureCredential` は内部で複数の認証方式を順番に試みる。SWA Free プランの環境変数が正しく設定されていても、実行順序によって意図しない認証方式が選ばれ `Not authorized` エラーになることがある。
+
+**正しくは**:
+```typescript
+// ✅ SP の環境変数が揃っていれば ClientSecretCredential を明示的に使う
+function getCredential() {
+  const clientId = process.env.AZURE_CLIENT_ID?.trim();
+  const clientSecret = process.env.AZURE_CLIENT_SECRET?.trim();
+  const tenantId = process.env.AZURE_TENANT_ID?.trim();
+  if (clientId && clientSecret && tenantId) {
+    return new ClientSecretCredential(tenantId, clientId, clientSecret);
+  }
+  return new DefaultAzureCredential(); // マネージド ID 環境へのフォールバック
+}
+```
+
+### ❌ パターン 9: SAS 生成に `StorageSharedKeyCredential` を使う（共有キー認証無効環境）
+
+```typescript
+// ❌ allowSharedKeyAccess: false の環境では動作しない
+const cred = new StorageSharedKeyCredential(accountName, accountKey);
+generateBlobSASQueryParameters(sasValues, cred);
+```
+
+**結果**: `403 This request is not authorized` エラー。
+
+**正しくは**: `getUserDelegationKey` を使ったユーザー委任 SAS に切り替える（`Storage Blob Delegator` ロールが必要）。
+
+### ❌ パターン 10: Storage Account の `publicNetworkAccess` を無効にする（SWA Free プラン）
+
+```bash
+# ❌ SWA Free プランでは Functions から接続できなくなる
+az storage account update --public-network-access Disabled
+```
+
+**結果**: SWA Free プランの Azure Functions は VNet に統合できないため、パブリックネットワーク経由でしかストレージにアクセスできない。`publicNetworkAccess: Disabled` にすると **すべての Blob 操作が 403 エラー**になる。
+
+**正しくは**: `publicNetworkAccess: Enabled` のまま、`allowSharedKeyAccess: false` + RBAC でアクセス制御する。
+
 ---
 
 ## 6. トラブルシューティング
@@ -435,6 +617,11 @@ if (!CLIENT_ID) throw new Error('ENTRA_CLIENT_ID is required'); // ← モジュ
 | `AADSTS50011` エラー | `redirectUri` が Entra アプリ登録と不一致 | `redirectUri: window.location.origin` にし、Entra 登録と一致させる |
 | `/api/auth/me` が 404 | API Functions ホストがクラッシュ | `auth-entra.ts` のトップレベル throw を除去 |
 | ポップアップが「about:blank」のまま | MSAL の初期化が完了する前に `loginPopup()` が呼ばれた | `ensureInitialized()` を await してから `loginPopup()` を呼ぶ |
+| `Storage error: This request is not authorized` (403) | ① 接続文字列（AccountKey）が最優先になっている ② RBAC ロール未付与 ③ `publicNetworkAccess: Disabled` | ① `STORAGE_ACCOUNT_NAME` を優先して `ClientSecretCredential` を使う ② SP に `Storage Blob Data Contributor` + `Storage Blob Delegator` を付与 ③ `az storage account update --public-network-access Enabled` |
+| `Storage error: Key based authentication not permitted` | `allowSharedKeyAccess: false` なのに ConnectionString（AccountKey）でクライアントを作成している | `getClient()` で `storageAccountName` チェックを最優先にし AAD 認証パスを通す |
+| SAS URL 生成が `403` / `Not authorized` | `Storage Blob Delegator` ロール未付与 | SP に `Storage Blob Delegator` ロールを付与する |
+| `ENTRA_CLIENT_ID missing` (500) | SWA Application Settings に `ENTRA_CLIENT_ID` が設定されていない | `az staticwebapp appsettings set` で設定（再デプロイ不要・即時反映） |
+| すべての `/api/*` が 401 または 404 | Functions モジュール初期化時に `getRequiredEnv()` が throw している | 環境変数の参照をモジュールトップレベルから関数内（リクエスト処理時）に移動（遅延評価）|
 
 ---
 
@@ -458,10 +645,25 @@ if (!CLIENT_ID) throw new Error('ENTRA_CLIENT_ID is required'); // ← モジュ
 - [ ] API `auth-entra.ts` を作成:
   - [ ] `idToken` を `jose` ライブラリで検証
   - [ ] トップレベルで throw しない
+  - [ ] `ENTRA_CLIENT_ID` 未設定時はリクエストハンドラー内で 500 を返す
+- [ ] `blobService.ts` を作成:
+  - [ ] `STORAGE_ACCOUNT_NAME` が設定されていれば `ClientSecretCredential` を最優先
+  - [ ] `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID` が揃っていれば `ClientSecretCredential`、それ以外は `DefaultAzureCredential`
+  - [ ] SAS URL 生成は `getUserDelegationKey`（ユーザー委任キー）方式を使用
+- [ ] Azure Storage Account を設定:
+  - [ ] `publicNetworkAccess: Enabled`（SWA Free プランは VNet 非対応）
+  - [ ] `allowSharedKeyAccess: false`（RBAC のみでアクセス制御）
+  - [ ] SP に `Storage Blob Data Contributor` ロールを付与
+  - [ ] SP に `Storage Blob Delegator` ロールを付与（SAS URL 生成に必要）
+- [ ] SWA Application Settings に以下を設定:
+  - [ ] `ENTRA_CLIENT_ID`
+  - [ ] `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` / `AZURE_TENANT_ID`
+  - [ ] `STORAGE_ACCOUNT_NAME`
 - [ ] ビルド後にポップアップフローをテスト:
   - [ ] ポップアップが開く
   - [ ] Microsoft ログイン完了後、ポップアップが自動で閉じる
   - [ ] メインウィンドウのログインが完了する
+  - [ ] ログイン後に Blob Storage の読み書きが正常に動作する
 
 ---
 

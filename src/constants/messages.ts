@@ -140,10 +140,61 @@ const JA = {
   playerTimelineLabel: '再生位置',
 
   navHome: 'ホーム',
-  navProjects: 'プロジェクト',
-  navGroups: 'グループマスター',
+  navProjects: 'デモ',
+  navGroups: '組織',
   navCreators: '作成者マスター',
   navUsers: 'ユーザーマスター',
+  navFeed: 'フィード',
+  navFavorites: 'お気に入り',
+  navApplyDesigner: 'デザイナー権限を申請',
+
+  // デザイナー申請
+  applyDesignerTitle: 'デザイナー権限を申請',
+  applyDesignerDescription: 'デモの作成・編集を行うにはデザイナー権限が必要です。以下のフォームから申請してください。',
+  applyDesignerReason: '申請理由',
+  applyDesignerReasonPlaceholder: 'デモを作成したい理由を入力してください（必須）',
+  applyDesignerSubmit: '申請する',
+  applyDesignerSubmitting: '申請中...',
+  applyDesignerSuccess: '申請を受け付けました。承認されるとメールでお知らせします。',
+  applyDesignerPending: '現在審査中です。承認をお待ちください。',
+  applyDesignerApproved: 'デザイナー権限が付与されています。',
+
+  // いいね
+  like: 'いいね',
+  unlike: 'いいね取り消し',
+  likeCount: (n: number) => `${n} いいね`,
+
+  // お気に入り
+  favorite: 'お気に入り',
+  unfavorite: 'お気に入り解除',
+  favoritesTitle: 'お気に入り',
+  favoritesEmpty: 'まだお気に入りに登録したデモがありません。',
+  favoritesPopularTab: '人気デモ',
+  favoritesSavedTab: '保存済み',
+
+  // フィード
+  feedTitle: 'フィード',
+  feedEmpty: 'まだアクティビティがありません。',
+  feedLiked: 'がデモにいいねしました',
+  feedCommented: 'がデモにコメントしました',
+  feedNewDemo: 'が新しいデモを作成しました',
+  feedNewDesigner: 'がデザイナーになりました',
+
+  // コメント
+  commentTitle: 'コメント',
+  commentPlaceholder: 'コメントを入力してください...',
+  commentPost: '投稿',
+  commentEmpty: 'まだコメントがありません。',
+  commentDelete: 'コメントを削除',
+
+  // ホームランキング
+  homeRankingByLikes: '人気のデモ 🏆',
+  homeRecentDemos: '最近追加されたデモ 🆕',
+  homeRankingByPlay: '再生数が多いデモ ▶️',
+  homeRankingByDuration: '総再生時間が長いデモ ⏱️',
+  homeTopCreatorsByLikes: '人気のデモ作成者 ⭐',
+  homeTopCreatorsByDemos: 'デモ数が多い作成者 📦',
+  homeRecentActivity: '最近のアクティビティ 💬',
 
   userMasterTitle: 'ユーザーマスター',
   organizationMasterTitle: '組織（グループ）管理',
@@ -315,8 +366,8 @@ const EN: Partial<MessageCatalog> = {
   playerTimelineLabel: 'Playback position',
 
   navHome: 'Home',
-  navProjects: 'Projects',
-  navGroups: 'Organization Master',
+  navProjects: 'Demos',
+  navGroups: 'Organizations',
   navCreators: 'Creator Master',
   navUsers: 'User Master',
 

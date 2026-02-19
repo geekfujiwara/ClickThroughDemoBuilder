@@ -1,5 +1,7 @@
 /**
  * AuthGuard — 認証ガードコンポーネント
+ * role="viewer"   … viewer 以上（viewer / designer）を許可
+ * role="designer" … designer のみ許可
  */
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -20,14 +22,14 @@ export default function AuthGuard({ role }: Props) {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      // designer は新しい統合ログインページへ
-      const loginPath = role === 'viewer' ? '/viewer/login' : '/login';
-      navigate(loginPath, { replace: true });
+      // 未認証 → ログインページへ
+      navigate('/login', { replace: true });
       return;
     }
 
+    // designer のみ許可するルートで viewer がアクセスしようとした場合
     if (role === 'designer' && currentRole !== 'designer') {
-      navigate('/viewer/demos', { replace: true });
+      navigate('/', { replace: true });
       return;
     }
 

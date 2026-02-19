@@ -341,3 +341,34 @@ function parseConnectionString(cs: string): { accountName?: string; accountKey?:
     accountKey: parts.get('AccountKey'),
   };
 }
+
+// ── Social Data (Likes / Favorites / Comments / Feed) ───────
+
+async function getSocialJson(name: string): Promise<string | null> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient(name);
+  try {
+    const buf = await blob.downloadToBuffer();
+    return buf.toString('utf-8');
+  } catch (e: unknown) {
+    if ((e as { statusCode?: number }).statusCode === 404) return null;
+    throw e;
+  }
+}
+
+async function putSocialJson(name: string, json: string): Promise<void> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient(name);
+  await blob.upload(json, Buffer.byteLength(json, 'utf-8'), {
+    blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
+  });
+}
+
+export const getLikesJson     = () => getSocialJson('likes.json');
+export const putLikesJson     = (j: string) => putSocialJson('likes.json', j);
+export const getFavoritesJson = () => getSocialJson('favorites.json');
+export const putFavoritesJson = (j: string) => putSocialJson('favorites.json', j);
+export const getCommentsJson  = () => getSocialJson('comments.json');
+export const putCommentsJson  = (j: string) => putSocialJson('comments.json', j);
+export const getFeedJson      = () => getSocialJson('feed.json');
+export const putFeedJson      = (j: string) => putSocialJson('feed.json', j);

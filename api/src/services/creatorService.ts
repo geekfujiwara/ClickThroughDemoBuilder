@@ -2,7 +2,7 @@
  * 作成者マスター管理サービス
  */
 import crypto from 'node:crypto';
-import type { DemoCreator, DemoCreatorRecord } from '../shared/types.js';
+import type { DemoCreator, DemoCreatorRecord, UserRole } from '../shared/types.js';
 import * as blob from './blobService.js';
 import * as projectService from './projectService.js';
 
@@ -30,7 +30,11 @@ function toResponse(r: DemoCreatorRecord): DemoCreator {
     name: r.name,
     groupId: r.groupId,
     language: r.language,
+    // role 未設定の既存ユーザーは 'designer' にフォールバック（後方互換）
+    role: r.role ?? 'designer',
     email: r.email,
+    designerApplicationStatus: r.designerApplicationStatus,
+    designerApplicationDate: r.designerApplicationDate,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
@@ -47,8 +51,12 @@ async function loadMaster(): Promise<CreatorMasterData> {
           name: raw.name,
           groupId: raw.groupId,
           language: (raw.language === 'en' ? 'en' : 'ja') as 'ja' | 'en',
+          role: raw.role as UserRole | undefined,
           email: raw.email,
           passwordHash: raw.passwordHash,
+          designerApplicationStatus: raw.designerApplicationStatus as DemoCreatorRecord['designerApplicationStatus'],
+          designerApplicationReason: raw.designerApplicationReason,
+          designerApplicationDate: raw.designerApplicationDate,
           createdAt: raw.createdAt,
           updatedAt: raw.updatedAt,
         }))
@@ -75,8 +83,9 @@ export async function createCreator(input: {
   groupId?: string;
   language: 'ja' | 'en';
   email?: string;
+  role?: UserRole;
 }): Promise<DemoCreator> {
-  const { name, groupId, language, email } = input;
+  const { name, groupId, language, email, role } = input;
   const trimmed = name.trim();
   if (!trimmed) throw new Error('作成者名は必須です');
   if (email) validateEmail(email);
@@ -92,6 +101,7 @@ export async function createCreator(input: {
     name: trimmed,
     groupId,
     language,
+    role: role ?? 'designer',
     email: email?.toLowerCase().trim() || undefined,
     createdAt: now,
     updatedAt: now,
@@ -166,4 +176,52 @@ export async function deleteCreator(creatorId: string): Promise<void> {
       });
     }
   }
+}
+
+/** デザイナー権限申請 */
+export async function applyDesigner(creatorId: string, reason: string): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  if ((existing.role ?? 'designer') === 'designer') {
+    throw new Error('すでにデザイナー権限を持っています');
+  }
+  if (existing.designerApplicationStatus === 'pending') {
+    throw new Error('すでに申請中です');
+  }
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    designerApplicationStatus: 'pending',
+    designerApplicationReason: reason.trim(),
+    designerApplicationDate: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
+}
+
+/** デザイナー権限承認 */
+export async function verifyDesigner(creatorId: string): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    role: 'designer',
+    designerApplicationStatus: 'approved',
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
+}
+
+/** クリエイター情報取得（ロール含む）*/
+export async function getCreatorRoleById(creatorId: string): Promise<UserRole> {
+  const data = await loadMaster();
+  const record = data.creators.find((c) => c.id === creatorId);
+  return record?.role ?? 'designer';
 }

@@ -13,9 +13,8 @@ import {
   Input,
   Select,
   Badge,
-  Tooltip,
-  Spinner,
   Label,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
   PlayRegular,
@@ -24,17 +23,23 @@ import {
   DeleteRegular,
   SearchRegular,
   AddRegular,
-  ArrowExportRegular,
-  FolderArrowRightRegular,
+  HeartRegular,
+  HeartFilled,
+  BookmarkRegular,
+  BookmarkFilled,
 } from '@fluentui/react-icons';
 
 import EmptyState from '@/components/common/EmptyState';
 import SkeletonCard from '@/components/common/SkeletonCard';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useProjectStore } from '@/stores/projectStore';
-import { exportDemoToFolder, exportAllDemosToFolder } from '@/services/exportService';
+import { useAuthStore } from '@/stores/authStore';
 import * as groupService from '@/services/groupService';
 import * as creatorService from '@/services/creatorService';
+import {
+  addLike, removeLike, getLikeStatus,
+  getFavorites, addFavorite, removeFavorite,
+} from '@/services/socialService';
 import { MSG } from '@/constants/messages';
 import type { DemoCreator, DemoGroup, DemoProject } from '@/types';
 
@@ -88,6 +93,11 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalXS,
     flexWrap: 'wrap',
   },
+  socialActions: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalXS,
+    marginLeft: 'auto',
+  },
   cardTitleRow: {
     display: 'flex',
     alignItems: 'center',
@@ -109,6 +119,8 @@ export default function ProjectsPage() {
   const navigate = useNavigate();
   const { projects, isLoading, loadProjects, deleteProject, duplicateProject, updateProject } =
     useProjectStore();
+  const { role } = useAuthStore();
+  const isDesigner = role === 'designer';
 
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -117,9 +129,11 @@ export default function ProjectsPage() {
   const [creators, setCreators] = useState<DemoCreator[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
   const [deleteTarget, setDeleteTarget] = useState<DemoProject | null>(null);
-  const [exportingId, setExportingId] = useState<string | null>(null);
-  const [bulkExporting, setBulkExporting] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState('');
+
+  // Social state
+  const [likedDemos, setLikedDemos] = useState<Set<string>>(new Set());
+  const [favoritedDemos, setFavoritedDemos] = useState<Set<string>>(new Set());
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
   /** 説明文を最大長で切り詰める */
   const truncate = (text: string, max = 80) =>
@@ -128,6 +142,59 @@ export default function ProjectsPage() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  // Load favorites on mount
+  useEffect(() => {
+    getFavorites()
+      .then((favs) => {
+        setFavoritedDemos(new Set(favs.map((f) => f.demoId)));
+      })
+      .catch(() => {/* not authenticated - ignore */});
+  }, []);
+
+  // Load like status for visible projects
+  useEffect(() => {
+    projects.forEach((p) => {
+      getLikeStatus(p.id)
+        .then((res) => {
+          setLikedDemos((prev) => {
+            const next = new Set(prev);
+            if (res.liked) next.add(p.id); else next.delete(p.id);
+            return next;
+          });
+          setLikeCounts((prev) => ({ ...prev, [p.id]: res.count }));
+        })
+        .catch(() => {/* ignore */});
+    });
+  }, [projects]);
+
+  const handleLikeToggle = useCallback(async (id: string) => {
+    const isLiked = likedDemos.has(id);
+    try {
+      if (isLiked) {
+        await removeLike(id);
+        setLikedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
+        setLikeCounts((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 1) - 1) }));
+      } else {
+        await addLike(id);
+        setLikedDemos((prev) => new Set(prev).add(id));
+        setLikeCounts((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+      }
+    } catch { /* ignore */ }
+  }, [likedDemos]);
+
+  const handleFavoriteToggle = useCallback(async (id: string) => {
+    const isFav = favoritedDemos.has(id);
+    try {
+      if (isFav) {
+        await removeFavorite(id);
+        setFavoritedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      } else {
+        await addFavorite(id);
+        setFavoritedDemos((prev) => new Set(prev).add(id));
+      }
+    } catch { /* ignore */ }
+  }, [favoritedDemos]);
 
   // フィルタ + ソート
   const filtered = projects
@@ -142,38 +209,6 @@ export default function ProjectsPage() {
       if (sortKey === 'title') return a.title.localeCompare(b.title, 'ja');
       return new Date(b[sortKey]).getTime() - new Date(a[sortKey]).getTime();
     });
-
-  /** 個別エクスポート */
-  const handleExportSingle = useCallback(async (project: DemoProject) => {
-    try {
-      setExportingId(project.id);
-      await exportDemoToFolder(project);
-    } catch {
-      // ユーザーがダイアログをキャンセルした場合など
-    } finally {
-      setExportingId(null);
-    }
-  }, []);
-
-  /** 一括エクスポート */
-  const handleExportAll = useCallback(async () => {
-    const targets = filtered.filter((p) => p.video);
-    if (targets.length === 0) return;
-    try {
-      setBulkExporting(true);
-      setBulkProgress(MSG.exportAllProgress(0, targets.length));
-      const count = await exportAllDemosToFolder(targets, (done, total) => {
-        setBulkProgress(MSG.exportAllProgress(done, total));
-      });
-      setBulkProgress('');
-      alert(MSG.exportAllSuccess(count));
-    } catch {
-      // ユーザーがダイアログをキャンセルした場合など
-    } finally {
-      setBulkExporting(false);
-      setBulkProgress('');
-    }
-  }, [filtered]);
 
   const handleDelete = useCallback(async () => {
     if (deleteTarget) {
@@ -218,13 +253,15 @@ export default function ProjectsPage() {
         <Text as="h1" size={700} weight="semibold">
           {MSG.projectsTitle}
         </Text>
-        <Button
-          appearance="primary"
-          icon={<AddRegular />}
-          onClick={() => navigate('/designer')}
-        >
-          {MSG.projectsNew}
-        </Button>
+        {isDesigner && (
+          <Button
+            appearance="primary"
+            icon={<AddRegular />}
+            onClick={() => navigate('/designer')}
+          >
+            {MSG.projectsNew}
+          </Button>
+        )}
       </div>
 
       {/* ツールバー */}
@@ -267,16 +304,6 @@ export default function ProjectsPage() {
           <option value="title">{MSG.projectsSortTitle}</option>
         </Select>
 
-        <Tooltip content={bulkProgress || MSG.exportAll} relationship="label">
-          <Button
-            icon={bulkExporting ? <Spinner size="tiny" /> : <ArrowExportRegular />}
-            appearance="subtle"
-            disabled={bulkExporting || filtered.length === 0}
-            onClick={handleExportAll}
-          >
-            {bulkProgress || MSG.exportAll}
-          </Button>
-        </Tooltip>
       </div>
 
       {/* コンテンツ */}
@@ -344,65 +371,83 @@ export default function ProjectsPage() {
                 >
                   再生
                 </Button>
-                <Button
-                  icon={<EditRegular />}
-                  size="small"
-                  appearance="subtle"
-                  onClick={() => navigate(`/designer/${project.id}`)}
-                >
-                  編集
-                </Button>
-                <Tooltip content={MSG.exportDemo} relationship="label">
-                  <Button
-                    icon={exportingId === project.id ? <Spinner size="tiny" /> : <FolderArrowRightRegular />}
-                    size="small"
-                    appearance="subtle"
-                    disabled={!project.video || exportingId !== null}
-                    onClick={() => handleExportSingle(project)}
-                  >
-                    {MSG.exportDemo}
-                  </Button>
-                </Tooltip>
-                <Button
-                  icon={<CopyRegular />}
-                  size="small"
-                  appearance="subtle"
-                  onClick={() => duplicateProject(project.id)}
-                >
-                  複製
-                </Button>
-                <Button
-                  icon={<DeleteRegular />}
-                  size="small"
-                  appearance="subtle"
-                  onClick={() => setDeleteTarget(project)}
-                >
-                  削除
-                </Button>
-                <div>
-                  <Label>{MSG.projectsGroupFilter}</Label>
-                  <Select
-                    value={project.groupId ?? ''}
-                    onChange={(_, data) => void handleAssignGroup(project.id, data.value)}
-                  >
-                    <option value="">{MSG.projectsNoGroup}</option>
-                    {groups.map((group) => (
-                      <option key={group.id} value={group.id}>{group.name}</option>
-                    ))}
-                  </Select>
+                {isDesigner && (
+                  <>
+                    <Button
+                      icon={<EditRegular />}
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => navigate(`/designer/${project.id}`)}
+                    >
+                      編集
+                    </Button>
+                    <Button
+                      icon={<CopyRegular />}
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => duplicateProject(project.id)}
+                    >
+                      複製
+                    </Button>
+                    <Button
+                      icon={<DeleteRegular />}
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => setDeleteTarget(project)}
+                    >
+                      削除
+                    </Button>
+                  </>
+                )}
+                {/* いいね / お気に入りボタン */}
+                <div className={classes.socialActions}>
+                  <Tooltip content={likedDemos.has(project.id) ? MSG.unlike : MSG.like} relationship="label">
+                    <Button
+                      icon={likedDemos.has(project.id) ? <HeartFilled style={{ color: 'red' }} /> : <HeartRegular />}
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => void handleLikeToggle(project.id)}
+                    >
+                      {likeCounts[project.id] ?? project.likeCount ?? 0}
+                    </Button>
+                  </Tooltip>
+                  <Tooltip content={favoritedDemos.has(project.id) ? MSG.unfavorite : MSG.favorite} relationship="label">
+                    <Button
+                      icon={favoritedDemos.has(project.id) ? <BookmarkFilled style={{ color: 'goldenrod' }} /> : <BookmarkRegular />}
+                      size="small"
+                      appearance="subtle"
+                      onClick={() => void handleFavoriteToggle(project.id)}
+                    />
+                  </Tooltip>
                 </div>
-                <div>
-                  <Label>{MSG.projectsCreatorFilter}</Label>
-                  <Select
-                    value={project.creatorId ?? ''}
-                    onChange={(_, data) => void handleAssignCreator(project.id, data.value)}
-                  >
-                    <option value="">{MSG.projectsNoCreator}</option>
-                    {creators.map((creator) => (
-                      <option key={creator.id} value={creator.id}>{creator.name}</option>
-                    ))}
-                  </Select>
-                </div>
+                {isDesigner && (
+                  <>
+                    <div>
+                      <Label>{MSG.projectsGroupFilter}</Label>
+                      <Select
+                        value={project.groupId ?? ''}
+                        onChange={(_, data) => void handleAssignGroup(project.id, data.value)}
+                      >
+                        <option value="">{MSG.projectsNoGroup}</option>
+                        {groups.map((group) => (
+                          <option key={group.id} value={group.id}>{group.name}</option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>{MSG.projectsCreatorFilter}</Label>
+                      <Select
+                        value={project.creatorId ?? ''}
+                        onChange={(_, data) => void handleAssignCreator(project.id, data.value)}
+                      >
+                        <option value="">{MSG.projectsNoCreator}</option>
+                        {creators.map((creator) => (
+                          <option key={creator.id} value={creator.id}>{creator.name}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </>
+                )}
               </CardFooter>
             </Card>
           ))}

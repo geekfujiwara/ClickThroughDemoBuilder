@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -11,11 +11,20 @@ import {
   Body1,
   Caption1,
   Badge,
+  Avatar,
+  Spinner,
+  Divider,
 } from '@fluentui/react-components';
-import { PlayRegular, EditRegular } from '@fluentui/react-icons';
-import EmptyState from '@/components/common/EmptyState';
-import SkeletonCard from '@/components/common/SkeletonCard';
-import { useProjectStore } from '@/stores/projectStore';
+import {
+  PlayRegular,
+  EditRegular,
+  HeartRegular,
+  ArrowRepeatAllRegular,
+  PersonRegular,
+  BookmarkRegular,
+} from '@fluentui/react-icons';
+import { useAuthStore } from '@/stores/authStore';
+import { getHomeRankings, type HomeRankings, type DemoSummary, type CreatorRankingEntry } from '@/services/socialService';
 import { MSG } from '@/constants/messages';
 
 const useStyles = makeStyles({
@@ -39,11 +48,19 @@ const useStyles = makeStyles({
   },
   sectionTitle: {
     marginBottom: tokens.spacingVerticalL,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
     gap: tokens.spacingHorizontalL,
+  },
+  creatorGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: tokens.spacingHorizontalM,
   },
   thumbnail: {
     width: '100%',
@@ -67,35 +84,148 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: tokens.spacingHorizontalXS,
   },
-  cardDescription: {
-    marginTop: tokens.spacingVerticalXXS,
+  statBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXXS,
     color: tokens.colorNeutralForeground3,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical' as const,
+  },
+  creatorCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalM,
+    padding: tokens.spacingVerticalM,
+  },
+  creatorInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  activityList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalS,
+  },
+  activityItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalM,
+    padding: tokens.spacingVerticalS,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  spinnerArea: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: tokens.spacingVerticalXXXL,
   },
 });
+
+/** デモカード (ランキング共通) */
+function DemoCard({ demo, onPlay, onEdit, isDesigner }: {
+  demo: DemoSummary;
+  onPlay: (id: string) => void;
+  onEdit: (id: string) => void;
+  isDesigner: boolean;
+}) {
+  const classes = useStyles();
+  return (
+    <Card className={classes.card}>
+      {demo.thumbnailDataUrl ? (
+        <img src={demo.thumbnailDataUrl} alt={demo.title} className={classes.thumbnail} />
+      ) : (
+        <div className={classes.thumbnail} />
+      )}
+      <CardHeader
+        header={
+          <div className={classes.cardTitleRow}>
+            {demo.demoNumber ? (
+              <Badge appearance="outline" size="small">#{demo.demoNumber}</Badge>
+            ) : null}
+            <Body1><strong>{demo.title}</strong></Body1>
+          </div>
+        }
+        description={
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+            {demo.likeCount != null && (
+              <Caption1 className={classes.statBadge}>
+                <HeartRegular fontSize={12} /> {demo.likeCount}
+              </Caption1>
+            )}
+            {demo.playCount != null && (
+              <Caption1 className={classes.statBadge}>
+                <PlayRegular fontSize={12} /> {demo.playCount}
+              </Caption1>
+            )}
+            {demo.commentCount != null && (
+              <Caption1 className={classes.statBadge}>
+                💬 {demo.commentCount}
+              </Caption1>
+            )}
+          </div>
+        }
+      />
+      <CardFooter className={classes.cardActions}>
+        <Button icon={<PlayRegular />} size="small" onClick={() => onPlay(demo.id)}>
+          再生
+        </Button>
+        {isDesigner && (
+          <Button icon={<EditRegular />} size="small" appearance="subtle" onClick={() => onEdit(demo.id)}>
+            編集
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}
+
+/** 作成者ランキングカード */
+function CreatorCard({ entry, rank, valueKey, unit }: {
+  entry: CreatorRankingEntry;
+  rank: number;
+  valueKey: 'totalLikes' | 'demoCount';
+  unit: string;
+}) {
+  const classes = useStyles();
+  const value = entry[valueKey] ?? 0;
+  return (
+    <Card className={classes.card}>
+      <div className={classes.creatorCard}>
+        <Badge appearance="filled" color={rank === 1 ? 'warning' : rank === 2 ? 'informative' : 'subtle'}>
+          #{rank}
+        </Badge>
+        <Avatar name={entry.name} size={36} icon={<PersonRegular />} />
+        <div className={classes.creatorInfo}>
+          <Body1><strong>{entry.name}</strong></Body1>
+          <Caption1 style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>
+            {value} {unit}
+          </Caption1>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export default function HomePage() {
   const classes = useStyles();
   const navigate = useNavigate();
-  const { projects, isLoading, loadProjects } = useProjectStore();
+  const { role } = useAuthStore();
+  const isDesigner = role === 'designer';
+
+  const [rankings, setRankings] = useState<HomeRankings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
+    getHomeRankings()
+      .then(setRankings)
+      .catch(() => setRankings(null))
+      .finally(() => setIsLoading(false));
+  }, []);
 
-  const recentProjects = projects.slice(0, 6);
-
-  const handleNewProject = useCallback(() => {
-    navigate('/designer');
-  }, [navigate]);
-
-  /** 説明文を最大長で切り詰める */
-  const truncate = (text: string, max = 80) =>
-    text.length > max ? text.slice(0, max) + '…' : text;
+  const handlePlay = useCallback((id: string) => navigate(`/player/${id}`), [navigate]);
+  const handleEdit = useCallback((id: string) => navigate(`/designer/${id}`), [navigate]);
 
   return (
     <>
@@ -105,102 +235,156 @@ export default function HomePage() {
           {MSG.homeHeroTitle}
         </Text>
         <div className={classes.heroActions}>
-          <Button appearance="primary" size="large" onClick={handleNewProject}>
-            {MSG.homeNewProject}
-          </Button>
-          <Button
-            appearance="secondary"
-            size="large"
-            onClick={() => navigate('/projects')}
-          >
+          {isDesigner && (
+            <Button appearance="primary" size="large" onClick={() => navigate('/designer')}>
+              {MSG.homeNewProject}
+            </Button>
+          )}
+          <Button appearance="secondary" size="large" onClick={() => navigate('/projects')}>
             {MSG.homeViewProjects}
+          </Button>
+          <Button appearance="subtle" size="large" icon={<ArrowRepeatAllRegular />} onClick={() => navigate('/feed')}>
+            {MSG.navFeed}
+          </Button>
+          <Button appearance="subtle" size="large" icon={<BookmarkRegular />} onClick={() => navigate('/favorites')}>
+            {MSG.navFavorites}
           </Button>
         </div>
       </section>
 
-      {/* 最近のプロジェクト */}
-      <section className={classes.section}>
-        <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
-          {MSG.homeRecentProjects}
-        </Text>
+      {isLoading ? (
+        <div className={classes.spinnerArea}>
+          <Spinner label="読み込み中..." />
+        </div>
+      ) : rankings ? (
+        <>
+          {/* 人気のデモ (いいね数順) */}
+          {rankings.popularByLikes.length > 0 && (
+            <section className={classes.section}>
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
+                {MSG.homeRankingByLikes}
+              </Text>
+              <div className={classes.grid}>
+                {rankings.popularByLikes.map((demo) => (
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                ))}
+              </div>
+            </section>
+          )}
 
-        {isLoading ? (
-          <div className={classes.grid}>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : recentProjects.length === 0 ? (
-          <EmptyState
-            title={MSG.homeEmptyTitle}
-            description={MSG.homeEmptyDescription}
-            actionLabel={MSG.homeNewProject}
-            onAction={handleNewProject}
-          />
-        ) : (
-          <div className={classes.grid}>
-            {recentProjects.map((project) => (
-              <Card key={project.id} className={classes.card}>
-                {project.video?.thumbnailDataUrl ? (
-                  <img
-                    src={project.video.thumbnailDataUrl}
-                    alt={project.title}
-                    className={classes.thumbnail}
-                  />
-                ) : (
-                  <div className={classes.thumbnail} />
-                )}
-                <CardHeader
-                  header={
-                    <div className={classes.cardTitleRow}>
-                      {project.demoNumber ? (
-                        <Badge appearance="outline" size="small">#{project.demoNumber}</Badge>
-                      ) : null}
-                      <Body1><strong>{project.title}</strong></Body1>
-                    </div>
-                  }
-                  description={
-                    <>
+          {/* 最近追加されたデモ */}
+          {rankings.recentDemos.length > 0 && (
+            <section className={classes.section}>
+              <Divider />
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
+                {MSG.homeRecentDemos}
+              </Text>
+              <div className={classes.grid}>
+                {rankings.recentDemos.map((demo) => (
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 再生数が多いデモ */}
+          {rankings.popularByPlay.length > 0 && (
+            <section className={classes.section}>
+              <Divider />
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
+                {MSG.homeRankingByPlay}
+              </Text>
+              <div className={classes.grid}>
+                {rankings.popularByPlay.map((demo) => (
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 最近のアクティビティ (コメント) */}
+          {rankings.recentComments.length > 0 && (
+            <section className={classes.section}>
+              <Divider />
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
+                {MSG.homeRecentActivity}
+              </Text>
+              <div className={classes.activityList}>
+                {rankings.recentComments.map((entry) => (
+                  <div key={entry.id} className={classes.activityItem}>
+                    <Avatar name={entry.actorName} size={28} icon={<PersonRegular />} />
+                    <div className={classes.activityContent}>
                       <Caption1>
-                        {MSG.projectsSteps(project.clickPoints.length)} ・ 更新:{' '}
-                        {new Date(project.updatedAt).toLocaleDateString('ja-JP')}
+                        <strong>{entry.actorName}</strong>{' '}
+                        {entry.eventType === 'comment' ? 'がコメントしました' : 'がいいねしました'}
+                        {entry.demoTitle ? ` 「${entry.demoTitle}」` : ''}
                       </Caption1>
-                      {project.description ? (
-                        <Caption1 className={classes.cardDescription}>
-                          {truncate(project.description)}
+                      {entry.commentBody && (
+                        <Caption1 style={{ display: 'block', color: 'var(--colorNeutralForeground3)', marginTop: '2px' }}>
+                          {entry.commentBody}
                         </Caption1>
-                      ) : null}
-                    </>
-                  }
-                />
-                <CardFooter className={classes.cardActions}>
-                  <Button
-                    icon={<PlayRegular />}
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/player/${project.id}`);
-                    }}
-                  >
-                    再生
-                  </Button>
-                  <Button
-                    icon={<EditRegular />}
-                    size="small"
-                    appearance="subtle"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/designer/${project.id}`);
-                    }}
-                  >
-                    編集
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+                      )}
+                    </div>
+                    <Caption1 style={{ color: 'var(--colorNeutralForeground4)', whiteSpace: 'nowrap' }}>
+                      {new Date(entry.createdAt).toLocaleDateString('ja-JP')}
+                    </Caption1>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 総再生時間が長いデモ */}
+          {rankings.popularByDuration.length > 0 && (
+            <section className={classes.section}>
+              <Divider />
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
+                {MSG.homeRankingByDuration}
+              </Text>
+              <div className={classes.grid}>
+                {rankings.popularByDuration.map((demo) => (
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 人気のデモ作成者 */}
+          {rankings.topCreatorsByLikes.length > 0 && (
+            <section className={classes.section}>
+              <Divider />
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
+                {MSG.homeTopCreatorsByLikes}
+              </Text>
+              <div className={classes.creatorGrid}>
+                {rankings.topCreatorsByLikes.map((entry, i) => (
+                  <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="totalLikes" unit="いいね" />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* デモ数が多い作成者 */}
+          {rankings.topCreatorsByDemos.length > 0 && (
+            <section className={classes.section}>
+              <Divider />
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
+                {MSG.homeTopCreatorsByDemos}
+              </Text>
+              <div className={classes.creatorGrid}>
+                {rankings.topCreatorsByDemos.map((entry, i) => (
+                  <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="demoCount" unit="デモ" />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        /* ランキングが取得できなかった場合 */
+        <section className={classes.section}>
+          <Text>{MSG.homeEmptyDescription}</Text>
+        </section>
+      )}
     </>
   );
 }

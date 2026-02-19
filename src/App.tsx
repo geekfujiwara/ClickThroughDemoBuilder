@@ -16,6 +16,9 @@ const LoginPage = lazy(() => import('@/components/auth/LoginPage'));
 const ViewerLoginPage = lazy(() => import('@/components/auth/ViewerLoginPage'));
 const ViewerDemosPage = lazy(() => import('@/components/viewer/ViewerDemosPage'));
 const CreatorSelectionPage = lazy(() => import('@/components/auth/CreatorSelectionPage'));
+const FeedPage = lazy(() => import('@/pages/FeedPage'));
+const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
+const ApplyDesignerPage = lazy(() => import('@/pages/ApplyDesignerPage'));
 
 function Loading() {
   return (
@@ -44,20 +47,26 @@ export default function App() {
           <Route path="/creator/select" element={<CreatorSelectionPage />} />
         </Route>
 
-        {/* Viewer 用ページ（viewer / designer ロール必要 + 作成者選択済み） */}
+        {/* viewer / designer 共通ページ */}
         <Route element={<AuthGuard role="viewer" />}>
+          {/* viewer 専用（旧互換） */}
           <Route path="/viewer/demos" element={<ViewerDemosPage />} />
           <Route path="/player/:projectId" element={<PlayerPage />} />
-        </Route>
 
-        {/* Designer 用ページ（designer ロール必要 + 作成者選択済み） */}
-        <Route element={<AuthGuard role="designer" />}>
+          {/* メインアプリ（viewer & designer） */}
           <Route element={<AppLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/groups" element={<GroupMasterPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/feed" element={<FeedPage />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/apply-designer" element={<ApplyDesignerPage />} />
           </Route>
+        </Route>
+
+        {/* Designer 専用ページ（designer ロール必要） */}
+        <Route element={<AuthGuard role="designer" />}>
           <Route path="/designer" element={<DesignerPage />} />
           <Route path="/designer/:projectId" element={<DesignerPage />} />
         </Route>
