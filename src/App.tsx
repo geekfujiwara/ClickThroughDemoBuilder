@@ -8,15 +8,12 @@ import { useAuthStore } from '@/stores/authStore';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const ProjectsPage = lazy(() => import('@/pages/ProjectsPage'));
-const UserMasterPage = lazy(() => import('@/pages/UserMasterPage'));
+const GroupMasterPage = lazy(() => import('@/pages/GroupMasterPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const DesignerPage = lazy(() => import('@/pages/DesignerPage'));
 const PlayerPage = lazy(() => import('@/pages/PlayerPage'));
 const LoginPage = lazy(() => import('@/components/auth/LoginPage'));
 const ViewerLoginPage = lazy(() => import('@/components/auth/ViewerLoginPage'));
-const AdminLoginPage = lazy(() => import('@/components/auth/AdminLoginPage'));
-const RegisterPage = lazy(() => import('@/components/auth/RegisterPage'));
-const VerifyEmailPage = lazy(() => import('@/components/auth/VerifyEmailPage'));
 const ViewerDemosPage = lazy(() => import('@/components/viewer/ViewerDemosPage'));
 const CreatorSelectionPage = lazy(() => import('@/components/auth/CreatorSelectionPage'));
 
@@ -40,10 +37,7 @@ export default function App() {
       <Routes>
         {/* 認証ページ（未認証でもアクセス可） */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify" element={<VerifyEmailPage />} />
         <Route path="/viewer/login" element={<ViewerLoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
 
         {/* 作成者選択ページ（認証済みならアクセス可） */}
         <Route element={<CreatorSelectionGuard />}>
@@ -61,7 +55,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/projects" element={<ProjectsPage />} />
-            <Route path="/users" element={<UserMasterPage />} />
+            <Route path="/groups" element={<GroupMasterPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
           <Route path="/designer" element={<DesignerPage />} />

@@ -79,18 +79,6 @@ export interface AuthResult {
   creatorId?: string;
 }
 
-/** メール認証待ちの登録情報 */
-export interface PendingRegistration {
-  token: string;
-  email: string;
-  name: string;
-  passwordHash: string;
-  language: 'ja' | 'en';
-  groupId?: string;
-  createdAt: string;
-  expiresAt: string;  // 24時間有効
-}
-
 export interface DemoGroup {
   id: string;
   name: string;
@@ -105,19 +93,18 @@ export interface DemoCreatorRecord {
   groupId?: string;
   language: 'ja' | 'en';
   email?: string;         // @microsoft.com のみ許可
-  passwordHash?: string;  // SHA-256 hex
+  passwordHash?: string;  // 後方互換用（新規作成には使わない）
   createdAt: string;
   updatedAt: string;
 }
 
-/** API レスポンス用（passwordHash を除外、hasPassword を追加） */
+/** API レスポンス用 */
 export interface DemoCreator {
   id: string;
   name: string;
   groupId?: string;
   language: 'ja' | 'en';
   email?: string;
-  hasPassword: boolean;
   createdAt: string;
   updatedAt: string;
 }

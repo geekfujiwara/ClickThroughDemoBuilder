@@ -1,7 +1,8 @@
 /**
  * ProfilePage — ログイン中のユーザーが自分のプロフィールを編集するページ
- * - 表示名・メールアドレス（@microsoft.com のみ）・表示言語を変更可
- * - パスワードを変更可（現在のパスワード確認 + 新パスワード x2）
+ * - 表示名・表示言語を変更可
+ * - メールアドレス: ローカルユーザーのみ変更可（Entra ユーザーは読み取り専用）
+ * - パスワード変更: 不可（Entra 認証 / ロールベース認証ともに非対応）
  */
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -41,7 +42,7 @@ const useStyles = makeStyles({
 export default function ProfilePage() {
   const styles = useStyles();
   const MSG = useMsg();
-  const { selectedCreator, selectCreator } = useAuthStore();
+  const { selectedCreator, selectCreator, isEntraUser } = useAuthStore();
 
   // Profile fields
   const [name, setName] = useState('');
@@ -49,13 +50,6 @@ export default function ProfilePage() {
   const [language, setLanguage] = useState<'ja' | 'en'>('ja');
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [infoError, setInfoError] = useState(false);
-
-  // Password fields
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [confirmPw, setConfirmPw] = useState('');
-  const [pwMsg, setPwMsg] = useState<string | null>(null);
-  const [pwError, setPwError] = useState(false);
 
   const [saving, setSaving] = useState(false);
 
@@ -71,7 +65,8 @@ export default function ProfilePage() {
     if (!selectedCreator) return;
     setInfoMsg(null);
     setInfoError(false);
-    if (email && !email.toLowerCase().endsWith('@microsoft.com')) {
+    // ローカルユーザーのみメールバリデーション
+    if (!isEntraUser && email && !email.toLowerCase().endsWith('@microsoft.com')) {
       setInfoMsg(MSG.profileEmailInvalid);
       setInfoError(true);
       return;
@@ -80,7 +75,8 @@ export default function ProfilePage() {
     try {
       const updated = await creatorService.updateCreator(selectedCreator.id, {
         name: name.trim(),
-        email: email.trim() || undefined,
+        // Entra ユーザーはメール変更不可（現在値をそのまま送らない）
+        ...(!isEntraUser && { email: email.trim() || undefined }),
         language,
       });
       // 選択中のクリエイター情報を更新（言語切り替えも含む）
@@ -93,38 +89,7 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  }, [selectedCreator, name, email, language, MSG, selectCreator]);
-
-  const handleChangePassword = useCallback(async () => {
-    if (!selectedCreator) return;
-    setPwMsg(null);
-    setPwError(false);
-    if (newPw !== confirmPw) {
-      setPwMsg(MSG.profilePasswordMismatch);
-      setPwError(true);
-      return;
-    }
-    if (!newPw) return;
-    setSaving(true);
-    try {
-      await creatorService.updateCreator(selectedCreator.id, {
-        name: selectedCreator.name,
-        language: selectedCreator.language,
-        currentPassword: currentPw || undefined,
-        password: newPw,
-      });
-      setCurrentPw('');
-      setNewPw('');
-      setConfirmPw('');
-      setPwMsg(MSG.profileSaved);
-      setPwError(false);
-    } catch (e) {
-      setPwMsg((e as Error).message);
-      setPwError(true);
-    } finally {
-      setSaving(false);
-    }
-  }, [selectedCreator, currentPw, newPw, confirmPw, MSG]);
+  }, [selectedCreator, name, email, language, isEntraUser, MSG, selectCreator]);
 
   if (!selectedCreator) return <Spinner label="Loading..." />;
 
@@ -143,7 +108,26 @@ export default function ProfilePage() {
         </div>
         <div className={styles.field}>
           <Label>{MSG.profileEmail}</Label>
-          <Input type="email" value={email} placeholder="user@microsoft.com" onChange={(_, d) => setEmail(d.value)} />
+          {isEntraUser ? (
+            <>
+              <Input
+                type="email"
+                value={email}
+                readOnly
+                appearance="filled-darker"
+              />
+              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                Microsoft Entra ID で管理されているため変更できません。
+              </Text>
+            </>
+          ) : (
+            <Input
+              type="email"
+              value={email}
+              placeholder="user@microsoft.com"
+              onChange={(_, d) => setEmail(d.value)}
+            />
+          )}
         </div>
         <div className={styles.field}>
           <Label>{MSG.profileLanguage}</Label>
@@ -164,34 +148,6 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* ── パスワード変更 ── */}
-      <section className={styles.section}>
-        <Text as="h2" size={500} weight="semibold" className={styles.sectionTitle}>
-          {MSG.profilePasswordSection}
-        </Text>
-        <div className={styles.field}>
-          <Label>{MSG.profileCurrentPassword}</Label>
-          <Input type="password" value={currentPw} onChange={(_, d) => setCurrentPw(d.value)} placeholder="Leave blank if no password set" />
-        </div>
-        <div className={styles.field}>
-          <Label>{MSG.profileNewPassword}</Label>
-          <Input type="password" value={newPw} onChange={(_, d) => setNewPw(d.value)} />
-        </div>
-        <div className={styles.field}>
-          <Label>{MSG.profileConfirmPassword}</Label>
-          <Input type="password" value={confirmPw} onChange={(_, d) => setConfirmPw(d.value)} />
-        </div>
-        {pwMsg && (
-          <MessageBar intent={pwError ? 'error' : 'success'}>
-            <MessageBarBody>{pwMsg}</MessageBarBody>
-          </MessageBar>
-        )}
-        <div>
-          <Button appearance="primary" disabled={saving || !newPw} onClick={() => void handleChangePassword()}>
-            {saving ? <Spinner size="tiny" /> : MSG.profileSavePassword}
-          </Button>
-        </div>
-      </section>
     </div>
   );
 }

@@ -11,12 +11,11 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if ('status' in auth) return auth;
 
   try {
-    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; password?: string };
+    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en' };
     const name = body.name ?? '';
     const groupId = typeof body.groupId === 'string' && body.groupId.trim() ? body.groupId : undefined;
     const language = body.language === 'en' ? 'en' : 'ja';
-    const password = typeof body.password === 'string' && body.password ? body.password : undefined;
-    const creator = await creatorService.createCreator({ name, groupId, language, password });
+    const creator = await creatorService.createCreator({ name, groupId, language });
     return { status: 201, jsonBody: creator };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

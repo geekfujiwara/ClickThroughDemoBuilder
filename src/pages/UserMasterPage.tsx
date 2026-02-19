@@ -7,12 +7,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
   Input,
   Label,
   Select,
@@ -60,17 +54,6 @@ const useStyles = makeStyles({
     padding: '2px 6px',
   },
   disabledRow: { opacity: 0.5, pointerEvents: 'none' },
-  newPasswordBox: {
-    fontFamily: 'monospace',
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightSemibold,
-    letterSpacing: '0.1em',
-    color: tokens.colorBrandForeground1,
-    background: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
-    padding: '8px 16px',
-    textAlign: 'center',
-  },
 });
 
 interface CreatorEdit {
@@ -78,7 +61,6 @@ interface CreatorEdit {
   groupId: string;
   language: 'ja' | 'en';
   email: string;
-  password: string;
 }
 
 export default function UserMasterPage() {
@@ -98,11 +80,7 @@ export default function UserMasterPage() {
   const [newCreatorName, setNewCreatorName] = useState('');
   const [newCreatorGroupId, setNewCreatorGroupId] = useState('');
   const [newCreatorLang, setNewCreatorLang] = useState<'ja' | 'en'>('ja');
-  const [newCreatorPassword, setNewCreatorPassword] = useState('');
   const [creatorEdits, setCreatorEdits] = useState<Record<string, CreatorEdit>>({});
-
-  // Reset password dialog
-  const [resetResult, setResetResult] = useState<{ name: string; newPassword: string } | null>(null);
 
   const isDesigner = role === 'designer';
 
@@ -120,7 +98,7 @@ export default function UserMasterPage() {
       setGroupEdits(ge);
       const ce: Record<string, CreatorEdit> = {};
       for (const c of allCreators) {
-        ce[c.id] = { name: c.name, groupId: c.groupId ?? '', language: c.language, email: c.email ?? '', password: '' };
+        ce[c.id] = { name: c.name, groupId: c.groupId ?? '', language: c.language, email: c.email ?? '' };
       }
       setCreatorEdits(ce);
     } finally {
@@ -171,15 +149,13 @@ export default function UserMasterPage() {
         name,
         groupId: newCreatorGroupId || undefined,
         language: newCreatorLang,
-        password: newCreatorPassword.trim() || undefined,
       });
       setNewCreatorName('');
       setNewCreatorGroupId('');
       setNewCreatorLang('ja');
-      setNewCreatorPassword('');
       await load();
     } catch (e) { alert((e as Error).message); }
-  }, [newCreatorName, newCreatorGroupId, newCreatorLang, newCreatorPassword, load]);
+  }, [newCreatorName, newCreatorGroupId, newCreatorLang, load]);
 
   const handleSaveCreator = useCallback(async (id: string) => {
     if (!canEdit(id)) return;
@@ -196,22 +172,11 @@ export default function UserMasterPage() {
         groupId: edit.groupId || undefined,
         language: edit.language,
         email: edit.email.trim() || undefined,
-        password: edit.password.trim() || undefined,
       });
-      setCreatorEdits((prev) => ({ ...prev, [id]: { ...edit, password: '' } }));
+      setCreatorEdits((prev) => ({ ...prev, [id]: { ...edit } }));
       await load();
     } catch (e) { alert((e as Error).message); }
   }, [canEdit, creatorEdits, load]);
-
-  const handleResetPassword = useCallback(async (creator: DemoCreator) => {
-    if (!canEdit(creator.id)) return;
-    if (!confirm(`Reset password for "${creator.name}"? A new random password will be generated.`)) return;
-    try {
-      const result = await creatorService.resetCreatorPassword(creator.id);
-      setResetResult({ name: creator.name, newPassword: result.newPassword });
-      await load();
-    } catch (e) { alert((e as Error).message); }
-  }, [canEdit, load]);
 
   const handleDeleteCreator = useCallback(async (creator: DemoCreator) => {
     if (!isDesigner) return;
@@ -284,10 +249,6 @@ export default function UserMasterPage() {
                 <option value="en">{MSG.languageEnglish}</option>
               </Select>
             </div>
-            <div className={styles.field}>
-              <Label>Password (optional)</Label>
-              <Input type="password" value={newCreatorPassword} onChange={(_, d) => setNewCreatorPassword(d.value)} placeholder="Leave blank for none" />
-            </div>
             <Button appearance="primary" disabled={!newCreatorName.trim()} onClick={handleCreateCreator}>{MSG.projectsCreatorCreate}</Button>
           </div>
         )}
@@ -297,7 +258,7 @@ export default function UserMasterPage() {
           {creators.length === 0
             ? <Text size={300} style={{ color: tokens.colorNeutralForeground3 }}>No creators yet.</Text>
             : creators.map((c) => {
-              const edit = creatorEdits[c.id] ?? { name: c.name, groupId: c.groupId ?? '', language: c.language, email: c.email ?? '', password: '' };
+              const edit = creatorEdits[c.id] ?? { name: c.name, groupId: c.groupId ?? '', language: c.language, email: c.email ?? '' };
               const editable = canEdit(c.id);
               const groupName = groups.find((g) => g.id === c.groupId)?.name;
               return (
@@ -334,24 +295,11 @@ export default function UserMasterPage() {
                     placeholder="user@microsoft.com"
                     onChange={(_, d) => editable && setCreatorEdits((prev) => ({ ...prev, [c.id]: { ...edit, email: d.value } }))}
                   />
-                  {/* New password */}
-                  <Input
-                    type="password"
-                    style={{ minWidth: '130px' }}
-                    value={edit.password}
-                    readOnly={!editable}
-                    placeholder={c.hasPassword ? 'Change password' : 'Set password'}
-                    onChange={(_, d) => editable && setCreatorEdits((prev) => ({ ...prev, [c.id]: { ...edit, password: d.value } }))}
-                  />
                   {/* Badges */}
                   {groupName && !isDesigner && <span className={styles.badge}>{groupName}</span>}
-                  {c.hasPassword && <span className={styles.badge} title="Password set">🔒</span>}
                   {/* Actions */}
                   {editable && (
-                    <>
-                      <Button size="small" onClick={() => handleSaveCreator(c.id)}>{MSG.save}</Button>
-                      <Button size="small" appearance="outline" onClick={() => handleResetPassword(c)}>Reset PW</Button>
-                    </>
+                    <Button size="small" onClick={() => handleSaveCreator(c.id)}>{MSG.save}</Button>
                   )}
                   {isDesigner && (
                     <Button size="small" appearance="subtle" onClick={() => handleDeleteCreator(c)}>{MSG.delete}</Button>
@@ -363,26 +311,6 @@ export default function UserMasterPage() {
         </div>
       </section>
 
-      {/* Reset password result dialog */}
-      <Dialog open={!!resetResult} onOpenChange={() => setResetResult(null)}>
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>Password Reset</DialogTitle>
-            <DialogContent>
-              <Text block style={{ marginBottom: 12 }}>
-                New password for <strong>{resetResult?.name}</strong>:
-              </Text>
-              <div className={styles.newPasswordBox}>{resetResult?.newPassword}</div>
-              <Text block size={200} style={{ marginTop: 8, color: tokens.colorNeutralForeground3 }}>
-                Please share this password securely. It will not be shown again.
-              </Text>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="primary" onClick={() => setResetResult(null)}>Close</Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
     </div>
   );
 }

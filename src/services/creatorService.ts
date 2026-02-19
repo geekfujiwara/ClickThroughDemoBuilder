@@ -9,9 +9,6 @@ export interface CreatorMutationInput {
   groupId?: string;
   language?: 'ja' | 'en';
   email?: string;
-  password?: string;
-  currentPassword?: string;
-  clearPassword?: boolean;
 }
 
 export async function getAllCreators(): Promise<DemoCreator[]> {
@@ -28,19 +25,6 @@ export async function createCreator(input: CreatorMutationInput): Promise<DemoCr
 
 export async function updateCreator(id: string, input: CreatorMutationInput): Promise<DemoCreator> {
   return apiPut<DemoCreator>(`/creators/${id}`, input);
-}
-
-export async function verifyCreatorPassword(id: string, password: string): Promise<boolean> {
-  try {
-    await apiPost<{ ok: boolean }>(`/creators/${id}/verify`, { password });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function resetCreatorPassword(id: string): Promise<{ newPassword: string; creator: DemoCreator }> {
-  return apiPost<{ newPassword: string; creator: DemoCreator }>(`/creators/${id}/reset-password`, {});
 }
 
 export async function deleteCreator(id: string): Promise<void> {

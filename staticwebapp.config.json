@@ -4,8 +4,8 @@
     "exclude": ["/api/*", "/assets/*"]
   },
   "routes": [
-    { "route": "/creators", "redirect": "/users", "statusCode": 301 },
-    { "route": "/groups", "redirect": "/users", "statusCode": 301 },
+    { "route": "/creators", "redirect": "/projects", "statusCode": 301 },
+    { "route": "/users",    "redirect": "/groups",   "statusCode": 301 },
     { "route": "/api/*", "allowedRoles": ["anonymous"] },
     { "route": "/*", "allowedRoles": ["anonymous"] }
   ],

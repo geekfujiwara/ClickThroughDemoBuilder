@@ -55,7 +55,7 @@ export default function Navigation() {
   const clearSelectedCreator = useAuthStore((s) => s.clearSelectedCreator);
 
   const isProjectsPage = location.pathname === '/projects';
-  const isUsersPage = location.pathname === '/users';
+  const isGroupsPage = location.pathname === '/groups';
   const isProfilePage = location.pathname === '/profile';
 
   const handleLogout = async () => {
@@ -81,9 +81,9 @@ export default function Navigation() {
           {MSG.navProjects}
         </Button>
       </Link>
-      <Link to="/users" className={classes.link}>
-        <Button appearance={isUsersPage ? 'primary' : 'subtle'} size="small">
-          {MSG.navUsers}
+      <Link to="/groups" className={classes.link}>
+        <Button appearance={isGroupsPage ? 'primary' : 'subtle'} size="small">
+          {MSG.navGroups}
         </Button>
       </Link>
       <Link to="/profile" className={classes.link}>

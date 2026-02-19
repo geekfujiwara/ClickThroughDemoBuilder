@@ -14,15 +14,12 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
-    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; email?: string; password?: string; currentPassword?: string; clearPassword?: boolean };
+    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; email?: string };
     const name = body.name ?? '';
     const groupId = typeof body.groupId === 'string' && body.groupId.trim() ? body.groupId : undefined;
     const language = body.language === 'en' ? 'en' : 'ja';
     const email = typeof body.email === 'string' ? body.email : undefined;
-    const password = typeof body.password === 'string' && body.password ? body.password : undefined;
-    const currentPassword = typeof body.currentPassword === 'string' && body.currentPassword ? body.currentPassword : undefined;
-    const clearPassword = body.clearPassword === true;
-    const creator = await creatorService.updateCreator(id, { name, groupId, language, email, password, currentPassword, clearPassword });
+    const creator = await creatorService.updateCreator(id, { name, groupId, language, email });
     return { status: 200, jsonBody: creator };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

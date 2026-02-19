@@ -75,16 +75,10 @@ export default function CreatorSelectionPage() {
   const [groups, setGroups] = useState<DemoGroup[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
 
-  // パスワード確認ステップ
-  const [passwordStep, setPasswordStep] = useState(false);
-  const [password, setPassword] = useState('');
-  const [verifying, setVerifying] = useState(false);
-
   // 新規作成フォーム
   const [newName, setNewName] = useState('');
   const [newGroupId, setNewGroupId] = useState('');
   const [newLanguage, setNewLanguage] = useState<'ja' | 'en'>('ja');
-  const [newPassword, setNewPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
   const selectedCreator = useMemo(
@@ -122,36 +116,11 @@ export default function CreatorSelectionPage() {
     navigate(role === 'designer' ? '/' : '/viewer/demos', { replace: true });
   }, [navigate, role, selectCreator]);
 
-  // 「Continue」ボタン: hasPassword があればパスワードステップへ
+  // 「Continue」ボタン: そのまま次へ進む
   const handleContinue = useCallback(() => {
     if (!selectedCreator) return;
-    if (selectedCreator.hasPassword) {
-      setPasswordStep(true);
-      setPassword('');
-      setError('');
-    } else {
-      goNext(selectedCreator);
-    }
+    goNext(selectedCreator);
   }, [selectedCreator, goNext]);
-
-  // パスワード照合
-  const handleVerifyPassword = useCallback(async () => {
-    if (!selectedCreator) return;
-    setVerifying(true);
-    setError('');
-    try {
-      const ok = await creatorService.verifyCreatorPassword(selectedCreator.id, password);
-      if (ok) {
-        goNext(selectedCreator);
-      } else {
-        setError('Incorrect password.');
-      }
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setVerifying(false);
-    }
-  }, [selectedCreator, password, goNext]);
 
   const handleCreate = useCallback(async () => {
     const name = newName.trim();
@@ -163,12 +132,10 @@ export default function CreatorSelectionPage() {
         name,
         groupId: newGroupId || undefined,
         language: newLanguage,
-        password: newPassword.trim() || undefined,
       });
       setNewName('');
       setNewGroupId('');
       setNewLanguage('ja');
-      setNewPassword('');
       await loadData();
       goNext(creator);
     } catch (e) {
@@ -176,7 +143,7 @@ export default function CreatorSelectionPage() {
     } finally {
       setCreating(false);
     }
-  }, [newGroupId, newLanguage, newName, newPassword, loadData, goNext]);
+  }, [newGroupId, newLanguage, newName, loadData, goNext]);
 
   return (
     <div className={styles.container}>
@@ -186,40 +153,8 @@ export default function CreatorSelectionPage() {
           Click Through Demo Builder
         </div>
 
-        {/* パスワード入力ステップ */}
-        {passwordStep && selectedCreator ? (
-          <Card>
-            <CardHeader
-              header={<Title2>Enter Password</Title2>}
-              description={<Body1>A password is required for <strong>{selectedCreator.name}</strong>.</Body1>}
-            />
-            <div className={styles.section}>
-              <div className={styles.formRow}>
-                <Label htmlFor="creator-password">Password</Label>
-                <Input
-                  id="creator-password"
-                  type="password"
-                  value={password}
-                  onChange={(_, d) => setPassword(d.value)}
-                  placeholder="Enter password"
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') void handleVerifyPassword(); }}
-                />
-              </div>
-              <div className={styles.actions}>
-                <Button appearance="subtle" onClick={() => { setPasswordStep(false); setError(''); }}>
-                  Back
-                </Button>
-                <Button appearance="primary" disabled={verifying || !password} onClick={() => void handleVerifyPassword()}>
-                  {verifying ? 'Verifying...' : 'Continue'}
-                </Button>
-              </div>
-            </div>
-          </Card>
-        ) : (
-          <>
-            {/* 既存ユーザー選択 */}
-            <Card>
+        {/* 既存ユーザー選択 */}
+        <Card>
               <CardHeader
                 header={<Title2>Select User (Creator)</Title2>}
                 description={<Body1>Select an existing creator and continue.</Body1>}
@@ -240,7 +175,7 @@ export default function CreatorSelectionPage() {
                       >
                         {creators.map((creator) => (
                           <option key={creator.id} value={creator.id}>
-                            {creator.name}{creator.hasPassword ? ' 🔒' : ''}
+                            {creator.name}
                           </option>
                         ))}
                       </Select>
@@ -295,16 +230,6 @@ export default function CreatorSelectionPage() {
                     <option value="en">English</option>
                   </Select>
                 </div>
-                <div className={styles.formRow}>
-                  <Label htmlFor="new-creator-password">Password (optional)</Label>
-                  <Input
-                    id="new-creator-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(_, d) => setNewPassword(d.value)}
-                    placeholder="Leave blank for no password"
-                  />
-                </div>
                 <div className={styles.actions}>
                   <Button appearance="primary" disabled={creating || !newName.trim()} onClick={() => void handleCreate()}>
                     {creating ? 'Creating...' : 'Create and Continue'}
@@ -312,8 +237,6 @@ export default function CreatorSelectionPage() {
                 </div>
               </div>
             </Card>
-          </>
-        )}
 
         {error && (
           <MessageBar intent="error">

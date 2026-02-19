@@ -182,7 +182,6 @@ export interface DemoCreator {
   groupId?: string;
   language: 'ja' | 'en';
   email?: string;
-  hasPassword: boolean;
   createdAt: string;
   updatedAt: string;
 }
