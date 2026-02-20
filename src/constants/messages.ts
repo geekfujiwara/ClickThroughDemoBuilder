@@ -233,11 +233,11 @@ const JA = {
   viewerLoadingDemos: 'デモを読み込んでいます...',
 
   // デモ詳細
-  demoDetailBack: '← 戻る',
+  demoDetailBack: '戻る',
   demoDetailPlay: '再生する',
   demoDetailEdit: '編集',
-  demoDetailTabComments: '💬 コメント',
-  demoDetailTabStats: '📊 統計',
+  demoDetailTabComments: 'コメント',
+  demoDetailTabStats: '統計',
   demoDetailNoDescription: '説明文なし',
   demoDetailInfoSteps: (n: number) => `${n} ステップ`,
   demoDetailInfoDuration: (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`,
@@ -440,11 +440,11 @@ const EN: Partial<MessageCatalog> = {
   viewerLoadingDemos: 'Loading demos...',
 
   // Demo Detail
-  demoDetailBack: '← Back',
+  demoDetailBack: 'Back',
   demoDetailPlay: 'Play',
   demoDetailEdit: 'Edit',
-  demoDetailTabComments: '💬 Comments',
-  demoDetailTabStats: '📊 Analytics',
+  demoDetailTabComments: 'Comments',
+  demoDetailTabStats: 'Analytics',
   demoDetailNoDescription: 'No description',
   demoDetailInfoSteps: (n: number) => `${n} steps`,
   demoDetailInfoDuration: (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`,
