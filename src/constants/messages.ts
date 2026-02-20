@@ -189,6 +189,8 @@ const JA = {
 
   // ホームランキング
   homeRankingByLikes: '人気のデモ 🏆',
+  homeMyDemos: 'あなたが作成したデモ 🎞️',
+  homeMyDemosEmpty: 'まだデモを作成していません。',
   homeRecentDemos: '最近追加されたデモ 🆕',
   homeRankingByPlay: '再生数が多いデモ ▶️',
   homeRankingByDuration: '総再生時間が長いデモ ⏱️',
@@ -250,8 +252,8 @@ const EN: Partial<MessageCatalog> = {
 
   homeHeroTitle: 'Create interactive demos\nfrom videos in minutes.',
   homeNewProject: 'New Project',
-  homeViewProjects: 'View Projects',
-  homeRecentProjects: 'Recent Projects',
+  homeViewProjects: 'View Demos',
+  homeRecentProjects: 'Recent Demos',
   homeEmptyTitle: 'No demos yet.',
   homeEmptyDescription: 'Start from "New Project".',
 

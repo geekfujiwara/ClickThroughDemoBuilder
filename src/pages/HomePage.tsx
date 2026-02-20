@@ -25,6 +25,8 @@ import {
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { getHomeRankings, type HomeRankings, type DemoSummary, type CreatorRankingEntry } from '@/services/socialService';
+import { getAllProjects } from '@/services/projectService';
+import type { DemoProject } from '@/types';
 import { MSG } from '@/constants/messages';
 
 const useStyles = makeStyles({
@@ -211,11 +213,12 @@ function CreatorCard({ entry, rank, valueKey, unit }: {
 export default function HomePage() {
   const classes = useStyles();
   const navigate = useNavigate();
-  const { role } = useAuthStore();
+  const { role, selectedCreator } = useAuthStore();
   const isDesigner = role === 'designer';
 
   const [rankings, setRankings] = useState<HomeRankings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [myDemos, setMyDemos] = useState<DemoProject[]>([]);
 
   useEffect(() => {
     getHomeRankings()
@@ -223,6 +226,20 @@ export default function HomePage() {
       .catch(() => setRankings(null))
       .finally(() => setIsLoading(false));
   }, []);
+
+  // 自分が作成したデモを取得
+  useEffect(() => {
+    if (!selectedCreator) return;
+    getAllProjects()
+      .then((projects) => {
+        setMyDemos(
+          projects
+            .filter((p) => p.creatorId === selectedCreator.id)
+            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+        );
+      })
+      .catch(() => setMyDemos([]));
+  }, [selectedCreator]);
 
   const handlePlay = useCallback((id: string) => navigate(`/player/${id}`), [navigate]);
   const handleEdit = useCallback((id: string) => navigate(`/designer/${id}`), [navigate]);
@@ -258,7 +275,39 @@ export default function HomePage() {
         </div>
       ) : rankings ? (
         <>
-          {/* 人気のデモ (いいね数順) */}
+          {/* あなたが作成したデモ */}
+          {selectedCreator && (
+            <section className={classes.section}>
+              <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
+                {MSG.homeMyDemos}
+              </Text>
+              {myDemos.length === 0 ? (
+                <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>{MSG.homeMyDemosEmpty}</Caption1>
+              ) : (
+                <div className={classes.grid}>
+                  {myDemos.map((demo) => (
+                    <DemoCard
+                      key={demo.id}
+                      demo={{
+                        id: demo.id,
+                        title: demo.title,
+                        demoNumber: demo.demoNumber,
+                        thumbnailDataUrl: demo.video?.thumbnailDataUrl,
+                        likeCount: demo.likeCount,
+                        playCount: demo.playCount,
+                        commentCount: demo.commentCount,
+                      }}
+                      onPlay={handlePlay}
+                      onEdit={handleEdit}
+                      isDesigner={isDesigner}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* 人気のデモ (いいね数順) */}}
           {rankings.popularByLikes.length > 0 && (
             <section className={classes.section}>
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
