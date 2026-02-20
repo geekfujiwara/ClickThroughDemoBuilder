@@ -14,9 +14,10 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
-    const body = (await req.json()) as { name?: string };
+    const body = (await req.json()) as { name?: string; color?: string };
     const name = body.name ?? '';
-    const group = await groupService.updateGroup(id, name);
+    const color = typeof body.color === 'string' ? body.color : undefined;
+    const group = await groupService.updateGroup(id, name, color);
     return { status: 200, jsonBody: group };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

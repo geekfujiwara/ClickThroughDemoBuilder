@@ -92,6 +92,11 @@ export default function Navigation() {
           {MSG.navProjects}
         </Button>
       </Link>
+      <Link to="/groups" className={classes.link}>
+        <Button appearance={isActive('/groups') ? 'primary' : 'subtle'} size="small">
+          {MSG.navGroups}
+        </Button>
+      </Link>
       <Link to="/feed" className={classes.link}>
         <Button appearance={isActive('/feed') ? 'primary' : 'subtle'} size="small">
           {MSG.navFeed}

@@ -13,7 +13,6 @@ import {
   Input,
   Select,
   Badge,
-  Label,
   Tooltip,
 } from '@fluentui/react-components';
 import {
@@ -45,6 +44,17 @@ import type { DemoCreator, DemoGroup, DemoProject } from '@/types';
 
 type SortKey = 'updatedAt' | 'createdAt' | 'title';
 
+/** hex カラーが明るい色かどうかを判定 */
+function isLightColor(hex: string): boolean {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  // 相対輝度 (ITU-R BT.709)
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 128;
+}
+
 const useStyles = makeStyles({
   header: {
     display: 'flex',
@@ -69,6 +79,21 @@ const useStyles = makeStyles({
   },
   groupTag: {
     marginTop: tokens.spacingVerticalXXS,
+  },
+  badgeRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    marginTop: tokens.spacingVerticalXXS,
+  },
+  colorBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: tokens.borderRadiusSmall,
+    padding: '2px 8px',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: '18px',
   },
   grid: {
     display: 'grid',
@@ -117,7 +142,7 @@ const useStyles = makeStyles({
 export default function ProjectsPage() {
   const classes = useStyles();
   const navigate = useNavigate();
-  const { projects, isLoading, loadProjects, deleteProject, duplicateProject, updateProject } =
+  const { projects, isLoading, loadProjects, deleteProject, duplicateProject } =
     useProjectStore();
   const { role } = useAuthStore();
   const isDesigner = role === 'designer';
@@ -259,16 +284,9 @@ export default function ProjectsPage() {
     void loadCreators();
   }, [loadCreators]);
 
-  const handleAssignGroup = useCallback(async (projectId: string, value: string) => {
-    await updateProject(projectId, { groupId: value || undefined });
-  }, [updateProject]);
-
-  const handleAssignCreator = useCallback(async (projectId: string, value: string) => {
-    await updateProject(projectId, { creatorId: value || undefined });
-  }, [updateProject]);
-
-  const groupMap = new Map(groups.map((g) => [g.id, g.name]));
-  const creatorMap = new Map(creators.map((c) => [c.id, c.name]));
+  // id → オブジェクトマップ
+  const groupObjects = new Map(groups.map((g) => [g.id, g]));
+  const creatorObjects = new Map(creators.map((c) => [c.id, c]));
 
   return (
     <>
@@ -376,13 +394,27 @@ export default function ProjectsPage() {
                         {truncate(project.description)}
                       </Caption1>
                     ) : null}
-                    <div className={classes.groupTag}>
-                      <Caption1>
-                        {MSG.projectsGroupFilter}: {project.groupId ? (groupMap.get(project.groupId) ?? MSG.projectsNoGroup) : MSG.projectsNoGroup}
-                      </Caption1>
-                      <Caption1>
-                        {MSG.projectsCreatorFilter}: {project.creatorId ? (creatorMap.get(project.creatorId) ?? MSG.projectsNoCreator) : MSG.projectsNoCreator}
-                      </Caption1>
+                    <div className={classes.badgeRow}>
+                      {project.creatorId && creatorObjects.has(project.creatorId) && (() => {
+                        const c = creatorObjects.get(project.creatorId!)!;
+                        const bg = c.color ?? '#dde3ed';
+                        const textColor = isLightColor(bg) ? '#111' : '#fff';
+                        return (
+                          <span className={classes.colorBadge} style={{ backgroundColor: bg, color: textColor }}>
+                            {c.name}
+                          </span>
+                        );
+                      })()}
+                      {project.groupId && groupObjects.has(project.groupId) && (() => {
+                        const g = groupObjects.get(project.groupId!)!;
+                        const bg = g.color ?? '#e6f4ea';
+                        const textColor = isLightColor(bg) ? '#111' : '#fff';
+                        return (
+                          <span className={classes.colorBadge} style={{ backgroundColor: bg, color: textColor }}>
+                            {g.name}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </>
                 }
@@ -444,34 +476,6 @@ export default function ProjectsPage() {
                     />
                   </Tooltip>
                 </div>
-                {isDesigner && (
-                  <>
-                    <div>
-                      <Label>{MSG.projectsGroupFilter}</Label>
-                      <Select
-                        value={project.groupId ?? ''}
-                        onChange={(_, data) => void handleAssignGroup(project.id, data.value)}
-                      >
-                        <option value="">{MSG.projectsNoGroup}</option>
-                        {groups.map((group) => (
-                          <option key={group.id} value={group.id}>{group.name}</option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>{MSG.projectsCreatorFilter}</Label>
-                      <Select
-                        value={project.creatorId ?? ''}
-                        onChange={(_, data) => void handleAssignCreator(project.id, data.value)}
-                      >
-                        <option value="">{MSG.projectsNoCreator}</option>
-                        {creators.map((creator) => (
-                          <option key={creator.id} value={creator.id}>{creator.name}</option>
-                        ))}
-                      </Select>
-                    </div>
-                  </>
-                )}
               </CardFooter>
             </Card>
           ))}

@@ -123,7 +123,7 @@ export default function UserMasterPage() {
     const name = (groupEdits[id] ?? '').trim();
     if (!name) return;
     try {
-      await groupService.updateGroup(id, name);
+      await groupService.updateGroup(id, { name });
       await load();
     } catch (e) { alert((e as Error).message); }
   }, [groupEdits, load]);

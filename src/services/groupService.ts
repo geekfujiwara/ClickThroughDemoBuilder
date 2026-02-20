@@ -8,12 +8,12 @@ export async function getAllGroups(): Promise<DemoGroup[]> {
   return apiGet<DemoGroup[]>('/groups');
 }
 
-export async function createGroup(name: string): Promise<DemoGroup> {
-  return apiPost<DemoGroup>('/groups', { name });
+export async function createGroup(name: string, color?: string): Promise<DemoGroup> {
+  return apiPost<DemoGroup>('/groups', { name, ...(color ? { color } : {}) });
 }
 
-export async function updateGroup(id: string, name: string): Promise<DemoGroup> {
-  return apiPut<DemoGroup>(`/groups/${id}`, { name });
+export async function updateGroup(id: string, input: { name: string; color?: string }): Promise<DemoGroup> {
+  return apiPut<DemoGroup>(`/groups/${id}`, input);
 }
 
 export async function deleteGroup(id: string): Promise<void> {

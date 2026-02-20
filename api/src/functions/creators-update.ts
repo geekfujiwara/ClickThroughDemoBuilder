@@ -14,12 +14,13 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
-    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; email?: string };
+    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; email?: string; color?: string };
     const name = body.name ?? '';
     const groupId = typeof body.groupId === 'string' && body.groupId.trim() ? body.groupId : undefined;
     const language = body.language === 'en' ? 'en' : 'ja';
     const email = typeof body.email === 'string' ? body.email : undefined;
-    const creator = await creatorService.updateCreator(id, { name, groupId, language, email });
+    const color = typeof body.color === 'string' ? body.color : undefined;
+    const creator = await creatorService.updateCreator(id, { name, groupId, language, email, color });
     return { status: 200, jsonBody: creator };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

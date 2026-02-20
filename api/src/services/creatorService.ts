@@ -29,6 +29,7 @@ function toResponse(r: DemoCreatorRecord): DemoCreator {
     id: r.id,
     name: r.name,
     groupId: r.groupId,
+    color: r.color,
     language: r.language,
     // role 未設定の既存ユーザーは 'designer' にフォールバック（後方互換）
     role: r.role ?? 'designer',
@@ -114,9 +115,9 @@ export async function createCreator(input: {
 
 export async function updateCreator(
   creatorId: string,
-  input: { name: string; groupId?: string; language: 'ja' | 'en'; email?: string },
+  input: { name: string; groupId?: string; language: 'ja' | 'en'; email?: string; color?: string },
 ): Promise<DemoCreator> {
-  const { name, groupId, language, email } = input;
+  const { name, groupId, language, email, color } = input;
   const trimmed = name.trim();
   if (!trimmed) throw new Error('作成者名は必須です');
   if (email) validateEmail(email);
@@ -134,6 +135,7 @@ export async function updateCreator(
     ...existing,
     name: trimmed,
     groupId,
+    color: color !== undefined ? (color || undefined) : existing.color,
     language,
     email: email !== undefined ? (email.toLowerCase().trim() || undefined) : existing.email,
     updatedAt: new Date().toISOString(),

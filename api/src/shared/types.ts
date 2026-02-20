@@ -87,6 +87,7 @@ export interface AuthResult {
 export interface DemoGroup {
   id: string;
   name: string;
+  color?: string; // バッジ背景色 (例: "#0078D4")
   createdAt: string;
   updatedAt: string;
 }
@@ -96,6 +97,7 @@ export interface DemoCreatorRecord {
   id: string;
   name: string;
   groupId?: string;
+  color?: string; // バッジ背景色 (例: "#0078D4")
   language: 'ja' | 'en';
   role?: UserRole;        // 未設定の場合は既存ユーザーのため 'designer' にフォールバック
   email?: string;         // @microsoft.com のみ許可
@@ -112,6 +114,7 @@ export interface DemoCreator {
   id: string;
   name: string;
   groupId?: string;
+  color?: string; // バッジ背景色 (例: "#0078D4")
   language: 'ja' | 'en';
   role: UserRole;
   email?: string;

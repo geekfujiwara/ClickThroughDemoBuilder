@@ -9,6 +9,7 @@ export interface CreatorMutationInput {
   groupId?: string;
   language?: 'ja' | 'en';
   email?: string;
+  color?: string;
 }
 
 export async function getAllCreators(): Promise<DemoCreator[]> {

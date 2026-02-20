@@ -40,7 +40,7 @@ export async function getAllGroups(): Promise<DemoGroup[]> {
   return [...data.groups].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 }
 
-export async function createGroup(name: string): Promise<DemoGroup> {
+export async function createGroup(name: string, color?: string): Promise<DemoGroup> {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('グループ名は必須です');
@@ -56,6 +56,7 @@ export async function createGroup(name: string): Promise<DemoGroup> {
   const group: DemoGroup = {
     id: crypto.randomUUID(),
     name: trimmed,
+    ...(color ? { color } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -65,7 +66,7 @@ export async function createGroup(name: string): Promise<DemoGroup> {
   return group;
 }
 
-export async function updateGroup(groupId: string, name: string): Promise<DemoGroup> {
+export async function updateGroup(groupId: string, name: string, color?: string): Promise<DemoGroup> {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('グループ名は必須です');
@@ -87,6 +88,7 @@ export async function updateGroup(groupId: string, name: string): Promise<DemoGr
   const updated: DemoGroup = {
     ...data.groups[index]!,
     name: trimmed,
+    color: color ?? data.groups[index]!.color,
     updatedAt: new Date().toISOString(),
   };
   data.groups[index] = updated;

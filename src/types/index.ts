@@ -177,6 +177,7 @@ export type PlayerState = 'INIT' | 'PLAYING' | 'WAITING' | 'COMPLETE';
 export interface DemoGroup {
   id: string;
   name: string;
+  color?: string; // バッジ背景色 (例: "#0078D4")
   createdAt: string;
   updatedAt: string;
 }
@@ -185,6 +186,7 @@ export interface DemoCreator {
   id: string;
   name: string;
   groupId?: string;
+  color?: string; // バッジ背景色 (例: "#0078D4")
   language: 'ja' | 'en';
   role: 'viewer' | 'designer';
   email?: string;
