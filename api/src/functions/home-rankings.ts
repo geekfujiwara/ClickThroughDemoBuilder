@@ -37,6 +37,7 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   // プロジェクトにカウントを付加
   const enriched = projects.map(p => ({
     ...p,
+    thumbnailDataUrl: p.video?.thumbnailDataUrl ?? '',
     likeCount: likeMap.get(p.id) ?? 0,
     commentCount: commentMap.get(p.id) ?? 0,
     playCount: p.playCount ?? 0,
