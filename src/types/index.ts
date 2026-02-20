@@ -177,7 +177,9 @@ export type PlayerState = 'INIT' | 'PLAYING' | 'WAITING' | 'COMPLETE';
 export interface DemoGroup {
   id: string;
   name: string;
-  color?: string; // バッジ背景色 (例: "#0078D4")
+  color?: string;        // カード背景色 (例: "#0078D4")
+  textColor?: string;    // テキストカラー (例: "#FFFFFF")
+  imageDataUrl?: string; // 組織ロゴ画像 (base64 DataURL)
   createdAt: string;
   updatedAt: string;
 }

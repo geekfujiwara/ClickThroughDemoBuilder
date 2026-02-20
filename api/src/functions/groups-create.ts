@@ -11,10 +11,12 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if ('status' in auth) return auth;
 
   try {
-    const body = (await req.json()) as { name?: string; color?: string };
+    const body = (await req.json()) as { name?: string; color?: string; textColor?: string; imageDataUrl?: string };
     const name = body.name ?? '';
     const color = typeof body.color === 'string' ? body.color : undefined;
-    const group = await groupService.createGroup(name, color);
+    const textColor = typeof body.textColor === 'string' ? body.textColor : undefined;
+    const imageDataUrl = typeof body.imageDataUrl === 'string' ? body.imageDataUrl : undefined;
+    const group = await groupService.createGroup(name, { color, textColor, imageDataUrl });
     return { status: 201, jsonBody: group };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

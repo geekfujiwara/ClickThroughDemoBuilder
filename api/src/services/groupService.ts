@@ -40,7 +40,13 @@ export async function getAllGroups(): Promise<DemoGroup[]> {
   return [...data.groups].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 }
 
-export async function createGroup(name: string, color?: string): Promise<DemoGroup> {
+interface GroupOptions {
+  color?: string;
+  textColor?: string;
+  imageDataUrl?: string | null;
+}
+
+export async function createGroup(name: string, opts?: GroupOptions): Promise<DemoGroup> {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('グループ名は必須です');
@@ -56,7 +62,9 @@ export async function createGroup(name: string, color?: string): Promise<DemoGro
   const group: DemoGroup = {
     id: crypto.randomUUID(),
     name: trimmed,
-    ...(color ? { color } : {}),
+    ...(opts?.color ? { color: opts.color } : {}),
+    ...(opts?.textColor ? { textColor: opts.textColor } : {}),
+    ...(opts?.imageDataUrl ? { imageDataUrl: opts.imageDataUrl } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -66,7 +74,11 @@ export async function createGroup(name: string, color?: string): Promise<DemoGro
   return group;
 }
 
-export async function updateGroup(groupId: string, name: string, color?: string): Promise<DemoGroup> {
+export async function updateGroup(
+  groupId: string,
+  name: string,
+  opts?: GroupOptions,
+): Promise<DemoGroup> {
   const trimmed = name.trim();
   if (!trimmed) {
     throw new Error('グループ名は必須です');
@@ -85,10 +97,15 @@ export async function updateGroup(groupId: string, name: string, color?: string)
     throw new Error('同名のグループがすでに存在します');
   }
 
+  const prev = data.groups[index]!;
   const updated: DemoGroup = {
-    ...data.groups[index]!,
+    ...prev,
     name: trimmed,
-    color: color ?? data.groups[index]!.color,
+    color: opts?.color !== undefined ? opts.color : prev.color,
+    textColor: opts?.textColor !== undefined ? opts.textColor : prev.textColor,
+    imageDataUrl: opts?.imageDataUrl !== undefined
+      ? (opts.imageDataUrl ?? undefined)
+      : prev.imageDataUrl,
     updatedAt: new Date().toISOString(),
   };
   data.groups[index] = updated;

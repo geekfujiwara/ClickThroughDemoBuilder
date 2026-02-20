@@ -8,11 +8,18 @@ export async function getAllGroups(): Promise<DemoGroup[]> {
   return apiGet<DemoGroup[]>('/groups');
 }
 
-export async function createGroup(name: string, color?: string): Promise<DemoGroup> {
-  return apiPost<DemoGroup>('/groups', { name, ...(color ? { color } : {}) });
+export interface GroupInput {
+  name: string;
+  color?: string;
+  textColor?: string;
+  imageDataUrl?: string | null;
 }
 
-export async function updateGroup(id: string, input: { name: string; color?: string }): Promise<DemoGroup> {
+export async function createGroup(name: string, opts?: Omit<GroupInput, 'name'>): Promise<DemoGroup> {
+  return apiPost<DemoGroup>('/groups', { name, ...opts });
+}
+
+export async function updateGroup(id: string, input: GroupInput): Promise<DemoGroup> {
   return apiPut<DemoGroup>(`/groups/${id}`, input);
 }
 

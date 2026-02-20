@@ -14,10 +14,14 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
-    const body = (await req.json()) as { name?: string; color?: string };
+    const body = (await req.json()) as { name?: string; color?: string; textColor?: string; imageDataUrl?: string | null };
     const name = body.name ?? '';
     const color = typeof body.color === 'string' ? body.color : undefined;
-    const group = await groupService.updateGroup(id, name, color);
+    const textColor = typeof body.textColor === 'string' ? body.textColor : undefined;
+    const imageDataUrl = body.imageDataUrl !== undefined
+      ? (typeof body.imageDataUrl === 'string' ? body.imageDataUrl : null)
+      : undefined;
+    const group = await groupService.updateGroup(id, name, { color, textColor, imageDataUrl });
     return { status: 200, jsonBody: group };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };
