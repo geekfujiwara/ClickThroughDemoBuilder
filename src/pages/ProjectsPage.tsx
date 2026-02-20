@@ -170,30 +170,54 @@ export default function ProjectsPage() {
 
   const handleLikeToggle = useCallback(async (id: string) => {
     const isLiked = likedDemos.has(id);
+    // 楽観的更新: API 呼び出し前に UI を即反映
+    if (isLiked) {
+      setLikedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      setLikeCounts((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 1) - 1) }));
+    } else {
+      setLikedDemos((prev) => new Set(prev).add(id));
+      setLikeCounts((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+    }
     try {
       if (isLiked) {
         await removeLike(id);
-        setLikedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
-        setLikeCounts((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 1) - 1) }));
       } else {
         await addLike(id);
+      }
+    } catch {
+      // エラー時はロールバック
+      if (isLiked) {
         setLikedDemos((prev) => new Set(prev).add(id));
         setLikeCounts((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+      } else {
+        setLikedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
+        setLikeCounts((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 1) - 1) }));
       }
-    } catch { /* ignore */ }
+    }
   }, [likedDemos]);
 
   const handleFavoriteToggle = useCallback(async (id: string) => {
     const isFav = favoritedDemos.has(id);
+    // 楽観的更新: API 呼び出し前に UI を即反映
+    if (isFav) {
+      setFavoritedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    } else {
+      setFavoritedDemos((prev) => new Set(prev).add(id));
+    }
     try {
       if (isFav) {
         await removeFavorite(id);
-        setFavoritedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
       } else {
         await addFavorite(id);
-        setFavoritedDemos((prev) => new Set(prev).add(id));
       }
-    } catch { /* ignore */ }
+    } catch {
+      // エラー時はロールバック
+      if (isFav) {
+        setFavoritedDemos((prev) => new Set(prev).add(id));
+      } else {
+        setFavoritedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      }
+    }
   }, [favoritedDemos]);
 
   // フィルタ + ソート
