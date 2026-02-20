@@ -155,6 +155,7 @@ export const DEFAULT_DEMO_SETTINGS: DemoSettings = {
 export function createDefaultProject(partial: {
   video: VideoInfo;
   title?: string;
+  creatorId?: string;
   demoNumber?: number;
 }): Omit<DemoProject, 'id' | 'createdAt' | 'updatedAt'> {
   return {
@@ -165,6 +166,7 @@ export function createDefaultProject(partial: {
     clickPoints: [],
     settings: { ...DEFAULT_DEMO_SETTINGS },
     version: 1,
+    ...(partial.creatorId ? { creatorId: partial.creatorId } : {}),
   };
 }
 

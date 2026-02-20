@@ -34,10 +34,13 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     commentMap.set(c.demoId, (commentMap.get(c.demoId) ?? 0) + 1);
   }
 
-  // プロジェクトにカウントを付加
+  // プロジェクトにカウントを付加（groupIdは常に作成者の組織から派生しハードコピーしない）
+  const creatorGroupMap = new Map(creators.map((c) => [c.id, c.groupId]));
+
   const enriched = projects.map(p => ({
     ...p,
     thumbnailDataUrl: p.video?.thumbnailDataUrl ?? '',
+    groupId: creatorGroupMap.get(p.creatorId ?? '') ?? p.groupId,
     likeCount: likeMap.get(p.id) ?? 0,
     commentCount: commentMap.get(p.id) ?? 0,
     playCount: p.playCount ?? 0,

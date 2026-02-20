@@ -6,16 +6,21 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { requireRole } from '../middleware/auth.js';
 import * as projectService from '../services/projectService.js';
 import * as socialService from '../services/socialService.js';
+import * as creatorService from '../services/creatorService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'viewer', 'designer');
   if ('status' in auth) return auth;
 
   try {
-    const [all, likeMap] = await Promise.all([
+    const [all, likeMap, creators] = await Promise.all([
       projectService.getAllProjects(),
       socialService.getLikeCountsByCreator(),
+      creatorService.getAllCreators(),
     ]);
+
+    // creatorId -> groupId マップ（常に作成者の組織を参照）
+    const creatorGroupMap = new Map(creators.map((c) => [c.id, c.groupId]));
 
     // Viewer 用: 動画が設定されているプロジェクトのみ
     const demos = await Promise.all(
@@ -26,7 +31,7 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
           demoNumber: p.demoNumber,
           title: p.title,
           description: p.description,
-          groupId: p.groupId,
+          groupId: creatorGroupMap.get(p.creatorId ?? '') ?? p.groupId,
           creatorId: p.creatorId,
           thumbnailDataUrl: p.video.thumbnailDataUrl,
           clickPointCount: p.clickPoints.length,

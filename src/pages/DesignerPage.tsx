@@ -38,7 +38,6 @@ import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
 import { exportDemoToFolder } from '@/services/exportService';
-import * as groupService from '@/services/groupService';
 import * as creatorService from '@/services/creatorService';
 import { validateVideoFile } from '@/utils/validation';
 import { saveVideo, extractVideoMetadata, generateThumbnail, getVideoUrl } from '@/services/videoService';
@@ -51,7 +50,7 @@ import PropertyPanel from '@/components/designer/PropertyPanel';
 import ClickPointList from '@/components/designer/ClickPointList';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import ThumbnailPickerDialog from '@/components/designer/ThumbnailPickerDialog';
-import type { DemoCreator, DemoGroup, VideoInfo } from '@/types';
+import type { DemoCreator, VideoInfo } from '@/types';
 
 const useStyles = makeStyles({
   root: {
@@ -169,7 +168,6 @@ export default function DesignerPage() {
   const [showVideoReplaceConfirm, setShowVideoReplaceConfirm] = useState(false);
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
-  const [groups, setGroups] = useState<DemoGroup[]>([]);
   const [creators, setCreators] = useState<DemoCreator[]>([]);
 
   // requestAnimationFrame で高精度にcurrentTimeを追跡 (~60Hz)
@@ -218,19 +216,6 @@ export default function DesignerPage() {
     setIsPlaying(false);
     setCurrentTime(0);
   }, [projectId, getProject, setProject, resetDesigner]);
-
-  const loadGroups = useCallback(async () => {
-    try {
-      const all = await groupService.getAllGroups();
-      setGroups(all);
-    } catch {
-      setGroups([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
 
   const loadCreators = useCallback(async () => {
     try {
@@ -425,9 +410,10 @@ export default function DesignerPage() {
         <Input
           className={classes.topBarTitleInput}
           appearance="underline"
-          placeholder="デモタイトルを入力..."
+          placeholder={currentProject?.video ? "デモタイトルを入力..." : "デモ動画をアップロードしてください"}
           value={currentProject?.title || ''}
           onChange={(_, data) => updateProjectMeta({ title: data.value })}
+          disabled={!currentProject?.video}
         />
         {isDirty && (
           <Badge appearance="filled" color="warning" size="small">
@@ -458,18 +444,6 @@ export default function DesignerPage() {
                   value={currentProject?.description || ''}
                   onChange={(_, data) => updateProjectMeta({ description: data.value })}
                 />
-              </div>
-              <div className={classes.settingsField}>
-                <Label>{MSG.projectsGroupFilter}</Label>
-                <Select
-                  value={currentProject?.groupId ?? ''}
-                  onChange={(_, data) => updateProjectMeta({ groupId: data.value || undefined })}
-                >
-                  <option value="">{MSG.projectsNoGroup}</option>
-                  {groups.map((group) => (
-                    <option key={group.id} value={group.id}>{group.name}</option>
-                  ))}
-                </Select>
               </div>
               <div className={classes.settingsField}>
                 <Label>{MSG.projectsCreatorFilter}</Label>

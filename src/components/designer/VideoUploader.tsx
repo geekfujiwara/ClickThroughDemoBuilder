@@ -4,6 +4,7 @@ import { ArrowUploadRegular } from '@fluentui/react-icons';
 import { MSG } from '@/constants/messages';
 import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { useAuthStore } from '@/stores/authStore';
 import { validateVideoFile } from '@/utils/validation';
 import { saveVideo, extractVideoMetadata, generateThumbnail } from '@/services/videoService';
 import { createDefaultProject, type VideoInfo } from '@/types';
@@ -48,6 +49,7 @@ export default function VideoUploader() {
 
   const { setProject } = useDesignerStore();
   const { createProject } = useProjectStore();
+  const { selectedCreator } = useAuthStore();
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -76,7 +78,14 @@ export default function VideoUploader() {
           thumbnailDataUrl,
         };
 
-        const projectData = createDefaultProject({ video: videoInfo });
+        // ファイル名からタイトルを生成（拡張子なし）
+        const titleFromFile = file.name.replace(/\.[^.]+$/, '');
+
+        const projectData = createDefaultProject({
+          video: videoInfo,
+          title: titleFromFile,
+          creatorId: selectedCreator?.id,
+        });
         const project = await createProject(projectData);
 
         // プロジェクト作成後に動画をアップロード
@@ -92,7 +101,7 @@ export default function VideoUploader() {
         setIsProcessing(false);
       }
     },
-    [setProject, createProject],
+    [setProject, createProject, selectedCreator],
   );
 
   const handleDrop = useCallback(
