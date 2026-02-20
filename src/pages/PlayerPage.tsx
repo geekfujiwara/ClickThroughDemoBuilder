@@ -6,6 +6,7 @@ import {
   Text,
   Button,
   Spinner,
+  Tooltip,
   Dialog,
   DialogBody,
   DialogSurface,
@@ -17,12 +18,20 @@ import {
   DismissRegular,
   FullScreenMaximizeRegular,
   PlayRegular,
+  HeartRegular,
+  HeartFilled,
+  BookmarkRegular,
+  BookmarkFilled,
 } from '@fluentui/react-icons';
 import type { DemoProject, ClickPoint, PlayerState } from '@/types';
 import { PULSE_DURATION_MAP, DEFAULT_DESCRIPTION_STYLE } from '@/types';
 import { getProject } from '@/services/projectService';
 import { getVideoUrl } from '@/services/videoService';
 import { logDemoUsage } from '@/services/usageService';
+import {
+  addLike, removeLike, getLikeStatus,
+  getFavorites, addFavorite, removeFavorite,
+} from '@/services/socialService';
 import { MSG } from '@/constants/messages';
 import { formatTime } from '@/utils/time';
 
@@ -273,6 +282,51 @@ export default function PlayerPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
 
+  // ソーシャル状態
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  // いいね・お気に入りのロード
+  useEffect(() => {
+    if (!projectId) return;
+    getLikeStatus(projectId)
+      .then((res) => {
+        setIsLiked(res.liked);
+        setLikeCount(res.count);
+      })
+      .catch(() => undefined);
+    getFavorites()
+      .then((favs) => {
+        setIsFavorited(favs.some((f) => f.demoId === projectId));
+      })
+      .catch(() => undefined);
+  }, [projectId]);
+
+  const handleLikeToggle = useCallback(async () => {
+    if (!projectId) return;
+    if (isLiked) {
+      setIsLiked(false);
+      setLikeCount((n) => Math.max(0, n - 1));
+      try { await removeLike(projectId); } catch { setIsLiked(true); setLikeCount((n) => n + 1); }
+    } else {
+      setIsLiked(true);
+      setLikeCount((n) => n + 1);
+      try { await addLike(projectId); } catch { setIsLiked(false); setLikeCount((n) => Math.max(0, n - 1)); }
+    }
+  }, [projectId, isLiked]);
+
+  const handleFavoriteToggle = useCallback(async () => {
+    if (!projectId) return;
+    if (isFavorited) {
+      setIsFavorited(false);
+      try { await removeFavorite(projectId); } catch { setIsFavorited(true); }
+    } else {
+      setIsFavorited(true);
+      try { await addFavorite(projectId); } catch { setIsFavorited(false); }
+    }
+  }, [projectId, isFavorited]);
+
   // ソート済みクリックポイント
   const sortedClickPoints = useMemo(
     () => (project?.clickPoints ?? []).slice().sort((a, b) => a.order - b.order),
@@ -508,6 +562,24 @@ export default function PlayerPage() {
           </Text>
         </div>
         <div className={classes.topBarActions}>
+          <Tooltip content={isLiked ? MSG.unlike : MSG.like} relationship="label">
+            <Button
+              icon={isLiked ? <HeartFilled style={{ color: '#ff6b81' }} /> : <HeartRegular />}
+              appearance="subtle"
+              className={classes.topBarActionBtn}
+              onClick={() => void handleLikeToggle()}
+            >
+              {likeCount > 0 ? likeCount : undefined}
+            </Button>
+          </Tooltip>
+          <Tooltip content={isFavorited ? MSG.unfavorite : MSG.favorite} relationship="label">
+            <Button
+              icon={isFavorited ? <BookmarkFilled style={{ color: '#f0c040' }} /> : <BookmarkRegular />}
+              appearance="subtle"
+              className={classes.topBarActionBtn}
+              onClick={() => void handleFavoriteToggle()}
+            />
+          </Tooltip>
           <Button
             icon={<FullScreenMaximizeRegular />}
             appearance="subtle"
