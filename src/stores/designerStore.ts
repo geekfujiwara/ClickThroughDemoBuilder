@@ -50,6 +50,9 @@ interface DesignerStoreActions {
 
   // 動画差し替え
   replaceVideo: (project: DemoProject) => void;
+
+  // サムネイル更新
+  setThumbnail: (thumbnailDataUrl: string) => void;
 }
 
 // ---- Store ----
@@ -257,6 +260,18 @@ export const useDesignerStore = create<DesignerStoreState & DesignerStoreActions
       redoStack: [],
       selectedElementId: null,
       selectedElementType: null,
+    });
+  },
+
+  setThumbnail: (thumbnailDataUrl) => {
+    const state = get();
+    if (!state.currentProject?.video) return;
+    set({
+      currentProject: {
+        ...state.currentProject,
+        video: { ...state.currentProject.video, thumbnailDataUrl },
+      },
+      isDirty: true,
     });
   },
 }));

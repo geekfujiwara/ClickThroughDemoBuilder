@@ -30,6 +30,7 @@ import {
   VideoRegular,
   ArrowExportRegular,
   DeleteRegular,
+  ImageRegular,
 } from '@fluentui/react-icons';
 import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
@@ -47,6 +48,7 @@ import Timeline from '@/components/designer/Timeline';
 import PropertyPanel from '@/components/designer/PropertyPanel';
 import ClickPointList from '@/components/designer/ClickPointList';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import ThumbnailPickerDialog from '@/components/designer/ThumbnailPickerDialog';
 import type { DemoCreator, DemoGroup, VideoInfo } from '@/types';
 
 const useStyles = makeStyles({
@@ -158,6 +160,7 @@ export default function DesignerPage() {
   const rafRef = useRef<number>(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showThumbnailPicker, setShowThumbnailPicker] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isVideoUrlLoading, setIsVideoUrlLoading] = useState(false);
   const [showVideoReplaceConfirm, setShowVideoReplaceConfirm] = useState(false);
@@ -192,6 +195,7 @@ export default function DesignerPage() {
     redo,
     markSaved,
     replaceVideo,
+    setThumbnail,
     resetDesigner,
   } = useDesignerStore();
 
@@ -553,6 +557,14 @@ export default function DesignerPage() {
                 />
               </Tooltip>
               <ToolbarDivider />
+              <Tooltip content="サムネイルを設定" relationship="label">
+                <ToolbarButton
+                  icon={<ImageRegular />}
+                  disabled={!currentProject?.video}
+                  onClick={() => setShowThumbnailPicker(true)}
+                />
+              </Tooltip>
+              <ToolbarDivider />
               <Tooltip content="Undo" relationship="label">
                 <ToolbarButton
                   icon={<ArrowUndoRegular />}
@@ -653,6 +665,21 @@ export default function DesignerPage() {
         onConfirm={handleDeleteProject}
         onCancel={() => setShowDeleteProjectConfirm(false)}
       />
+
+      {/* サムネイルピッカー */}
+      {currentProject?.video && (
+        <ThumbnailPickerDialog
+          open={showThumbnailPicker}
+          videoRef={videoRef}
+          duration={currentProject.video.duration}
+          currentThumbnailDataUrl={currentProject.video.thumbnailDataUrl}
+          onClose={() => setShowThumbnailPicker(false)}
+          onConfirm={(dataUrl) => {
+            setThumbnail(dataUrl);
+            setShowThumbnailPicker(false);
+          }}
+        />
+      )}
     </div>
   );
 }
