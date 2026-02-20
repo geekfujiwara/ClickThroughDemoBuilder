@@ -128,7 +128,7 @@ function FeedEntryCard({ entry }: { entry: FeedEntry }) {
           {entry.demoTitle && entry.demoId && (
             <>
               {' '}「
-              <Link to={`/player/${entry.demoId}`} className={styles.demoLink}>
+              <Link to={`/demos/${entry.demoId}`} className={styles.demoLink}>
                 {entry.demoTitle}
               </Link>
               」
