@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
@@ -161,6 +161,10 @@ export default function ProjectsPage() {
   const [favoritedDemos, setFavoritedDemos] = useState<Set<string>>(new Set());
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
+  // ユーザーが明示的に操作したIDを記録し、非同期レスポンスによる上書きを防ぐ
+  const userToggledLikes = useRef<Set<string>>(new Set());
+  const userToggledFavs = useRef<Set<string>>(new Set());
+
   /** 説明文を最大長で切り詰める */
   const truncate = (text: string, max = 80) =>
     text.length > max ? text.slice(0, max) + '…' : text;
@@ -173,7 +177,14 @@ export default function ProjectsPage() {
   useEffect(() => {
     getFavorites()
       .then((favs) => {
-        setFavoritedDemos(new Set(favs.map((f) => f.demoId)));
+        setFavoritedDemos((prev) => {
+          const next = new Set(favs.map((f) => f.demoId));
+          // ユーザーが既にトグルしたIDは prev の状態を維持し上書きしない
+          for (const id of userToggledFavs.current) {
+            if (prev.has(id)) next.add(id); else next.delete(id);
+          }
+          return next;
+        });
       })
       .catch(() => {/* not authenticated - ignore */});
   }, []);
@@ -183,6 +194,8 @@ export default function ProjectsPage() {
     projects.forEach((p) => {
       getLikeStatus(p.id)
         .then((res) => {
+          // ユーザーが既にトグルしたIDはサーバーの古い応答で上書きしない
+          if (userToggledLikes.current.has(p.id)) return;
           setLikedDemos((prev) => {
             const next = new Set(prev);
             if (res.liked) next.add(p.id); else next.delete(p.id);
@@ -196,6 +209,8 @@ export default function ProjectsPage() {
 
   const handleLikeToggle = useCallback(async (id: string) => {
     const isLiked = likedDemos.has(id);
+    // ユーザー操作として記録（非同期レスポンスによる上書きを防止）
+    userToggledLikes.current.add(id);
     // 楽観的更新: API 呼び出し前に UI を即反映
     if (isLiked) {
       setLikedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
@@ -224,6 +239,8 @@ export default function ProjectsPage() {
 
   const handleFavoriteToggle = useCallback(async (id: string) => {
     const isFav = favoritedDemos.has(id);
+    // ユーザー操作として記録（非同期レスポンスによる上書きを防止）
+    userToggledFavs.current.add(id);
     // 楽観的更新: API 呼び出し前に UI を即反映
     if (isFav) {
       setFavoritedDemos((prev) => { const s = new Set(prev); s.delete(id); return s; });
