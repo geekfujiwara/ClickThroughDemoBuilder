@@ -13,4 +13,17 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-fluent': ['@fluentui/react-components', '@fluentui/react-icons'],
+          'vendor-zustand': ['zustand'],
+          'vendor-msal': ['@azure/msal-browser'],
+          'vendor-motion': ['framer-motion'],
+        },
+      },
+    },
+  },
 });

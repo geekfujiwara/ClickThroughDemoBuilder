@@ -1,7 +1,6 @@
 /**
  * 認証ミドルウェア — JWT Cookie の検証・ロールチェック
  */
-import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import type { HttpRequest } from '@azure/functions';
 import type { JwtPayload, UserRole } from '../shared/types.js';

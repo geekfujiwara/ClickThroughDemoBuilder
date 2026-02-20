@@ -25,6 +25,10 @@ function verifyApprovalToken(creatorId: string, token: string): boolean {
   }
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 async function handler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const creatorId = req.params['creatorId'];
   const token = req.query.get('token') ?? '';
@@ -57,7 +61,7 @@ async function handler(req: HttpRequest, context: InvocationContext): Promise<Ht
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
       body: `<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px">
         <h2 style="color:#0078d4">デザイナー権限を承認しました</h2>
-        <p>${creator.name} さんにデザイナー権限が付与されました。</p>
+        <p>${escapeHtml(creator.name)} さんにデザイナー権限が付与されました。</p>
       </body></html>`,
     };
   } catch (e) {

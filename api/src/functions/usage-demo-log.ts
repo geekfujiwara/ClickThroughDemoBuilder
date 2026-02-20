@@ -24,8 +24,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 
     await usageLogService.logDemoUsage(req, projectId, event);
     return { status: 201, jsonBody: { ok: true } };
-  } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+  } catch {
+    return { status: 500, jsonBody: { error: '利用ログの記録に失敗しました' } };
   }
 }
 

@@ -33,6 +33,13 @@ interface IpSiteRule {
   site: string;
 }
 
+/** IPアドレスの形式を検証 (IPv4 / IPv6) */
+const IP_V4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+const IP_V6_RE = /^[0-9a-fA-F:]+$/;
+function isValidIp(ip: string): boolean {
+  return IP_V4_RE.test(ip) || IP_V6_RE.test(ip);
+}
+
 function getClientIp(req: HttpRequest): string {
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
@@ -71,6 +78,7 @@ function parseIpSiteRules(): IpSiteRule[] {
 
 async function resolveSiteFromIp(ip: string): Promise<string> {
   if (isPrivateIp(ip)) return 'private-network';
+  if (!isValidIp(ip)) return 'unknown';
 
   const siteRules = parseIpSiteRules();
   const matched = siteRules.find((r) => ip.startsWith(r.prefix));
@@ -158,7 +166,7 @@ export async function logDemoUsage(
     role: auth?.role ?? 'unknown',
     ip,
     site,
-    userAgent: req.headers.get('user-agent') ?? '',
+    userAgent: (req.headers.get('user-agent') ?? '').slice(0, 500),
   };
 
   const day = record.timestamp.slice(0, 10);

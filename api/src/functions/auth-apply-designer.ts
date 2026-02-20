@@ -31,6 +31,7 @@ async function handler(req: HttpRequest, context: InvocationContext): Promise<Ht
     const body = (await req.json()) as { reason?: string };
     const reason = (body.reason ?? '').trim();
     if (!reason) return { status: 400, jsonBody: { error: '申請理由は必須です' } };
+    if (reason.length > 500) return { status: 400, jsonBody: { error: '申請理由は500文字以内です' } };
 
     const creator = await creatorService.applyDesigner(creatorId, reason);
     const token = buildApprovalToken(creatorId);

@@ -6,7 +6,6 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { requireRole } from '../middleware/auth.js';
 import * as socialService from '../services/socialService.js';
-import * as projectService from '../services/projectService.js';
 
 async function listHandler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'viewer', 'designer');

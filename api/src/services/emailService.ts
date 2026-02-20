@@ -5,6 +5,16 @@
  */
 import { ClientSecretCredential } from '@azure/identity';
 
+/** HTML特殊文字をエスケープ */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getAppUrl(): string {
   return process.env.APP_URL ?? 'https://your-app.azurestaticapps.net';
 }
@@ -79,7 +89,7 @@ export async function sendVerificationEmail(
 <html>
 <body style="font-family:sans-serif;max-width:520px;margin:40px auto;color:#1b1b1f">
   <h2 style="color:#0078d4">${appName}</h2>
-  <p>Hi <strong>${name}</strong>,</p>
+  <p>Hi <strong>${escapeHtml(name)}</strong>,</p>
   <p>Please verify your email address to complete your account registration.</p>
   <p style="margin:24px 0">
     <a href="${verifyUrl}"
@@ -139,9 +149,9 @@ export async function sendDesignerApplicationEmail(opts: {
   <h2 style="color:#0078d4">${appName} - デザイナー権限申請</h2>
   <p>以下のユーザーからデザイナー権限の申請がありました。</p>
   <table style="border-collapse:collapse;width:100%;margin:16px 0">
-    <tr><td style="padding:8px;border:1px solid #ddd;font-weight:600">申請者名</td><td style="padding:8px;border:1px solid #ddd">${opts.applicantName}</td></tr>
-    <tr><td style="padding:8px;border:1px solid #ddd;font-weight:600">メールアドレス</td><td style="padding:8px;border:1px solid #ddd">${opts.applicantEmail}</td></tr>
-    <tr><td style="padding:8px;border:1px solid #ddd;font-weight:600">申請理由</td><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${opts.reason}</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ddd;font-weight:600">申請者名</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(opts.applicantName)}</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ddd;font-weight:600">メールアドレス</td><td style="padding:8px;border:1px solid #ddd">${escapeHtml(opts.applicantEmail)}</td></tr>
+    <tr><td style="padding:8px;border:1px solid #ddd;font-weight:600">申請理由</td><td style="padding:8px;border:1px solid #ddd;white-space:pre-wrap">${escapeHtml(opts.reason)}</td></tr>
   </table>
   <p style="margin:24px 0">
     <a href="${opts.approvalUrl}"
@@ -175,7 +185,7 @@ export async function sendDesignerApprovalEmail(to: string, name: string): Promi
 <html>
 <body style="font-family:sans-serif;max-width:520px;margin:40px auto;color:#1b1b1f">
   <h2 style="color:#0078d4">${appName}</h2>
-  <p>こんにちは <strong>${name}</strong> さん、</p>
+  <p>こんにちは <strong>${escapeHtml(name)}</strong> さん、</p>
   <p>デザイナー権限の申請が承認されました。デモの作成・編集が行えるようになりました。</p>
   <p style="margin:24px 0">
     <a href="${appUrl}"

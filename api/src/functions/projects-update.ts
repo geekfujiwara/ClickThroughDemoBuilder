@@ -15,13 +15,21 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
+    // 所有者チェック (IDOR 防止)
+    const existing = await projectService.getProject(id);
+    if (!existing) return { status: 404, jsonBody: { error: 'プロジェクトが見つかりません' } };
+    if (existing.creatorId && existing.creatorId !== auth.payload.creatorId) {
+      return { status: 403, jsonBody: { error: '他のデザイナーのプロジェクトは更新できません' } };
+    }
+
     const body = (await req.json()) as DemoProject;
     body.id = id; // URL の id を優先
+    body.creatorId = auth.payload.creatorId; // サーバー側で強制
     body.updatedAt = new Date().toISOString();
     await projectService.updateProject(id, body);
     return { status: 200, jsonBody: body };
-  } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+  } catch {
+    return { status: 500, jsonBody: { error: 'プロジェクトの更新に失敗しました' } };
   }
 }
 

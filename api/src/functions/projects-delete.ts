@@ -14,10 +14,17 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
+    // 所有者チェック (IDOR 防止)
+    const existing = await projectService.getProject(id);
+    if (!existing) return { status: 404, jsonBody: { error: 'プロジェクトが見つかりません' } };
+    if (existing.creatorId && existing.creatorId !== auth.payload.creatorId) {
+      return { status: 403, jsonBody: { error: '他のデザイナーのプロジェクトは削除できません' } };
+    }
+
     await projectService.deleteProject(id);
     return { status: 200, jsonBody: { message: '削除しました' } };
-  } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+  } catch {
+    return { status: 500, jsonBody: { error: 'プロジェクトの削除に失敗しました' } };
   }
 }
 

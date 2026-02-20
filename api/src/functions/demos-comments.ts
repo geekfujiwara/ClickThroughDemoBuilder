@@ -33,6 +33,7 @@ async function addHandler(req: HttpRequest, context: InvocationContext): Promise
     const body = (await req.json()) as { body?: string };
     const text = (body.body ?? '').trim();
     if (!text) return { status: 400, jsonBody: { error: 'コメント本文は必須です' } };
+    if (text.length > 2000) return { status: 400, jsonBody: { error: 'コメントは2000文字以内です' } };
 
     const creator = await creatorService.getCreatorById(creatorId);
     const creatorName = creator?.name ?? 'Unknown';
