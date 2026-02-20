@@ -25,6 +25,11 @@ export async function removeLike(demoId: string): Promise<void> {
   await apiDelete(`/demos/${demoId}/like`);
 }
 
+/** 現在ユーザーがいいねしたデモID一覧を一括取得 (お気に入りと同様の単一呼び出しパターン) */
+export async function getMyLikes(): Promise<string[]> {
+  return apiGet<string[]>('/my-likes');
+}
+
 // ── お気に入り ────────────────────────────────────────────────
 
 export async function getFavorites(): Promise<DemoFavorite[]> {

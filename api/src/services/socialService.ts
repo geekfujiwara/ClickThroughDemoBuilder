@@ -60,6 +60,11 @@ export async function getLikeCountsByCreator(): Promise<Map<string, number>> {
   return map;
 }
 
+export async function getLikedDemoIdsByCreator(creatorId: string): Promise<string[]> {
+  const all = await loadLikes();
+  return all.filter((l) => l.creatorId === creatorId).map((l) => l.demoId);
+}
+
 // ── Favorites ────────────────────────────────────────────────
 
 async function loadFavorites(): Promise<DemoFavorite[]> {

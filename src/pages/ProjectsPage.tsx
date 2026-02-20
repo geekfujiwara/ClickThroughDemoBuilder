@@ -37,7 +37,8 @@ import { useAuthStore } from '@/stores/authStore';
 import * as groupService from '@/services/groupService';
 import * as creatorService from '@/services/creatorService';
 import {
-  addLike, removeLike, getLikeStatus,
+  addLike, removeLike,
+  getMyLikes,
   getFavorites, addFavorite, removeFavorite,
 } from '@/services/socialService';
 import { MSG } from '@/constants/messages';
@@ -189,23 +190,21 @@ export default function ProjectsPage() {
       .catch(() => {/* not authenticated - ignore */});
   }, []);
 
-  // Load like status for visible projects
+  // 自分のいいね一覧を一括取得（お気に入りと同様の単一呼び出しパターン）
   useEffect(() => {
-    projects.forEach((p) => {
-      getLikeStatus(p.id)
-        .then((res) => {
-          // ユーザーが既にトグルしたIDはサーバーの古い応答で上書きしない
-          if (userToggledLikes.current.has(p.id)) return;
-          setLikedDemos((prev) => {
-            const next = new Set(prev);
-            if (res.liked) next.add(p.id); else next.delete(p.id);
-            return next;
-          });
-          setLikeCounts((prev) => ({ ...prev, [p.id]: res.count }));
-        })
-        .catch(() => {/* ignore */});
-    });
-  }, [projects]);
+    getMyLikes()
+      .then((likedIds) => {
+        setLikedDemos((prev) => {
+          const next = new Set(likedIds);
+          // ユーザーが既にトグルしたIDは prev の状態を維持し上書きしない
+          for (const id of userToggledLikes.current) {
+            if (prev.has(id)) next.add(id); else next.delete(id);
+          }
+          return next;
+        });
+      })
+      .catch(() => {/* not authenticated - ignore */});
+  }, []);
 
   const handleLikeToggle = useCallback(async (id: string) => {
     const isLiked = likedDemos.has(id);
