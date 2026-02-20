@@ -45,7 +45,7 @@ const JA = {
   projectsSortUpdated: '更新日',
   projectsSortCreated: '作成日',
   projectsSortTitle: 'タイトル',
-  projectsEmptyTitle: 'プロジェクトがありません。',
+  projectsEmptyTitle: 'デモがありません。',
   projectsEmptyAction: '新規デモを作成する',
   projectsDeleteConfirm: (title: string) => `「${title}」を削除しますか？この操作は取り消せません。`,
   projectsSteps: (n: number) => `${n} ステップ`,
