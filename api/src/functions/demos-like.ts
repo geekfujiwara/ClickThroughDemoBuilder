@@ -7,6 +7,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { requireRole } from '../middleware/auth.js';
 import * as socialService from '../services/socialService.js';
 import * as projectService from '../services/projectService.js';
+import * as creatorService from '../services/creatorService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'viewer', 'designer');
@@ -27,10 +28,14 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (req.method === 'POST') {
     try {
       const like = await socialService.addLike(demoId, creatorId);
-      // フィードに追加（デモタイトル取得）
-      const project = await projectService.getProject(demoId).catch(() => null);
+      // フィードに追加（デモタイトルと作成者名を取得）
+      const [project, creator] = await Promise.all([
+        projectService.getProject(demoId).catch(() => null),
+        creatorService.getCreatorById(creatorId).catch(() => null),
+      ]);
+      const actorName = creator?.name ?? creatorId;
       if (project) {
-        await socialService.addFeedEntry('like', creatorId, creatorId, {
+        await socialService.addFeedEntry('like', creatorId, actorName, {
           demoId,
           demoTitle: project.title,
         }).catch(() => {/* ignore */});
