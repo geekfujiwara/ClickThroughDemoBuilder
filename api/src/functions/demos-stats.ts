@@ -89,6 +89,37 @@ async function handler(req: HttpRequest, _ctx: InvocationContext): Promise<HttpR
     }
     const roleBreakdown = [...roleMap.entries()].map(([role, count]) => ({ role, count }));
 
+    // user breakdown (viewerCreatorId → name)
+    const userMap = new Map<string, { name: string; count: number }>();
+    for (const log of demoLogs) {
+      if (log.event === 'view_start' && log.viewerCreatorId) {
+        const key = log.viewerCreatorId;
+        const entry = userMap.get(key) ?? { name: log.viewerCreatorName ?? log.viewerCreatorId, count: 0 };
+        entry.count++;
+        userMap.set(key, entry);
+      }
+    }
+    const byUser = [...userMap.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20)
+      .map(({ name, count }) => ({ name, count }));
+
+    // organization breakdown (viewerGroupId → name)
+    const orgMap = new Map<string, { name: string; count: number }>();
+    for (const log of demoLogs) {
+      if (log.event === 'view_start') {
+        const key = log.viewerGroupId ?? '__none__';
+        const name = log.viewerGroupName ?? '未設定';
+        const entry = orgMap.get(key) ?? { name, count: 0 };
+        entry.count++;
+        orgMap.set(key, entry);
+      }
+    }
+    const byOrganization = [...orgMap.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20)
+      .map(({ name, count }) => ({ name, count }));
+
     return {
       status: 200,
       jsonBody: {
@@ -101,6 +132,8 @@ async function handler(req: HttpRequest, _ctx: InvocationContext): Promise<HttpR
         dailyPlays,
         topSites,
         roleBreakdown,
+        byUser,
+        byOrganization,
       },
     };
   } catch (e) {

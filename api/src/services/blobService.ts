@@ -383,6 +383,11 @@ export interface RawUsageLog {
   demoName: string;
   demoGroupId?: string;
   demoGroupName: string;
+  // ビューワー情報（v2 以降で付加）
+  viewerCreatorId?: string;
+  viewerCreatorName?: string;
+  viewerGroupId?: string;
+  viewerGroupName?: string;
   role: string;
   ip: string;
   site: string;

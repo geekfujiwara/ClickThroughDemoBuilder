@@ -29,6 +29,8 @@ export interface DemoStats {
   dailyPlays: DailyPlay[];
   topSites: SitePlay[];
   roleBreakdown: RoleBreakdown[];
+  byUser: { name: string; count: number }[];
+  byOrganization: { name: string; count: number }[];
 }
 
 export async function getDemoStats(demoId: string): Promise<DemoStats> {

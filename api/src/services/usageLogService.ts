@@ -6,6 +6,7 @@ import type { HttpRequest } from '@azure/functions';
 import { authenticate } from '../middleware/auth.js';
 import * as projectService from './projectService.js';
 import * as groupService from './groupService.js';
+import * as creatorService from './creatorService.js';
 import * as blob from './blobService.js';
 
 interface DemoUsageLog {
@@ -16,6 +17,11 @@ interface DemoUsageLog {
   demoName: string;
   demoGroupId?: string;
   demoGroupName: string;
+  // ビューワー情報
+  viewerCreatorId?: string;
+  viewerCreatorName?: string;
+  viewerGroupId?: string;
+  viewerGroupName?: string;
   role: 'viewer' | 'designer' | 'unknown';
   ip: string;
   site: string;
@@ -115,6 +121,28 @@ export async function logDemoUsage(
   const site = await resolveSiteFromIp(ip);
   const auth = authenticate(req);
 
+  // ビューワー情報の取得
+  let viewerCreatorId: string | undefined;
+  let viewerCreatorName: string | undefined;
+  let viewerGroupId: string | undefined;
+  let viewerGroupName: string | undefined;
+  if (auth?.creatorId) {
+    try {
+      const allCreators = await creatorService.getAllCreators();
+      const creator = allCreators.find((c) => c.id === auth.creatorId);
+      if (creator) {
+        viewerCreatorId = creator.id;
+        viewerCreatorName = creator.name;
+        viewerGroupId = creator.groupId;
+        viewerGroupName = creator.groupId
+          ? (groups.find((g) => g.id === creator.groupId)?.name ?? '未設定')
+          : undefined;
+      }
+    } catch {
+      // ビューワー情報が取れなくてもログは記録する
+    }
+  }
+
   const record: DemoUsageLog = {
     id: crypto.randomUUID(),
     timestamp: new Date().toISOString(),
@@ -123,6 +151,10 @@ export async function logDemoUsage(
     demoName: project.title,
     demoGroupId: project.groupId,
     demoGroupName: group?.name ?? '未設定',
+    viewerCreatorId,
+    viewerCreatorName,
+    viewerGroupId,
+    viewerGroupName,
     role: auth?.role ?? 'unknown',
     ip,
     site,
