@@ -14,6 +14,8 @@ import {
   DialogActions,
   Button,
   Caption1,
+  MessageBar,
+  MessageBarBody,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
@@ -84,6 +86,7 @@ export default function ThumbnailPickerDialog({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [seekTime, setSeekTime] = useState(0);
   const isSeeking = useRef(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // ── フレームをキャンバスに描画 ──────────────────
   const drawFrame = () => {
@@ -101,6 +104,7 @@ export default function ThumbnailPickerDialog({
   // ── ダイアログが開いたとき: 現在の動画時刻をラッチ ──
   useEffect(() => {
     if (!open) return;
+    setErrorMsg(null);
     const video = videoRef.current;
     const t = video?.currentTime ?? 0;
     setSeekTime(t);
@@ -138,6 +142,7 @@ export default function ThumbnailPickerDialog({
   const handleConfirm = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    setErrorMsg(null);
     if (!video || !canvas) { onClose(); return; }
     // 最新フレームを再描画
     const W = PREVIEW_W;
@@ -146,9 +151,18 @@ export default function ThumbnailPickerDialog({
     canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) { onClose(); return; }
-    ctx.drawImage(video, 0, 0, W, H);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
-    onConfirm(dataUrl);
+    try {
+      ctx.drawImage(video, 0, 0, W, H);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+      onConfirm(dataUrl);
+      // onConfirm 側で open=false になるが、念のため自前でも閉じる
+      onClose();
+    } catch (e) {
+      const msg = (e instanceof DOMException && e.name === 'SecurityError')
+        ? '動画のCORS設定が原因でキャプチャできませんでした。ストレージのCORSポリシーを確認してください。'
+        : `キャプチャに失敗しました: ${(e as Error).message}`;
+      setErrorMsg(msg);
+    }
   };
 
   return (
@@ -179,6 +193,13 @@ export default function ThumbnailPickerDialog({
                 />
                 <Caption1>{formatTime(duration)}</Caption1>
               </div>
+
+              {/* エラーメッセージ */}
+              {errorMsg && (
+                <MessageBar intent="error">
+                  <MessageBarBody>{errorMsg}</MessageBarBody>
+                </MessageBar>
+              )}
 
               {/* 現在のサムネイル */}
               {currentThumbnailDataUrl && (

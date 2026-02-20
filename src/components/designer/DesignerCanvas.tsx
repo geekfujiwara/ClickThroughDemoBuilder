@@ -319,6 +319,7 @@ export default function DesignerCanvas({
       <video
         ref={videoRef as React.RefObject<HTMLVideoElement>}
         src={videoUrl}
+        crossOrigin="anonymous"
         className={classes.video}
         onTimeUpdate={onTimeUpdate}
         onLoadStart={() => setIsVideoLoading(true)}

@@ -18,6 +18,8 @@ import {
   Label,
   Select,
   Spinner,
+  MessageBar,
+  MessageBarBody,
 } from '@fluentui/react-components';
 import {
   ArrowLeftRegular,
@@ -161,6 +163,7 @@ export default function DesignerPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showThumbnailPicker, setShowThumbnailPicker] = useState(false);
+  const [thumbSaved, setThumbSaved] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isVideoUrlLoading, setIsVideoUrlLoading] = useState(false);
   const [showVideoReplaceConfirm, setShowVideoReplaceConfirm] = useState(false);
@@ -582,6 +585,11 @@ export default function DesignerPage() {
 
             </Toolbar>
           </div>
+          {thumbSaved && (
+            <MessageBar intent="success" style={{ margin: `0 ${tokens.spacingHorizontalS} ${tokens.spacingVerticalXS}` }}>
+              <MessageBarBody>サムネイルを設定しました</MessageBarBody>
+            </MessageBar>
+          )}
           <div className={classes.sidebarContent}>
             <ClickPointList onSeek={handleSeek} />
           </div>
@@ -677,6 +685,8 @@ export default function DesignerPage() {
           onConfirm={(dataUrl) => {
             setThumbnail(dataUrl);
             setShowThumbnailPicker(false);
+            setThumbSaved(true);
+            setTimeout(() => setThumbSaved(false), 3000);
           }}
         />
       )}
