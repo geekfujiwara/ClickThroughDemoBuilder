@@ -26,6 +26,7 @@ import {
   HeartFilled,
   BookmarkRegular,
   BookmarkFilled,
+  InfoRegular,
 } from '@fluentui/react-icons';
 
 import EmptyState from '@/components/common/EmptyState';
@@ -364,7 +365,7 @@ export default function ProjectsPage() {
       ) : (
         <div className={classes.grid}>
           {filtered.map((project) => (
-            <Card key={project.id} className={classes.card}>
+            <Card key={project.id} className={classes.card} onClick={() => navigate(`/demos/${project.id}`)}>
               {project.video?.thumbnailDataUrl ? (
                 <img
                   src={project.video.thumbnailDataUrl}
@@ -421,9 +422,17 @@ export default function ProjectsPage() {
               />
               <CardFooter className={classes.cardActions}>
                 <Button
+                  icon={<InfoRegular />}
+                  size="small"
+                  appearance="subtle"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/demos/${project.id}`); }}
+                >
+                  詳細
+                </Button>
+                <Button
                   icon={<PlayRegular />}
                   size="small"
-                  onClick={() => navigate(`/player/${project.id}`)}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/player/${project.id}`); }}
                 >
                   再生
                 </Button>
@@ -433,7 +442,7 @@ export default function ProjectsPage() {
                       icon={<EditRegular />}
                       size="small"
                       appearance="subtle"
-                      onClick={() => navigate(`/designer/${project.id}`)}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/designer/${project.id}`); }}
                     >
                       編集
                     </Button>
@@ -441,7 +450,7 @@ export default function ProjectsPage() {
                       icon={<CopyRegular />}
                       size="small"
                       appearance="subtle"
-                      onClick={() => duplicateProject(project.id)}
+                      onClick={(e) => { e.stopPropagation(); duplicateProject(project.id); }}
                     >
                       複製
                     </Button>
@@ -449,7 +458,7 @@ export default function ProjectsPage() {
                       icon={<DeleteRegular />}
                       size="small"
                       appearance="subtle"
-                      onClick={() => setDeleteTarget(project)}
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(project); }}
                     >
                       削除
                     </Button>
@@ -462,7 +471,7 @@ export default function ProjectsPage() {
                       icon={likedDemos.has(project.id) ? <HeartFilled style={{ color: 'red' }} /> : <HeartRegular />}
                       size="small"
                       appearance="subtle"
-                      onClick={() => void handleLikeToggle(project.id)}
+                      onClick={(e) => { e.stopPropagation(); void handleLikeToggle(project.id); }}
                     >
                       {likeCounts[project.id] ?? project.likeCount ?? 0}
                     </Button>
@@ -472,7 +481,7 @@ export default function ProjectsPage() {
                       icon={favoritedDemos.has(project.id) ? <BookmarkFilled style={{ color: 'goldenrod' }} /> : <BookmarkRegular />}
                       size="small"
                       appearance="subtle"
-                      onClick={() => void handleFavoriteToggle(project.id)}
+                      onClick={(e) => { e.stopPropagation(); void handleFavoriteToggle(project.id); }}
                     />
                   </Tooltip>
                 </div>

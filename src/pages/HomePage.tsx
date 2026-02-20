@@ -126,15 +126,16 @@ const useStyles = makeStyles({
 });
 
 /** デモカード (ランキング共通) */
-function DemoCard({ demo, onPlay, onEdit, isDesigner }: {
+function DemoCard({ demo, onPlay, onEdit, onDetail, isDesigner }: {
   demo: DemoSummary;
   onPlay: (id: string) => void;
   onEdit: (id: string) => void;
+  onDetail: (id: string) => void;
   isDesigner: boolean;
 }) {
   const classes = useStyles();
   return (
-    <Card className={classes.card}>
+    <Card className={classes.card} onClick={() => onDetail(demo.id)}>
       {demo.thumbnailDataUrl ? (
         <img src={demo.thumbnailDataUrl} alt={demo.title} className={classes.thumbnail} />
       ) : (
@@ -170,11 +171,15 @@ function DemoCard({ demo, onPlay, onEdit, isDesigner }: {
         }
       />
       <CardFooter className={classes.cardActions}>
-        <Button icon={<PlayRegular />} size="small" onClick={() => onPlay(demo.id)}>
+        <Button
+          icon={<PlayRegular />}
+          size="small"
+          onClick={(e) => { e.stopPropagation(); onPlay(demo.id); }}
+        >
           再生
         </Button>
         {isDesigner && (
-          <Button icon={<EditRegular />} size="small" appearance="subtle" onClick={() => onEdit(demo.id)}>
+          <Button icon={<EditRegular />} size="small" appearance="subtle" onClick={(e) => { e.stopPropagation(); onEdit(demo.id); }}>
             編集
           </Button>
         )}
@@ -243,6 +248,7 @@ export default function HomePage() {
 
   const handlePlay = useCallback((id: string) => navigate(`/player/${id}`), [navigate]);
   const handleEdit = useCallback((id: string) => navigate(`/designer/${id}`), [navigate]);
+  const handleDetail = useCallback((id: string) => navigate(`/demos/${id}`), [navigate]);
 
   return (
     <>
@@ -292,13 +298,21 @@ export default function HomePage() {
                         id: demo.id,
                         title: demo.title,
                         demoNumber: demo.demoNumber,
-                        thumbnailDataUrl: demo.video?.thumbnailDataUrl,
-                        likeCount: demo.likeCount,
-                        playCount: demo.playCount,
-                        commentCount: demo.commentCount,
+                        description: demo.description ?? '',
+                        groupId: demo.groupId,
+                        creatorId: demo.creatorId,
+                        thumbnailDataUrl: demo.video?.thumbnailDataUrl ?? '',
+                        clickPointCount: demo.clickPoints?.length ?? 0,
+                        duration: demo.video?.duration ?? 0,
+                        updatedAt: demo.updatedAt,
+                        createdAt: demo.createdAt,
+                        likeCount: demo.likeCount ?? 0,
+                        playCount: demo.playCount ?? 0,
+                        commentCount: demo.commentCount ?? 0,
                       }}
                       onPlay={handlePlay}
                       onEdit={handleEdit}
+                      onDetail={handleDetail}
                       isDesigner={isDesigner}
                     />
                   ))}
@@ -307,7 +321,7 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* 人気のデモ (いいね数順) */}}
+          {/* 人気のデモ (いいね数順) */}
           {rankings.popularByLikes.length > 0 && (
             <section className={classes.section}>
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
@@ -315,7 +329,7 @@ export default function HomePage() {
               </Text>
               <div className={classes.grid}>
                 {rankings.popularByLikes.map((demo) => (
-                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
             </section>
@@ -330,7 +344,7 @@ export default function HomePage() {
               </Text>
               <div className={classes.grid}>
                 {rankings.recentDemos.map((demo) => (
-                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
             </section>
@@ -345,7 +359,7 @@ export default function HomePage() {
               </Text>
               <div className={classes.grid}>
                 {rankings.popularByPlay.map((demo) => (
-                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
             </section>
@@ -392,7 +406,7 @@ export default function HomePage() {
               </Text>
               <div className={classes.grid}>
                 {rankings.popularByDuration.map((demo) => (
-                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} isDesigner={isDesigner} />
+                  <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
             </section>

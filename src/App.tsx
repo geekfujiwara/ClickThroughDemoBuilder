@@ -16,6 +16,7 @@ const ViewerDemosPage = lazy(() => import('@/components/viewer/ViewerDemosPage')
 const FeedPage = lazy(() => import('@/pages/FeedPage'));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const ApplyDesignerPage = lazy(() => import('@/pages/ApplyDesignerPage'));
+const DemoDetailPage = lazy(() => import('@/pages/DemoDetailPage'));
 
 function Loading() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/feed" element={<FeedPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/apply-designer" element={<ApplyDesignerPage />} />
+            <Route path="/demos/:demoId" element={<DemoDetailPage />} />
           </Route>
         </Route>
 

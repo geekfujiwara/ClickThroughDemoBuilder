@@ -372,3 +372,44 @@ export const getCommentsJson  = () => getSocialJson('comments.json');
 export const putCommentsJson  = (j: string) => putSocialJson('comments.json', j);
 export const getFeedJson      = () => getSocialJson('feed.json');
 export const putFeedJson      = (j: string) => putSocialJson('feed.json', j);
+
+// ── Usage Logs ────────────────────────────────────────────────
+
+export interface RawUsageLog {
+  id: string;
+  timestamp: string;
+  event: 'view_start' | 'view_complete';
+  demoId: string;
+  demoName: string;
+  demoGroupId?: string;
+  demoGroupName: string;
+  role: string;
+  ip: string;
+  site: string;
+  userAgent: string;
+}
+
+/**
+ * 指定した日付プレフィックス一覧に対応する使用ログを取得 (最大 2000 件)
+ */
+export async function getUsageLogsForDays(datePrefixes: string[]): Promise<RawUsageLog[]> {
+  const c = await ensureContainer('usage-logs');
+  const results: RawUsageLog[] = [];
+  const MAX = 2000;
+
+  for (const prefix of datePrefixes) {
+    if (results.length >= MAX) break;
+    for await (const item of c.listBlobsFlat({ prefix: `${prefix}/` })) {
+      if (results.length >= MAX) break;
+      try {
+        const blob = c.getBlockBlobClient(item.name);
+        const buf = await blob.downloadToBuffer();
+        const log = JSON.parse(buf.toString('utf-8')) as RawUsageLog;
+        results.push(log);
+      } catch {
+        // 壊れたログは無視
+      }
+    }
+  }
+  return results;
+}
