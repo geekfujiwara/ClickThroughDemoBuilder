@@ -1,12 +1,11 @@
 /**
  * ProfilePage — ログイン中のユーザーが自分のプロフィールを編集するページ
- * - 表示名・表示言語・記資カラーを変更可
+ * - 表示名・表示言語を変更可
  * - メールアドレス: ローカルユーザーのみ変更可（Entra ユーザーは読み取り専用）
  */
 import { useCallback, useEffect, useState } from 'react';
 import {
   Button,
-  Caption1,
   Input,
   Label,
   MessageBar,
@@ -22,19 +21,6 @@ import * as creatorService from '@/services/creatorService';
 import * as groupService from '@/services/groupService';
 import type { DemoGroup } from '@/types';
 import { useMsg } from '@/hooks/useMsg';
-
-const DEFAULT_COLORS = [
-  '#4CAF50', '#2196F3', '#9C27B0', '#FF9800', '#F44336',
-  '#00BCD4', '#FF5722', '#607D8B', '#795548', '#3F51B5',
-];
-
-function isLightColor(hex: string): boolean {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 128;
-}
 
 const useStyles = makeStyles({
   page: { maxWidth: '540px', display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXL },
@@ -52,36 +38,6 @@ const useStyles = makeStyles({
   },
   field: { display: 'flex', flexDirection: 'column', gap: '4px' },
   row: { display: 'flex', gap: tokens.spacingHorizontalS, alignItems: 'flex-end', flexWrap: 'wrap' },
-  colorPickerRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    flexWrap: 'wrap',
-    marginTop: '4px',
-  },
-  colorSwatch: {
-    width: '22px',
-    height: '22px',
-    borderRadius: tokens.borderRadiusSmall,
-    border: `2px solid transparent`,
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  selectedSwatch: {
-    border: `2px solid ${tokens.colorBrandBackground}`,
-    boxShadow: tokens.shadow4,
-  },
-  colorInputWrapper: {
-    position: 'relative',
-    width: '26px',
-    height: '26px',
-    overflow: 'hidden',
-    borderRadius: tokens.borderRadiusSmall,
-    border: `1px dashed ${tokens.colorNeutralStroke1}`,
-    cursor: 'pointer',
-    flexShrink: 0,
-  },
-  colorPreview: { marginTop: '6px' },
 });
 
 export default function ProfilePage() {
@@ -94,7 +50,6 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('');
   const [language, setLanguage] = useState<'ja' | 'en'>('ja');
   const [groupId, setGroupId] = useState<string>('');
-  const [color, setColor] = useState<string>(DEFAULT_COLORS[0]!);
   const [groups, setGroups] = useState<DemoGroup[]>([]);
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [infoError, setInfoError] = useState(false);
@@ -111,7 +66,6 @@ export default function ProfilePage() {
       setEmail(selectedCreator.email ?? '');
       setLanguage(selectedCreator.language);
       setGroupId(selectedCreator.groupId ?? '');
-      setColor(selectedCreator.color ?? DEFAULT_COLORS[0]!);
     }
   }, [selectedCreator]);
 
@@ -132,7 +86,8 @@ export default function ProfilePage() {
         // Entra ユーザーはメール変更不可（現在値をそのまま送らない）
         ...(!isEntraUser && { email: email.trim() || undefined }),
         language,
-        groupId: groupId || undefined,        color: color || undefined,      });
+        groupId: groupId || undefined,
+      });
       // 選択中のクリエイター情報を更新（言語切り替えも含む）
       selectCreator(updated);
       setInfoMsg(MSG.profileSaved);
@@ -198,34 +153,6 @@ export default function ProfilePage() {
             <option value="ja">{MSG.languageJapanese}</option>
             <option value="en">{MSG.languageEnglish}</option>
           </Select>
-        </div>
-        <div className={styles.field}>
-          <Label>{MSG.creatorColorLabel}</Label>
-          <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>{MSG.creatorColorHint}</Caption1>
-          <div className={styles.colorPickerRow}>
-            {DEFAULT_COLORS.map((c) => (
-              <div
-                key={c}
-                className={`${styles.colorSwatch} ${color === c ? styles.selectedSwatch : ''}`}
-                style={{ backgroundColor: c }}
-                onClick={() => setColor(c)}
-                title={c}
-              />
-            ))}
-            <div className={styles.colorInputWrapper} title="カスタムカラー">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                style={{ position: 'absolute', inset: '-4px', width: '40px', height: '40px', cursor: 'pointer', border: 'none', padding: 0 }}
-              />
-            </div>
-          </div>
-          <div className={styles.colorPreview}>
-            <span style={{ display: 'inline-block', backgroundColor: color, color: isLightColor(color) ? '#111' : '#fff', borderRadius: '4px', padding: '2px 10px', fontSize: '12px', fontWeight: 600 }}>
-              {name || '表示名'}
-            </span>
-          </div>
         </div>
         {infoMsg && (
           <MessageBar intent={infoError ? 'error' : 'success'}>
