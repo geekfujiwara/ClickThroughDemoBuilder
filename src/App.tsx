@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 import { Spinner } from '@fluentui/react-components';
 import AppLayout from '@/components/common/AppLayout';
 import AuthGuard from '@/components/auth/AuthGuard';
-import CreatorSelectionGuard from '@/components/auth/CreatorSelectionGuard';
 import { useAuthStore } from '@/stores/authStore';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
@@ -13,9 +12,7 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const DesignerPage = lazy(() => import('@/pages/DesignerPage'));
 const PlayerPage = lazy(() => import('@/pages/PlayerPage'));
 const LoginPage = lazy(() => import('@/components/auth/LoginPage'));
-const ViewerLoginPage = lazy(() => import('@/components/auth/ViewerLoginPage'));
 const ViewerDemosPage = lazy(() => import('@/components/viewer/ViewerDemosPage'));
-const CreatorSelectionPage = lazy(() => import('@/components/auth/CreatorSelectionPage'));
 const FeedPage = lazy(() => import('@/pages/FeedPage'));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const ApplyDesignerPage = lazy(() => import('@/pages/ApplyDesignerPage'));
@@ -40,12 +37,6 @@ export default function App() {
       <Routes>
         {/* 認証ページ（未認証でもアクセス可） */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/viewer/login" element={<ViewerLoginPage />} />
-
-        {/* 作成者選択ページ（認証済みならアクセス可） */}
-        <Route element={<CreatorSelectionGuard />}>
-          <Route path="/creator/select" element={<CreatorSelectionPage />} />
-        </Route>
 
         {/* viewer / designer 共通ページ */}
         <Route element={<AuthGuard role="viewer" />}>

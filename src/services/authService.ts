@@ -18,12 +18,6 @@ interface MeResponse {
   creatorId?: string | null;
 }
 
-/** 旧来方式: ロール + パスワードでログイン */
-export async function login(role: UserRole, password: string): Promise<UserRole> {
-  const res = await apiPost<LoginResponse>('/auth/login', { role, password });
-  return res.role as UserRole;
-}
-
 /** Microsoft Entra ID トークンでログイン（SSO） */
 export async function loginWithEntra(
   idToken: string,

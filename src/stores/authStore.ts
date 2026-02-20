@@ -23,7 +23,6 @@ interface AuthState {
 
 interface AuthActions {
   init: () => Promise<void>;
-  login: (role: UserRole, password: string) => Promise<void>;
   /** Microsoft SSO でログイン */
   loginWithEntra: () => Promise<void>;
   logout: () => Promise<void>;
@@ -44,23 +43,20 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
       const me = await authService.getMe();
       const isEntraUser = localStorage.getItem(LOGIN_SOURCE_KEY) === 'entra';
       if (me.authenticated && me.creatorId) {
-        // email ログイン済み → JWT に creatorId が入っているので自動選択
         const creator = await creatorService.getCreator(me.creatorId);
         setCurrentLanguage(creator.language);
         set({ isAuthenticated: true, role: me.role ?? null, selectedCreator: creator, isLoading: false, isEntraUser });
+      } else if (me.authenticated) {
+        // Entra ユーザーだが creatorId なし → 未認証扱い
+        await authService.logout();
+        localStorage.removeItem(LOGIN_SOURCE_KEY);
+        set({ isAuthenticated: false, role: null, isLoading: false, isEntraUser: false });
       } else {
-        set({ isAuthenticated: me.authenticated, role: me.role ?? null, isLoading: false, isEntraUser });
+        set({ isAuthenticated: false, role: null, isLoading: false, isEntraUser: false });
       }
     } catch {
       set({ isAuthenticated: false, role: null, isLoading: false, isEntraUser: false });
     }
-  },
-
-  login: async (role, password) => {
-    const resultRole = await authService.login(role, password);
-    localStorage.setItem(LOGIN_SOURCE_KEY, 'local');
-    setCurrentLanguage('en');
-    set({ isAuthenticated: true, role: resultRole, selectedCreator: null, isEntraUser: false });
   },
 
   loginWithEntra: async () => {
