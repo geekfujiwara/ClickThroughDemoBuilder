@@ -24,6 +24,8 @@ export async function initTelemetry(): Promise<void> {
         disableFetchTracking: false,
         enableCorsCorrelation: true,
         samplingPercentage: 50,
+        // SWA が Permissions-Policy: unload=() を設定するため unload イベントを無効化
+        disablePageUnloadEvents: ['unload'],
       },
     });
     ai.loadAppInsights();
