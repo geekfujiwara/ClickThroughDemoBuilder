@@ -30,6 +30,7 @@ let _client: BlobServiceClient | null = null;
  * Azure AD 認証用クレデンシャルを返す。
  * AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が揃っていれば
  * ClientSecretCredential（サービスプリンシパル）を使用。
+ * AZURE_CLIENT_ID のみ設定されている場合は Managed Identity に clientId を明示指定。
  * それ以外は DefaultAzureCredential（マネージド ID 等）にフォールバック。
  */
 function getCredential(): ClientSecretCredential | DefaultAzureCredential {
@@ -39,7 +40,10 @@ function getCredential(): ClientSecretCredential | DefaultAzureCredential {
   if (clientId && clientSecret && tenantId) {
     return new ClientSecretCredential(tenantId, clientId, clientSecret);
   }
-  return new DefaultAzureCredential();
+  // SWA Managed Identity: managedIdentityClientId を明示することで IMDS トークン取得を確実にする
+  return new DefaultAzureCredential(
+    clientId ? { managedIdentityClientId: clientId } : undefined,
+  );
 }
 
 function getClient(): BlobServiceClient {
