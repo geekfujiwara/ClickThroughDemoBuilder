@@ -294,6 +294,22 @@ export async function getPendingApplications(): Promise<DemoCreator[]> {
     .map(toResponse);
 }
 
+/** ユーザーの所属組織を変更する */
+export async function changeUserGroup(creatorId: string, groupId: string | null): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    groupId: groupId ?? undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
+}
+
 /** デザイナー申請を拒否 */
 export async function rejectDesigner(creatorId: string): Promise<DemoCreator> {
   const data = await loadMaster();

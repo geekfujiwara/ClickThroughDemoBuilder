@@ -395,7 +395,7 @@ export default function DemoDetailPage() {
   const navigate = useNavigate();
   const classes = useStyles();
   const { role, selectedCreator } = useAuthStore();
-  const isDesigner = role === 'designer';
+  const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   const [demo, setDemo] = useState<DemoProject | null>(null);
   const [demoLoading, setDemoLoading] = useState(true);

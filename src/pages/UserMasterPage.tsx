@@ -82,7 +82,7 @@ export default function UserMasterPage() {
   const [newCreatorLang, setNewCreatorLang] = useState<'ja' | 'en'>('ja');
   const [creatorEdits, setCreatorEdits] = useState<Record<string, CreatorEdit>>({});
 
-  const isDesigner = role === 'designer';
+  const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   const load = useCallback(async () => {
     setIsLoading(true);

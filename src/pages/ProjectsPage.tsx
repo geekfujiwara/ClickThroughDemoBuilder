@@ -147,7 +147,7 @@ export default function ProjectsPage() {
   const { projects, isLoading, loadProjects, deleteProject, duplicateProject } =
     useProjectStore();
   const { role } = useAuthStore();
-  const isDesigner = role === 'designer';
+  const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');

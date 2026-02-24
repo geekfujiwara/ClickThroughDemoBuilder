@@ -1,13 +1,13 @@
 /**
  * DELETE /api/groups/{id}
- * グループマスター削除 (designer のみ)
+ * グループマスター削除 (user_admin 以上のみ)
  */
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { requireRole } from '../middleware/auth.js';
 import * as groupService from '../services/groupService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
-  const auth = requireRole(req, 'designer');
+  const auth = requireRole(req, 'user_admin');
   if ('status' in auth) return auth;
 
   const id = req.params.id;

@@ -538,7 +538,9 @@ export default function GroupMasterPage() {
   const styles = useStyles();
   const MSG = useMsg();
   const { role } = useAuthStore();
-  const isDesigner = role === 'designer';
+  // designer 以上は作成・編集可、user_admin 以上は削除可
+  const canEdit = role === 'designer' || role === 'user_admin' || role === 'system_admin';
+  const canDelete = role === 'user_admin' || role === 'system_admin';
 
   const [groups, setGroups] = useState<DemoGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -615,7 +617,7 @@ export default function GroupMasterPage() {
     <div className={styles.page}>
       <div className={styles.header}>
         <Text as="h1" size={700} weight="semibold">{MSG.organizationMasterTitle}</Text>
-        {isDesigner && (
+        {canEdit && (
           <Button appearance="primary" icon={<AddRegular />} onClick={() => { setCreateState(makeDefault()); setCreateOpen(true); }}>
             {MSG.organizationNew}
           </Button>
@@ -671,18 +673,22 @@ export default function GroupMasterPage() {
                         </Body1>
                       </div>
                     </div>
-                    {isDesigner && (
+                    {(canEdit || canDelete) && (
                       <CardFooter className={styles.cardFooterCustom}>
-                        <Tooltip content="編集" relationship="label">
-                          <Button icon={<EditRegular />} size="small" appearance="subtle" onClick={() => startEdit(group)}>
-                            編集
-                          </Button>
-                        </Tooltip>
-                        <Tooltip content="削除" relationship="label">
-                          <Button icon={<DeleteRegular />} size="small" appearance="subtle" onClick={() => void handleDelete(group)}>
-                            削除
-                          </Button>
-                        </Tooltip>
+                        {canEdit && (
+                          <Tooltip content="編集" relationship="label">
+                            <Button icon={<EditRegular />} size="small" appearance="subtle" onClick={() => startEdit(group)}>
+                              編集
+                            </Button>
+                          </Tooltip>
+                        )}
+                        {canDelete && (
+                          <Tooltip content="削除" relationship="label">
+                            <Button icon={<DeleteRegular />} size="small" appearance="subtle" onClick={() => void handleDelete(group)}>
+                              削除
+                            </Button>
+                          </Tooltip>
+                        )}
                       </CardFooter>
                     )}
                   </>

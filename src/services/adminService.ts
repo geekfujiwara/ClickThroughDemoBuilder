@@ -34,3 +34,8 @@ export async function changeUserRole(creatorId: string, role: UserRole): Promise
 export async function setUserBlocked(creatorId: string, blocked: boolean): Promise<DemoCreator> {
   return apiPut<DemoCreator>(`/manage/users/${creatorId}/block`, { blocked });
 }
+
+/** ユーザーの所属組織を変更 */
+export async function changeUserGroup(creatorId: string, groupId: string | null): Promise<DemoCreator> {
+  return apiPut<DemoCreator>(`/manage/users/${creatorId}/group`, { groupId });
+}

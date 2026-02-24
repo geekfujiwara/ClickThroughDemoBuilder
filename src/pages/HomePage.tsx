@@ -219,7 +219,7 @@ export default function HomePage() {
   const classes = useStyles();
   const navigate = useNavigate();
   const { role, selectedCreator } = useAuthStore();
-  const isDesigner = role === 'designer';
+  const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   const [rankings, setRankings] = useState<HomeRankings | null>(null);
   const [isLoading, setIsLoading] = useState(true);

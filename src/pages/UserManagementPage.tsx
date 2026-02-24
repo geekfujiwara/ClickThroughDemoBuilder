@@ -35,11 +35,13 @@ import {
   DismissRegular,
   LockClosedRegular,
   LockOpenRegular,
+  BuildingRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
-import type { DemoCreator } from '@/types';
+import type { DemoCreator, DemoGroup } from '@/types';
 import type { UserRole } from '@/services/authService';
 import * as adminService from '@/services/adminService';
+import * as groupService from '@/services/groupService';
 import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
@@ -156,17 +158,32 @@ export default function UserManagementPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('viewer');
   const [operating, setOperating] = useState(false);
 
+  // Group change dialog
+  const [groups, setGroups] = useState<DemoGroup[]>([]);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [groupTarget, setGroupTarget] = useState<DemoCreator | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+
   const roleLabels = useMemo(() => getRoleLabels(MSG), [MSG]);
+
+  /** グループID → グループ名のマッピング */
+  const groupMap = useMemo(() => {
+    const map = new Map<string, DemoGroup>();
+    for (const g of groups) map.set(g.id, g);
+    return map;
+  }, [groups]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [userList, appList] = await Promise.all([
+      const [userList, appList, groupList] = await Promise.all([
         adminService.getAdminUsers(),
         adminService.getPendingApplications(),
+        groupService.getAllGroups(),
       ]);
       setUsers(userList);
       setApplications(appList);
+      setGroups(groupList);
     } catch (e) {
       setMessage({ text: (e as Error).message, intent: 'error' });
     } finally {
@@ -245,6 +262,27 @@ export default function UserManagementPage() {
     setRoleDialogOpen(true);
   };
 
+  const openGroupDialog = (user: DemoCreator) => {
+    setGroupTarget(user);
+    setSelectedGroupId(user.groupId ?? '');
+    setGroupDialogOpen(true);
+  };
+
+  const handleChangeGroup = useCallback(async () => {
+    if (!groupTarget) return;
+    setOperating(true);
+    try {
+      await adminService.changeUserGroup(groupTarget.id, selectedGroupId || null);
+      setMessage({ text: MSG.adminSuccess, intent: 'success' });
+      setGroupDialogOpen(false);
+      await loadData();
+    } catch (e) {
+      setMessage({ text: (e as Error).message, intent: 'error' });
+    } finally {
+      setOperating(false);
+    }
+  }, [groupTarget, selectedGroupId, MSG, loadData]);
+
   // user_admin が割り当て可能なロール
   const assignableRoles: UserRole[] = isSystemAdmin
     ? ['viewer', 'designer', 'user_admin', 'system_admin']
@@ -306,6 +344,7 @@ export default function UserManagementPage() {
                 <tr>
                   <th className={styles.th}>名前</th>
                   <th className={styles.th}>メール</th>
+                  <th className={styles.th}>組織</th>
                   <th className={styles.th}>権限</th>
                   <th className={styles.th}>状態</th>
                   <th className={styles.th}>操作</th>
@@ -319,6 +358,17 @@ export default function UserManagementPage() {
                     </td>
                     <td className={styles.td}>
                       <Text size={200}>{user.email ?? '-'}</Text>
+                    </td>
+                    <td className={styles.td}>
+                      {user.groupId && groupMap.has(user.groupId) ? (
+                        <Badge appearance="outline" color="brand" size="small">
+                          {groupMap.get(user.groupId)!.name}
+                        </Badge>
+                      ) : (
+                        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                          {MSG.adminGroupNone}
+                        </Text>
+                      )}
                     </td>
                     <td className={styles.td}>
                       <RoleBadge role={user.role} />
@@ -337,6 +387,14 @@ export default function UserManagementPage() {
                           onClick={() => openRoleDialog(user)}
                         >
                           {MSG.adminChangeRole}
+                        </Button>
+                        <Button
+                          size="small"
+                          appearance="subtle"
+                          icon={<BuildingRegular />}
+                          onClick={() => openGroupDialog(user)}
+                        >
+                          {MSG.adminChangeGroup}
                         </Button>
                         {isSystemAdmin && (
                           <Button
@@ -445,6 +503,51 @@ export default function UserManagementPage() {
                 icon={operating ? <Spinner size="tiny" /> : undefined}
               >
                 {MSG.adminChangeRole}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      {/* Group Change Dialog */}
+      <Dialog open={groupDialogOpen} onOpenChange={(_, d) => setGroupDialogOpen(d.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{MSG.adminChangeGroup}</DialogTitle>
+            <DialogContent>
+              {groupTarget && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalM }}>
+                  <Text>
+                    <Text weight="semibold">{groupTarget.name}</Text> ({groupTarget.email ?? '-'})
+                  </Text>
+                  <Dropdown
+                    className={styles.roleDropdown}
+                    placeholder={MSG.adminGroupNone}
+                    value={selectedGroupId ? (groupMap.get(selectedGroupId)?.name ?? '') : MSG.adminGroupNone}
+                    selectedOptions={[selectedGroupId]}
+                    onOptionSelect={(_: SelectionEvents, data: OptionOnSelectData) => {
+                      setSelectedGroupId(data.optionValue ?? '');
+                    }}
+                  >
+                    <Option key="" value="">{MSG.adminGroupNone}</Option>
+                    {groups.map((g) => (
+                      <Option key={g.id} value={g.id}>{g.name}</Option>
+                    ))}
+                  </Dropdown>
+                </div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <DialogTrigger disableButtonEnhancement>
+                <Button appearance="secondary">{MSG.cancel}</Button>
+              </DialogTrigger>
+              <Button
+                appearance="primary"
+                disabled={operating || (groupTarget?.groupId ?? '') === selectedGroupId}
+                onClick={() => void handleChangeGroup()}
+                icon={operating ? <Spinner size="tiny" /> : undefined}
+              >
+                {MSG.adminChangeGroup}
               </Button>
             </DialogActions>
           </DialogBody>
