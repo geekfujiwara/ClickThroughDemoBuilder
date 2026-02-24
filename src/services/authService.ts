@@ -3,7 +3,7 @@
  */
 import { apiGet, apiPost } from './apiClient';
 
-export type UserRole = 'viewer' | 'designer';
+export type UserRole = 'viewer' | 'designer' | 'user_admin' | 'system_admin';
 
 interface LoginResponse {
   role: string;

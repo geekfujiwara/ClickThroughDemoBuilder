@@ -70,7 +70,7 @@ export interface DemoSettings {
   defaultDescriptionStyle: DescriptionStyle;
 }
 
-export type UserRole = 'viewer' | 'designer';
+export type UserRole = 'viewer' | 'designer' | 'user_admin' | 'system_admin';
 
 export interface JwtPayload {
   role: UserRole;
@@ -107,6 +107,7 @@ export interface DemoCreatorRecord {
   designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
   designerApplicationReason?: string;
   designerApplicationDate?: string;
+  isBlocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -121,7 +122,9 @@ export interface DemoCreator {
   role: UserRole;
   email?: string;
   designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
+  designerApplicationReason?: string;
   designerApplicationDate?: string;
+  isBlocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

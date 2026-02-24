@@ -17,6 +17,7 @@ import {
   ChevronDownRegular,
   SignOutRegular,
   BuildingSkyscraper24Regular,
+  ShieldKeyholeRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
 import AppSymbol from './AppSymbol';
@@ -64,6 +65,7 @@ export default function Navigation() {
   const location = useLocation();
   const { logout, selectedCreator, role } = useAuthStore();
   const isViewer = role === 'viewer';
+  const isAdmin = role === 'system_admin' || role === 'user_admin';
 
   const navigate = useNavigate();
   const isActive = (path: string) => location.pathname === path;
@@ -107,6 +109,17 @@ export default function Navigation() {
           {MSG.navFavorites}
         </Button>
       </Link>
+      {isAdmin && (
+        <Link to="/admin/users" className={classes.link}>
+          <Button
+            appearance={isActive('/admin/users') ? 'primary' : 'subtle'}
+            size="small"
+            icon={<ShieldKeyholeRegular />}
+          >
+            {MSG.navUserManagement}
+          </Button>
+        </Link>
+      )}
 
       <div className={classes.spacer} />
 
@@ -119,6 +132,16 @@ export default function Navigation() {
               {isViewer && (
                 <Badge className={classes.roleBadge} appearance="outline" color="informative" size="small">
                   viewer
+                </Badge>
+              )}
+              {role === 'user_admin' && (
+                <Badge className={classes.roleBadge} appearance="outline" color="warning" size="small">
+                  admin
+                </Badge>
+              )}
+              {role === 'system_admin' && (
+                <Badge className={classes.roleBadge} appearance="outline" color="danger" size="small">
+                  sysadmin
                 </Badge>
               )}
               <ChevronDownRegular fontSize={12} />

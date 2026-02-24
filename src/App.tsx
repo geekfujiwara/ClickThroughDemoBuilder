@@ -17,6 +17,7 @@ const FeedPage = lazy(() => import('@/pages/FeedPage'));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const ApplyDesignerPage = lazy(() => import('@/pages/ApplyDesignerPage'));
 const DemoDetailPage = lazy(() => import('@/pages/DemoDetailPage'));
+const UserManagementPage = lazy(() => import('@/pages/UserManagementPage'));
 
 function Loading() {
   return (
@@ -62,6 +63,13 @@ export default function App() {
         <Route element={<AuthGuard role="designer" />}>
           <Route path="/designer" element={<DesignerPage />} />
           <Route path="/designer/:projectId" element={<DesignerPage />} />
+        </Route>
+
+        {/* 管理者専用ページ（user_admin 以上） */}
+        <Route element={<AuthGuard role="user_admin" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/admin/users" element={<UserManagementPage />} />
+          </Route>
         </Route>
       </Routes>
     </Suspense>

@@ -192,10 +192,12 @@ export interface DemoCreator {
   groupId?: string;
   color?: string; // バッジ背景色 (例: "#0078D4")
   language: 'ja' | 'en';
-  role: 'viewer' | 'designer';
+  role: 'viewer' | 'designer' | 'user_admin' | 'system_admin';
   email?: string;
   designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
+  designerApplicationReason?: string;
   designerApplicationDate?: string;
+  isBlocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -109,9 +109,16 @@ async function handler(
       return { status: 500, jsonBody: { error: `Storage error: ${(e as Error).message}` } };
     }
 
-    // ⑤ クリエイターのロールを使って JWT を発行
+    // ⑤ ブロック済みユーザーはログイン拒否
+    if (creator.isBlocked) {
+      return { status: 403, jsonBody: { error: 'Your account has been blocked.' } };
+    }
+
+    // ⑥ クリエイターのロールを使って JWT を発行
     const creatorRole = creator.role ?? 'designer';
-    const tokenMaxAge = creatorRole === 'designer' ? 8 * 3600 : 24 * 3600;
+    const tokenMaxAge = (creatorRole === 'system_admin' || creatorRole === 'user_admin') ? 8 * 3600
+      : creatorRole === 'designer' ? 8 * 3600
+      : 24 * 3600;
     const token = createToken(creatorRole, creator.id);
     return {
       status: 200,

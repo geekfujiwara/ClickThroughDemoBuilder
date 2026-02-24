@@ -68,8 +68,26 @@ export function authenticate(req: HttpRequest): JwtPayload | null {
 }
 
 /**
+ * ロール階層（数値が大きいほど上位）
+ */
+const ROLE_LEVEL: Record<UserRole, number> = {
+  viewer: 0,
+  designer: 1,
+  user_admin: 2,
+  system_admin: 3,
+};
+
+/**
+ * 管理者ロールかどうか
+ */
+export function isAdminRole(role: UserRole): boolean {
+  return role === 'system_admin' || role === 'user_admin';
+}
+
+/**
  * 指定ロールの認証を要求するヘルパー。
- * 認証失敗時は 401 レスポンスオブジェクトを返す。成功時は null。
+ * 認証失敗時は 401 レスポンスオブジェクトを返す。成功時は payload を返す。
+ * allowedRoles に含まれるロール以上の権限があれば許可する（階層チェック）。
  */
 export function requireRole(
   req: HttpRequest,
@@ -79,7 +97,10 @@ export function requireRole(
   if (!payload) {
     return { status: 401, body: 'Unauthorized' };
   }
-  if (!allowedRoles.includes(payload.role)) {
+  // 明示的に許可リストに含まれるか、いずれかの allowed role 以上の権限があれば OK
+  const userLevel = ROLE_LEVEL[payload.role] ?? 0;
+  const minRequired = Math.min(...allowedRoles.map((r) => ROLE_LEVEL[r] ?? 0));
+  if (userLevel < minRequired && !allowedRoles.includes(payload.role)) {
     return { status: 401, body: 'Unauthorized' };
   }
   return { payload };

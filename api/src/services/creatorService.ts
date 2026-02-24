@@ -35,7 +35,9 @@ function toResponse(r: DemoCreatorRecord): DemoCreator {
     role: r.role ?? 'designer',
     email: r.email,
     designerApplicationStatus: r.designerApplicationStatus,
+    designerApplicationReason: r.designerApplicationReason,
     designerApplicationDate: r.designerApplicationDate,
+    isBlocked: r.isBlocked,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
@@ -58,6 +60,7 @@ async function loadMaster(): Promise<CreatorMasterData> {
           designerApplicationStatus: raw.designerApplicationStatus as DemoCreatorRecord['designerApplicationStatus'],
           designerApplicationReason: raw.designerApplicationReason,
           designerApplicationDate: raw.designerApplicationDate,
+          isBlocked: raw.isBlocked,
           createdAt: raw.createdAt,
           updatedAt: raw.updatedAt,
         }))
@@ -226,4 +229,83 @@ export async function getCreatorRoleById(creatorId: string): Promise<UserRole> {
   const data = await loadMaster();
   const record = data.creators.find((c) => c.id === creatorId);
   return record?.role ?? 'designer';
+}
+
+// ── 管理者機能 ──────────────────────────────────────────
+
+/** ユーザーのロールを変更する */
+export async function changeUserRole(creatorId: string, newRole: UserRole): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    role: newRole,
+    // designer に昇格する場合は申請ステータスも approved にする
+    ...(newRole === 'designer' || newRole === 'user_admin' || newRole === 'system_admin'
+      ? { designerApplicationStatus: 'approved' as const }
+      : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
+}
+
+/** ユーザーをブロック */
+export async function blockUser(creatorId: string): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    isBlocked: true,
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
+}
+
+/** ユーザーのブロックを解除 */
+export async function unblockUser(creatorId: string): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    isBlocked: false,
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
+}
+
+/** デザイナー申請一覧取得 (pending のもの) */
+export async function getPendingApplications(): Promise<DemoCreator[]> {
+  const data = await loadMaster();
+  return data.creators
+    .filter((c) => c.designerApplicationStatus === 'pending')
+    .sort((a, b) => (b.designerApplicationDate ?? '').localeCompare(a.designerApplicationDate ?? ''))
+    .map(toResponse);
+}
+
+/** デザイナー申請を拒否 */
+export async function rejectDesigner(creatorId: string): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    designerApplicationStatus: 'rejected',
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
 }

@@ -1,13 +1,22 @@
 /**
  * AuthGuard — 認証ガードコンポーネント
- * role="viewer"   … viewer 以上（viewer / designer）を許可
- * role="designer" … designer のみ許可
+ * role="viewer"      … viewer 以上（viewer / designer / user_admin / system_admin）を許可
+ * role="designer"    … designer 以上（designer / user_admin / system_admin）を許可
+ * role="user_admin"  … user_admin 以上（user_admin / system_admin）のみ許可
+ * role="system_admin" … system_admin のみ許可
  */
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Spinner } from '@fluentui/react-components';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserRole } from '@/services/authService';
+
+const ROLE_LEVEL: Record<UserRole, number> = {
+  viewer: 0,
+  designer: 1,
+  user_admin: 2,
+  system_admin: 3,
+};
 
 interface Props {
   role: UserRole;
@@ -18,26 +27,25 @@ export default function AuthGuard({ role }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const hasAccess = currentRole ? ROLE_LEVEL[currentRole] >= ROLE_LEVEL[role] : false;
+
   useEffect(() => {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      // 未認証 → ログインページへ
       navigate('/login', { replace: true });
       return;
     }
 
-    // designer のみ許可するルートで viewer がアクセスしようとした場合
-    if (role === 'designer' && currentRole !== 'designer') {
+    if (!hasAccess) {
       navigate('/', { replace: true });
       return;
     }
 
-    // 認証済みだが作成者未選択 → 選択ページへ
     if (!selectedCreator) {
       navigate('/creator/select', { replace: true });
     }
-  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator]);
+  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator, hasAccess]);
 
   if (isLoading) {
     return (
@@ -48,7 +56,7 @@ export default function AuthGuard({ role }: Props) {
   }
 
   if (!isAuthenticated) return null;
-  if (role === 'designer' && currentRole !== 'designer') return null;
+  if (!hasAccess) return null;
   if (!selectedCreator) return null;
 
   return <Outlet />;

@@ -35,3 +35,4 @@ response*.txt
 body.json
 result.json
 *.tmp
+.azurite/

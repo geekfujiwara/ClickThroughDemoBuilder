@@ -22,7 +22,7 @@ interface DemoUsageLog {
   viewerCreatorName?: string;
   viewerGroupId?: string;
   viewerGroupName?: string;
-  role: 'viewer' | 'designer' | 'unknown';
+  role: 'viewer' | 'designer' | 'user_admin' | 'system_admin' | 'unknown';
   ip: string;
   site: string;
   userAgent: string;
