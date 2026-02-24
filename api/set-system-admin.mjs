@@ -2,30 +2,52 @@
  * hfujiwara@microsoft.com をシステム管理者に設定するスクリプト
  *
  * 使用方法:
- *   cd api && node set-system-admin.mjs
+ *   cd api && node set-system-admin.mjs                    # ローカル (Azurite)
+ *   cd api && STORAGE_ACCOUNT_NAME=stclickthroughprod node set-system-admin.mjs  # 本番 (AAD)
  *
  * 環境変数:
- *   AZURE_STORAGE_CONNECTION_STRING (local.settings.json にて設定)
+ *   STORAGE_ACCOUNT_NAME  — 設定すると Azure AD 認証 (DefaultAzureCredential)
+ *   STORAGE_CONNECTION_STRING — 接続文字列 (キー認証 / Azurite)
  */
 import { BlobServiceClient } from '@azure/storage-blob';
+import { DefaultAzureCredential } from '@azure/identity';
 import { readFileSync } from 'fs';
 
-// local.settings.json から接続文字列を読み取る
-let connectionString;
-try {
-  const settings = JSON.parse(readFileSync('./local.settings.json', 'utf8'));
-  connectionString = settings.Values?.STORAGE_CONNECTION_STRING
-    || settings.Values?.AZURE_STORAGE_CONNECTION_STRING
-    || settings.Values?.AzureWebJobsStorage
-    || process.env.AZURE_STORAGE_CONNECTION_STRING
-    || process.env.STORAGE_CONNECTION_STRING;
-} catch {
-  connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING || process.env.STORAGE_CONNECTION_STRING;
-}
+// ── クライアント初期化 ──────────────────────────────────
+const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
 
-if (!connectionString) {
-  console.error('AZURE_STORAGE_CONNECTION_STRING が設定されていません');
-  process.exit(1);
+let blobServiceClient;
+
+if (storageAccountName) {
+  // Azure AD 認証（キー認証が無効な本番環境向け）
+  console.log(`Using Azure AD auth for account: ${storageAccountName}`);
+  blobServiceClient = new BlobServiceClient(
+    `https://${storageAccountName}.blob.core.windows.net`,
+    new DefaultAzureCredential(),
+  );
+} else {
+  // 接続文字列（ローカル Azurite / キー認証環境向け）
+  let connectionString =
+    process.env.STORAGE_CONNECTION_STRING
+    || process.env.AZURE_STORAGE_CONNECTION_STRING;
+
+  if (!connectionString) {
+    try {
+      const settings = JSON.parse(readFileSync('./local.settings.json', 'utf8'));
+      connectionString = settings.Values?.STORAGE_CONNECTION_STRING
+        || settings.Values?.AZURE_STORAGE_CONNECTION_STRING
+        || settings.Values?.AzureWebJobsStorage;
+    } catch {
+      // local.settings.json が無い場合は無視
+    }
+  }
+
+  if (!connectionString) {
+    console.error('STORAGE_ACCOUNT_NAME または STORAGE_CONNECTION_STRING を設定してください');
+    process.exit(1);
+  }
+  console.log(`Using connection string auth`);
+  blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
 }
 
 const CONTAINER = 'masters';
@@ -34,8 +56,7 @@ const TARGET_EMAIL = 'hfujiwara@microsoft.com';
 const TARGET_ROLE = 'system_admin';
 
 async function main() {
-  const blobClient = BlobServiceClient.fromConnectionString(connectionString);
-  const containerClient = blobClient.getContainerClient(CONTAINER);
+  const containerClient = blobServiceClient.getContainerClient(CONTAINER);
 
   // コンテナが存在しない場合は作成
   await containerClient.createIfNotExists();
