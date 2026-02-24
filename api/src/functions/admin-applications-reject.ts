@@ -24,6 +24,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-applications-reject', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  route: 'admin/applications/{creatorId}/reject',
+  route: 'manage/applications/{creatorId}/reject',
   handler,
 });

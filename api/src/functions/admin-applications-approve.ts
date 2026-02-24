@@ -31,6 +31,6 @@ async function handler(req: HttpRequest, context: InvocationContext): Promise<Ht
 app.http('admin-applications-approve', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  route: 'admin/applications/{creatorId}/approve',
+  route: 'manage/applications/{creatorId}/approve',
   handler,
 });

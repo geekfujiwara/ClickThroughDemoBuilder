@@ -41,6 +41,7 @@ jobs:
 
       - name: Prepare API deployment folder
         run: |
+          rm -rf api-deploy/dist
           mkdir -p api-deploy
           cp -r api/dist api-deploy/
           cp api/host.json api-deploy/
