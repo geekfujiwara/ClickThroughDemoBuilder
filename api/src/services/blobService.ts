@@ -14,7 +14,7 @@ import {
   ContainerClient,
   type BlobSASSignatureValues,
 } from '@azure/storage-blob';
-import { DefaultAzureCredential, ClientSecretCredential } from '@azure/identity';
+import { ManagedIdentityCredential, ClientSecretCredential } from '@azure/identity';
 
 const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
 const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
@@ -28,22 +28,21 @@ let _client: BlobServiceClient | null = null;
 
 /**
  * Azure AD 認証用クレデンシャルを返す。
- * AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が揃っていれば
+ * AZURE_CLIENT_SECRET / AZURE_TENANT_ID / AZURE_CLIENT_ID が揃っていれば
  * ClientSecretCredential（サービスプリンシパル）を使用。
- * AZURE_CLIENT_ID のみ設定されている場合は Managed Identity に clientId を明示指定。
- * それ以外は DefaultAzureCredential（マネージド ID 等）にフォールバック。
+ * それ以外は ManagedIdentityCredential を直接使用（SWA System Assigned Identity）。
+ * DefaultAzureCredential は使わない — AZURE_CLIENT_ID が単独で設定されると
+ * WorkloadIdentityCredential を先に試みてチェーンが乱れるため。
  */
-function getCredential(): ClientSecretCredential | DefaultAzureCredential {
+function getCredential(): ClientSecretCredential | ManagedIdentityCredential {
   const clientId = process.env.AZURE_CLIENT_ID?.trim();
   const clientSecret = process.env.AZURE_CLIENT_SECRET?.trim();
   const tenantId = process.env.AZURE_TENANT_ID?.trim();
   if (clientId && clientSecret && tenantId) {
     return new ClientSecretCredential(tenantId, clientId, clientSecret);
   }
-  // SWA Managed Identity: managedIdentityClientId を明示することで IMDS トークン取得を確実にする
-  return new DefaultAzureCredential(
-    clientId ? { managedIdentityClientId: clientId } : undefined,
-  );
+  // SWA System Assigned Managed Identity — IMDS エンドポイントで直接トークン取得
+  return new ManagedIdentityCredential();
 }
 
 function getClient(): BlobServiceClient {
