@@ -13,7 +13,7 @@ import {
   ContainerClient,
   type BlobSASSignatureValues,
 } from '@azure/storage-blob';
-import { DefaultAzureCredential } from '@azure/identity';
+import { ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential } from '@azure/identity';
 
 const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
 const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
@@ -29,21 +29,28 @@ function isAzureEnvironment(): boolean {
 let _client: BlobServiceClient | null = null;
 
 /**
- * Azure AD 認証用クレデンシャルを返す。
+ * Blob Storage 専用の認証クレデンシャルを返す。
  *
- * DefaultAzureCredential は以下の順で自動的に認証方式を選択する:
- *   1. 環境変数 (AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_TENANT_ID) → サービスプリンシパル
- *   2. Workload Identity (AKS)
- *   3. Managed Identity (Azure Functions 本番環境) ← publicNetworkAccess=Disabled でも動作
- *   4. Azure CLI / VS Code 認証 (ローカル開発)
+ * DefaultAzureCredential を使わない理由:
+ *   アプリ設定に AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が
+ *   Microsoft Graph (メール送信) 用に設定されている場合、DefaultAzureCredential は
+ *   それらを環境変数と見なしてサービスプリンシパル認証を優先する。
+ *   そのサービスプリンシパルにストレージ RBAC がない場合、403 が発生する。
  *
- * allowSharedKeyAccess=false / publicNetworkAccess=Disabled の環境でも、
- * ストレージの networkAcls.bypass=AzureServices + Managed Identity によって
- * 接続文字列・アカウントキー不要でアクセスできる。
- * → 会社ポリシーが夜間に publicNetworkAccess=Disabled に戻しても運用継続可能。
+ * 本関数は Managed Identity (Azure) または Azure CLI (ローカル開発) のみ使用し、
+ * Graph API 用の AZURE_CLIENT_ID 環境変数を無視する。
+ *
+ * 認証チェーン:
+ *   1. ManagedIdentityCredential → Azure 本番で SWA の System Assigned MI を使用
+ *      allowSharedKeyAccess=false / publicNetworkAccess=Disabled でも
+ *      networkAcls.bypass=AzureServices 経由でアクセス可能。
+ *   2. AzureCliCredential → ローカル開発で `az login` 済みアカウントを使用
  */
-function getCredential(): DefaultAzureCredential {
-  return new DefaultAzureCredential();
+function getCredential(): ChainedTokenCredential {
+  return new ChainedTokenCredential(
+    new ManagedIdentityCredential(),
+    new AzureCliCredential(),
+  );
 }
 
 function getClient(): BlobServiceClient {
