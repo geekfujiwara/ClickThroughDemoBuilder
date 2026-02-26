@@ -13,7 +13,7 @@ import {
   ContainerClient,
   type BlobSASSignatureValues,
 } from '@azure/storage-blob';
-import { ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential } from '@azure/identity';
+import { ClientSecretCredential, ManagedIdentityCredential } from '@azure/identity';
 
 const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
 const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
@@ -31,26 +31,25 @@ let _client: BlobServiceClient | null = null;
 /**
  * Blob Storage 専用の認証クレデンシャルを返す。
  *
- * DefaultAzureCredential を使わない理由:
- *   アプリ設定に AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が
- *   Microsoft Graph (メール送信) 用に設定されている場合、DefaultAzureCredential は
- *   それらを環境変数と見なしてサービスプリンシパル認証を優先する。
- *   そのサービスプリンシパルにストレージ RBAC がない場合、403 が発生する。
+ * AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が全て設定されている場合は
+ * ClientSecretCredential (サービスプリンシパル) を使用。
+ * そのサービスプリンシパルには Storage Blob Data Contributor RBAC を付与済み。
  *
- * 本関数は Managed Identity (Azure) または Azure CLI (ローカル開発) のみ使用し、
- * Graph API 用の AZURE_CLIENT_ID 環境変数を無視する。
+ * それ以外の場合は ManagedIdentityCredential を使用。
+ * (SWA System Assigned Identity: principalId eeb9cb3a にも RBAC 付与済み)
  *
- * 認証チェーン:
- *   1. ManagedIdentityCredential → Azure 本番で SWA の System Assigned MI を使用
- *      allowSharedKeyAccess=false / publicNetworkAccess=Disabled でも
- *      networkAcls.bypass=AzureServices 経由でアクセス可能。
- *   2. AzureCliCredential → ローカル開発で `az login` 済みアカウントを使用
+ * allowSharedKeyAccess=false / publicNetworkAccess=Disabled の環境でも、
+ * networkAcls.bypass=AzureServices 経由でアクセス可能。
  */
-function getCredential(): ChainedTokenCredential {
-  return new ChainedTokenCredential(
-    new ManagedIdentityCredential(),
-    new AzureCliCredential(),
-  );
+function getCredential(): ClientSecretCredential | ManagedIdentityCredential {
+  const clientId     = process.env.AZURE_CLIENT_ID?.trim();
+  const clientSecret = process.env.AZURE_CLIENT_SECRET?.trim();
+  const tenantId     = process.env.AZURE_TENANT_ID?.trim();
+  if (clientId && clientSecret && tenantId) {
+    return new ClientSecretCredential(tenantId, clientId, clientSecret);
+  }
+  // ローカル開発または AZURE_CLIENT_* 未設定時: SWA System Assigned MI を使用
+  return new ManagedIdentityCredential();
 }
 
 function getClient(): BlobServiceClient {
