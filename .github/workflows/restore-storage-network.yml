@@ -1,14 +1,25 @@
-name: Restore Storage Network Access
+name: Manage Storage Network Access
 
-# 毎朝 4:00 JST (19:00 UTC) に実行
-# 会社ポリシーが夜間に publicNetworkAccess=Disabled に変更するため、毎朝 Enabled に戻す
+# スケジュール (JST):
+#   04:00 (19:00 UTC) → Enabled/Allow に復元（業務開始前）
+#   21:00 (12:00 UTC) → Disabled/Deny に設定（会社ポリシー検知時間帯に合わせて先に閉じる）
 on:
   schedule:
-    - cron: '0 19 * * *'
-  workflow_dispatch:  # 手動実行も可能
+    - cron: '0 19 * * *'  # 04:00 JST → Enabled
+    - cron: '0 12 * * *'  # 21:00 JST → Disabled
+  workflow_dispatch:
+    inputs:
+      action:
+        description: '実行するアクション'
+        required: true
+        default: 'enable'
+        type: choice
+        options:
+          - enable
+          - disable
 
 jobs:
-  restore-network-access:
+  manage-network-access:
     runs-on: ubuntu-latest
     steps:
       - name: Azure Login
@@ -22,42 +33,38 @@ jobs:
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
             }
 
-      - name: Restore storage network settings
+      - name: Determine action
+        id: action
         run: |
-          echo "現在の設定を確認..."
-          CURRENT_PUBLIC=$(az storage account show \
-            --name stclickthroughprod \
-            --resource-group rg-clickthrough-prod \
-            --query "publicNetworkAccess" -o tsv)
-          CURRENT_DEFAULT=$(az storage account show \
-            --name stclickthroughprod \
-            --resource-group rg-clickthrough-prod \
-            --query "networkRuleSet.defaultAction" -o tsv)
-          echo "publicNetworkAccess: $CURRENT_PUBLIC"
-          echo "defaultAction: $CURRENT_DEFAULT"
-
-          NEEDS_UPDATE=false
-
-          if [ "$CURRENT_PUBLIC" != "Enabled" ]; then
-            echo "⚠ publicNetworkAccess が Enabled ではありません ($CURRENT_PUBLIC)"
-            NEEDS_UPDATE=true
-          fi
-          if [ "$CURRENT_DEFAULT" != "Allow" ]; then
-            echo "⚠ defaultAction が Allow ではありません ($CURRENT_DEFAULT)"
-            NEEDS_UPDATE=true
-          fi
-
-          if [ "$NEEDS_UPDATE" = "true" ]; then
-            echo "設定を復元します..."
-            az storage account update \
-              --name stclickthroughprod \
-              --resource-group rg-clickthrough-prod \
-              --public-network-access Enabled \
-              --default-action Allow
-            echo "✓ 復元完了"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "target=${{ inputs.action }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 12 * * *" ]; then
+            echo "target=disable" >> $GITHUB_OUTPUT
           else
-            echo "✓ 設定は正常です。変更不要。"
+            echo "target=enable" >> $GITHUB_OUTPUT
           fi
+
+      - name: Enable storage network access (04:00 JST)
+        if: steps.action.outputs.target == 'enable'
+        run: |
+          echo "▶ publicNetworkAccess=Enabled / defaultAction=Allow に設定します..."
+          az storage account update \
+            --name stclickthroughprod \
+            --resource-group rg-clickthrough-prod \
+            --public-network-access Enabled \
+            --default-action Allow
+          echo "✓ 完了"
+
+      - name: Disable storage network access (21:00 JST)
+        if: steps.action.outputs.target == 'disable'
+        run: |
+          echo "▶ publicNetworkAccess=Disabled / defaultAction=Deny に設定します..."
+          az storage account update \
+            --name stclickthroughprod \
+            --resource-group rg-clickthrough-prod \
+            --public-network-access Disabled \
+            --default-action Deny
+          echo "✓ 完了"
 
       - name: Verify settings
         run: |
