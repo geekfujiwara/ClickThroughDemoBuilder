@@ -36,9 +36,12 @@ import {
   LockClosedRegular,
   LockOpenRegular,
   BuildingRegular,
+  AddRegular,
+  DeleteRegular,
+  KeyResetRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
-import type { DemoCreator, DemoGroup } from '@/types';
+import type { DemoCreator, DemoGroup, TrustedAlias } from '@/types';
 import type { UserRole } from '@/services/authService';
 import * as adminService from '@/services/adminService';
 import * as groupService from '@/services/groupService';
@@ -113,6 +116,32 @@ const useStyles = makeStyles({
   roleDropdown: {
     minWidth: '160px',
   },
+  // Trusted Aliases tab
+  aliasTabContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalL,
+  },
+  aliasDescText: {
+    color: tokens.colorNeutralForeground2,
+  },
+  aliasAddForm: {
+    display: 'flex',
+    gap: tokens.spacingHorizontalM,
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  aliasFieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalXS,
+  },
+  aliasInput: {
+    minWidth: '220px',
+  },
+  aliasDimText: {
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 function getRoleLabels(MSG: ReturnType<typeof useMsg>) {
@@ -145,7 +174,7 @@ export default function UserManagementPage() {
   const { role: currentUserRole } = useAuthStore();
   const isSystemAdmin = currentUserRole === 'system_admin';
 
-  const [tab, setTab] = useState<'users' | 'applications'>('users');
+  const [tab, setTab] = useState<'users' | 'applications' | 'trusted-aliases'>('users');
   const [users, setUsers] = useState<DemoCreator[]>([]);
   const [applications, setApplications] = useState<DemoCreator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,6 +186,12 @@ export default function UserManagementPage() {
   const [roleTarget, setRoleTarget] = useState<DemoCreator | null>(null);
   const [selectedRole, setSelectedRole] = useState<UserRole>('viewer');
   const [operating, setOperating] = useState(false);
+
+  // Trusted aliases (system_admin only)
+  const [aliases, setAliases] = useState<TrustedAlias[]>([]);
+  const [newAlias, setNewAlias] = useState('');
+  const [newAliasRole, setNewAliasRole] = useState<'designer' | 'user_admin'>('user_admin');
+  const [aliasOperating, setAliasOperating] = useState(false);
 
   // Group change dialog
   const [groups, setGroups] = useState<DemoGroup[]>([]);
@@ -176,20 +211,23 @@ export default function UserManagementPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [userList, appList, groupList] = await Promise.all([
+      const requests: [Promise<DemoCreator[]>, Promise<DemoCreator[]>, Promise<DemoGroup[]>, Promise<TrustedAlias[]>] = [
         adminService.getAdminUsers(),
         adminService.getPendingApplications(),
         groupService.getAllGroups(),
-      ]);
+        isSystemAdmin ? adminService.getTrustedAliases() : Promise.resolve([]),
+      ];
+      const [userList, appList, groupList, aliasList] = await Promise.all(requests);
       setUsers(userList);
       setApplications(appList);
       setGroups(groupList);
+      setAliases(aliasList);
     } catch (e) {
       setMessage({ text: (e as Error).message, intent: 'error' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSystemAdmin]);
 
   useEffect(() => {
     void loadData();
@@ -268,6 +306,38 @@ export default function UserManagementPage() {
     setGroupDialogOpen(true);
   };
 
+  const handleAddAlias = useCallback(async () => {
+    const trimmed = newAlias.trim().toLowerCase();
+    if (!trimmed) return;
+    setAliasOperating(true);
+    try {
+      await adminService.upsertTrustedAlias(trimmed, newAliasRole);
+      setMessage({ text: MSG.adminTrustedAliasAdded, intent: 'success' });
+      setNewAlias('');
+      const updated = await adminService.getTrustedAliases();
+      setAliases(updated);
+    } catch (e) {
+      setMessage({ text: (e as Error).message, intent: 'error' });
+    } finally {
+      setAliasOperating(false);
+    }
+  }, [newAlias, newAliasRole, MSG]);
+
+  const handleDeleteAlias = useCallback(async (alias: string) => {
+    if (!window.confirm(MSG.adminConfirmDeleteAlias(alias))) return;
+    setAliasOperating(true);
+    try {
+      await adminService.deleteTrustedAlias(alias);
+      setMessage({ text: MSG.adminSuccess, intent: 'success' });
+      const updated = await adminService.getTrustedAliases();
+      setAliases(updated);
+    } catch (e) {
+      setMessage({ text: (e as Error).message, intent: 'error' });
+    } finally {
+      setAliasOperating(false);
+    }
+  }, [MSG]);
+
   const handleChangeGroup = useCallback(async () => {
     if (!groupTarget) return;
     setOperating(true);
@@ -314,7 +384,7 @@ export default function UserManagementPage() {
 
       <TabList
         selectedValue={tab}
-        onTabSelect={(_, d) => setTab(d.value as 'users' | 'applications')}
+        onTabSelect={(_, d) => setTab(d.value as 'users' | 'applications' | 'trusted-aliases')}
       >
         <Tab value="users" icon={<PersonRegular />}>
           {MSG.adminTabUsers} ({users.length})
@@ -322,6 +392,11 @@ export default function UserManagementPage() {
         <Tab value="applications" icon={<ShieldKeyholeRegular />}>
           {MSG.adminTabApplications} ({applications.length})
         </Tab>
+        {isSystemAdmin && (
+          <Tab value="trusted-aliases" icon={<KeyResetRegular />}>
+            {MSG.adminTabTrustedAliases} ({aliases.length})
+          </Tab>
+        )}
       </TabList>
 
       {tab === 'users' && (
@@ -462,6 +537,101 @@ export default function UserManagementPage() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* Trusted Aliases Tab */}
+      {tab === 'trusted-aliases' && isSystemAdmin && (
+        <div className={styles.aliasTabContent}>
+          <Text size={200} className={styles.aliasDescText}>
+            {MSG.adminTrustedAliasesDesc}
+          </Text>
+
+          {/* Add form */}
+          <div className={styles.aliasAddForm}>
+            <div className={styles.aliasFieldGroup}>
+              <Text size={200} weight="semibold">{MSG.adminTrustedAliasAlias}</Text>
+              <Input
+                className={styles.aliasInput}
+                placeholder={MSG.adminTrustedAliasAliasPlaceholder}
+                value={newAlias}
+                onChange={(_, d) => setNewAlias(d.value)}
+              />
+            </div>
+            <div className={styles.aliasFieldGroup}>
+              <Text size={200} weight="semibold">{MSG.adminTrustedAliasRole}</Text>
+              <Dropdown
+                className={styles.roleDropdown}
+                value={newAliasRole === 'user_admin' ? MSG.adminRoleUserAdmin : MSG.adminRoleDesigner}
+                selectedOptions={[newAliasRole]}
+                onOptionSelect={(_: SelectionEvents, data: OptionOnSelectData) => {
+                  setNewAliasRole(data.optionValue as 'designer' | 'user_admin');
+                }}
+              >
+                <Option value="designer">{MSG.adminRoleDesigner}</Option>
+                <Option value="user_admin">{MSG.adminRoleUserAdmin}</Option>
+              </Dropdown>
+            </div>
+            <Button
+              appearance="primary"
+              icon={aliasOperating ? <Spinner size="tiny" /> : <AddRegular />}
+              disabled={!newAlias.trim() || aliasOperating}
+              onClick={() => void handleAddAlias()}
+            >
+              {MSG.adminTrustedAliasAdd}
+            </Button>
+          </div>
+
+          {/* Alias list */}
+          {aliases.length === 0 ? (
+            <div className={styles.empty}>
+              <Text>{MSG.adminTrustedAliasEmpty}</Text>
+            </div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>{MSG.adminTrustedAliasAlias}</th>
+                  <th className={styles.th}>{MSG.adminTrustedAliasRole}</th>
+                  <th className={styles.th}>{MSG.adminTrustedAliasAddedAt}</th>
+                  <th className={styles.th}>{MSG.adminTrustedAliasDelete}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aliases.map((a) => (
+                  <tr key={a.alias}>
+                    <td className={styles.td}>
+                      <Text weight="semibold">{a.alias}</Text>
+                      <Text size={200} className={styles.aliasDimText}> @microsoft.com</Text>
+                    </td>
+                    <td className={styles.td}>
+                      <Badge
+                        appearance="filled"
+                        color={a.role === 'user_admin' ? 'warning' : 'success'}
+                        size="small"
+                      >
+                        {a.role === 'user_admin' ? MSG.adminRoleUserAdmin : MSG.adminRoleDesigner}
+                      </Badge>
+                    </td>
+                    <td className={styles.td}>
+                      <Text size={200}>{new Date(a.addedAt).toLocaleDateString()}</Text>
+                    </td>
+                    <td className={styles.td}>
+                      <Button
+                        size="small"
+                        appearance="subtle"
+                        icon={<DeleteRegular />}
+                        disabled={aliasOperating}
+                        onClick={() => void handleDeleteAlias(a.alias)}
+                      >
+                        {MSG.adminTrustedAliasDelete}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}

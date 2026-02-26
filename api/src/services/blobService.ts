@@ -7,57 +7,64 @@
  */
 import {
   BlobServiceClient,
-  StorageSharedKeyCredential,
   generateBlobSASQueryParameters,
   BlobSASPermissions,
   SASProtocol,
   ContainerClient,
   type BlobSASSignatureValues,
 } from '@azure/storage-blob';
-import { ManagedIdentityCredential, ClientSecretCredential, DefaultAzureCredential } from '@azure/identity';
+import { DefaultAzureCredential } from '@azure/identity';
 
 const connectionString = process.env.STORAGE_CONNECTION_STRING ?? 'UseDevelopmentStorage=true';
 const storageAccountName = process.env.STORAGE_ACCOUNT_NAME;
 
-/** 実際の接続文字列（AccountKey 付き）かどうかを判定 */
-function isRealConnectionString(cs: string): boolean {
-  return cs.includes('AccountKey=') && !cs.includes('UseDevelopmentStorage');
+/**
+ * Azure 本番環境で動作しているかどうかを判定する。
+ * WEBSITE_SITE_NAME は Azure App Service / Functions が自動的に設定する環境変数。
+ */
+function isAzureEnvironment(): boolean {
+  return !!(process.env.WEBSITE_SITE_NAME ?? process.env.AZURE_FUNCTIONS_ENVIRONMENT);
 }
 
 let _client: BlobServiceClient | null = null;
 
 /**
  * Azure AD 認証用クレデンシャルを返す。
- * AZURE_CLIENT_ID / AZURE_CLIENT_SECRET / AZURE_TENANT_ID が揃っていれば
- * ClientSecretCredential（サービスプリンシパル）を使用。
- * それ以外は ManagedIdentityCredential（SWA System Assigned Identity）。
- * STORAGE_ACCOUNT_NAME が未設定の場合はこの関数は呼ばれない。
+ *
+ * DefaultAzureCredential は以下の順で自動的に認証方式を選択する:
+ *   1. 環境変数 (AZURE_CLIENT_ID + AZURE_CLIENT_SECRET + AZURE_TENANT_ID) → サービスプリンシパル
+ *   2. Workload Identity (AKS)
+ *   3. Managed Identity (Azure Functions 本番環境) ← publicNetworkAccess=Disabled でも動作
+ *   4. Azure CLI / VS Code 認証 (ローカル開発)
+ *
+ * allowSharedKeyAccess=false / publicNetworkAccess=Disabled の環境でも、
+ * ストレージの networkAcls.bypass=AzureServices + Managed Identity によって
+ * 接続文字列・アカウントキー不要でアクセスできる。
+ * → 会社ポリシーが夜間に publicNetworkAccess=Disabled に戻しても運用継続可能。
  */
-function getCredential(): ClientSecretCredential | ManagedIdentityCredential | DefaultAzureCredential {
-  const clientId = process.env.AZURE_CLIENT_ID?.trim();
-  const clientSecret = process.env.AZURE_CLIENT_SECRET?.trim();
-  const tenantId = process.env.AZURE_TENANT_ID?.trim();
-  if (clientId && clientSecret && tenantId) {
-    return new ClientSecretCredential(tenantId, clientId, clientSecret);
-  }
-  // SWA System Assigned Managed Identity
-  return new ManagedIdentityCredential();
+function getCredential(): DefaultAzureCredential {
+  return new DefaultAzureCredential();
 }
 
 function getClient(): BlobServiceClient {
   if (!_client) {
     if (storageAccountName) {
-      // STORAGE_ACCOUNT_NAME が設定されている場合は AAD 認証を最優先で使用
-      // （ストレージアカウントで共有キー認証が無効でも動作する）
+      // STORAGE_ACCOUNT_NAME 設定あり → DefaultAzureCredential (Managed Identity) を使用
+      // allowSharedKeyAccess=false / publicNetworkAccess=Disabled でも動作
       _client = new BlobServiceClient(
         `https://${storageAccountName}.blob.core.windows.net`,
         getCredential(),
       );
-    } else if (isRealConnectionString(connectionString)) {
-      // STORAGE_ACCOUNT_NAME なし・AccountKey あり: ローカル環境でキー認証が有効な場合のみ
-      _client = BlobServiceClient.fromConnectionString(connectionString);
+    } else if (isAzureEnvironment()) {
+      // Azure 環境なのに STORAGE_ACCOUNT_NAME が未設定 → 明確なエラーで失敗させる
+      // (接続文字列フォールバックは allowSharedKeyAccess=false で 403 になるため使用しない)
+      throw new Error(
+        'STORAGE_ACCOUNT_NAME が設定されていません。' +
+        'Azure Functions のアプリ設定に STORAGE_ACCOUNT_NAME を追加してください。' +
+        'セットアップ手順: docs/setup-azure-identity.ps1 を参照。',
+      );
     } else {
-      // ローカル開発: Azurite
+      // ローカル開発: Azurite または az login 済みの実ストレージ
       _client = BlobServiceClient.fromConnectionString(connectionString);
     }
   }
@@ -161,6 +168,26 @@ export async function putCreatorMasterJson(json: string): Promise<void> {
   });
 }
 
+export async function getTrustedAliasesJson(): Promise<string | null> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('trusted-aliases.json');
+  try {
+    const buf = await blob.downloadToBuffer();
+    return buf.toString('utf-8');
+  } catch (e: unknown) {
+    if ((e as { statusCode?: number }).statusCode === 404) return null;
+    throw e;
+  }
+}
+
+export async function putTrustedAliasesJson(json: string): Promise<void> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('trusted-aliases.json');
+  await blob.upload(json, Buffer.byteLength(json, 'utf-8'), {
+    blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
+  });
+}
+
 export async function putUsageLogJson(path: string, json: string): Promise<void> {
   const c = await ensureContainer('usage-logs');
   const blob = c.getBlockBlobClient(path);
@@ -234,21 +261,9 @@ export async function getVideoSasUrl(projectId: string): Promise<string | null> 
     return `${blobClient.url}?${sasToken}`;
   }
 
-  const parsedConn = parseConnectionString(connectionString);
-  if (parsedConn.accountName && parsedConn.accountKey) {
-    const cred = new StorageSharedKeyCredential(parsedConn.accountName, parsedConn.accountKey);
-    const sasValues: BlobSASSignatureValues = {
-      containerName: 'videos',
-      blobName,
-      permissions: BlobSASPermissions.parse('r'),
-      startsOn: new Date(),
-      expiresOn: new Date(Date.now() + 60 * 60 * 1000), // 1h
-    };
-    const sasToken = generateBlobSASQueryParameters(sasValues, cred).toString();
-    return `${blobClient.url}?${sasToken}`;
-  }
-
-  // Azurite (development storage) — SAS は不要
+  // ローカル開発 (Azurite) — SAS は不要。URL をそのまま返す。
+  // ※ SharedKey 認証 (StorageSharedKeyCredential) は allowSharedKeyAccess=false のポリシーで
+  //    403 になるため、接続文字列からのキー抽出は使用しない。
   return blobClient.url;
 }
 
@@ -283,21 +298,9 @@ export async function getVideoUploadSasUrl(
     return { uploadUrl: `${blobClient.url}?${sasToken}`, blobName: name };
   }
 
-  const parsedConn = parseConnectionString(connectionString);
-  if (parsedConn.accountName && parsedConn.accountKey) {
-    const cred = new StorageSharedKeyCredential(parsedConn.accountName, parsedConn.accountKey);
-    const sasValues: BlobSASSignatureValues = {
-      containerName: 'videos',
-      blobName: name,
-      permissions: BlobSASPermissions.parse('rcw'), // read, create, write
-      startsOn: new Date(),
-      expiresOn: new Date(Date.now() + 30 * 60 * 1000), // 30min
-    };
-    const sasToken = generateBlobSASQueryParameters(sasValues, cred).toString();
-    return { uploadUrl: `${blobClient.url}?${sasToken}`, blobName: name };
-  }
-
-  // Azurite — URL をそのまま返す
+  // ローカル開発 (Azurite) — SAS は不要。URL をそのまま返す。
+  // ※ SharedKey 認証 (StorageSharedKeyCredential) は allowSharedKeyAccess=false のポリシーで
+  //    403 になるため、接続文字列からのキー抽出は使用しない。
   return { uploadUrl: blobClient.url, blobName: name };
 }
 
@@ -326,22 +329,6 @@ export async function deleteProjectVideo(projectId: string): Promise<void> {
   for await (const item of c.listBlobsFlat({ prefix: `${projectId}/` })) {
     await c.getBlockBlobClient(item.name).deleteIfExists();
   }
-}
-
-// ── Helpers ─────────────────────────────────────────────────
-
-function parseConnectionString(cs: string): { accountName?: string; accountKey?: string } {
-  const parts = new Map<string, string>();
-  for (const part of cs.split(';')) {
-    const idx = part.indexOf('=');
-    if (idx > 0) {
-      parts.set(part.substring(0, idx), part.substring(idx + 1));
-    }
-  }
-  return {
-    accountName: parts.get('AccountName'),
-    accountKey: parts.get('AccountKey'),
-  };
 }
 
 // ── Social Data (Likes / Favorites / Comments / Feed) ───────

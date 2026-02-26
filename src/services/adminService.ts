@@ -1,9 +1,9 @@
 /**
  * 管理者サービス — ユーザー管理・申請管理 API
  */
-import type { DemoCreator } from '@/types';
+import type { DemoCreator, TrustedAlias } from '@/types';
 import type { UserRole } from '@/services/authService';
-import { apiGet, apiPost, apiPut } from './apiClient';
+import { apiGet, apiPost, apiPut, apiDelete } from './apiClient';
 
 /** 全ユーザー一覧取得 (admin 用) */
 export async function getAdminUsers(): Promise<DemoCreator[]> {
@@ -38,4 +38,19 @@ export async function setUserBlocked(creatorId: string, blocked: boolean): Promi
 /** ユーザーの所属組織を変更 */
 export async function changeUserGroup(creatorId: string, groupId: string | null): Promise<DemoCreator> {
   return apiPut<DemoCreator>(`/manage/users/${creatorId}/group`, { groupId });
+}
+
+/** 信頼済みエイリアス一覧取得 (system_admin のみ) */
+export async function getTrustedAliases(): Promise<TrustedAlias[]> {
+  return apiGet<TrustedAlias[]>('/manage/trusted-aliases');
+}
+
+/** 信頼済みエイリアスを追加または更新 (system_admin のみ) */
+export async function upsertTrustedAlias(alias: string, role: 'designer' | 'user_admin'): Promise<TrustedAlias> {
+  return apiPost<TrustedAlias>('/manage/trusted-aliases', { alias, role });
+}
+
+/** 信頼済みエイリアスを削除 (system_admin のみ) */
+export async function deleteTrustedAlias(alias: string): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(`/manage/trusted-aliases/${encodeURIComponent(alias)}`);
 }

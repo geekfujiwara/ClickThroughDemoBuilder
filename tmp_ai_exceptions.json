@@ -1,0 +1,30 @@
+{
+  "tables": [
+    {
+      "columns": [
+        {
+          "name": "timestamp",
+          "type": "datetime"
+        },
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "name": "outerMessage",
+          "type": "string"
+        },
+        {
+          "name": "innermostMessage",
+          "type": "string"
+        },
+        {
+          "name": "assembly",
+          "type": "string"
+        }
+      ],
+      "name": "PrimaryResult",
+      "rows": []
+    }
+  ]
+}

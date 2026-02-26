@@ -202,6 +202,12 @@ export interface DemoCreator {
   updatedAt: string;
 }
 
+export interface TrustedAlias {
+  alias: string;                       // メールのローカルパート (例: "hfujiwara")
+  role: 'designer' | 'user_admin';     // 自動昇格先ロール
+  addedAt: string;                     // ISO 8601
+}
+
 // ============================================================
 // ソーシャル機能
 // ============================================================

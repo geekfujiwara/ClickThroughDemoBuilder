@@ -7,6 +7,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { createToken, buildSessionCookie } from '../middleware/auth.js';
 import * as creatorService from '../services/creatorService.js';
+import * as trustedAliasService from '../services/trustedAliasService.js';
 
 const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID ?? '';
 const ALLOWED_DOMAIN = '@microsoft.com';
@@ -112,6 +113,22 @@ async function handler(
     // ⑤ ブロック済みユーザーはログイン拒否
     if (creator.isBlocked) {
       return { status: 403, jsonBody: { error: 'Your account has been blocked.' } };
+    }
+
+    // ⑤-b 信頼済みエイリアスによる自動昇格
+    try {
+      const trusted = await trustedAliasService.findByEmail(email);
+      if (trusted) {
+        const currentLevel = trustedAliasService.roleLevel(creator.role ?? 'viewer');
+        const targetLevel = trustedAliasService.roleLevel(trusted.role);
+        if (currentLevel < targetLevel) {
+          creator = await creatorService.changeUserRole(creator.id, trusted.role);
+          context.log(`Trusted alias auto-promoted: ${email} → ${trusted.role}`);
+        }
+      }
+    } catch (e) {
+      // 昇格失敗はログインをブロックしない（警告のみ）
+      context.warn('Trusted alias check error:', (e as Error).message);
     }
 
     // ⑥ クリエイターのロールを使って JWT を発行

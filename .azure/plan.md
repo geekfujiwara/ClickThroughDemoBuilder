@@ -1,6 +1,6 @@
 # Click Through Demo Builder — Azure 再デプロイ計画
 
-**Status**: `Pending Approval`  
+**Status**: `Deployed`  
 **作成日**: 2026-02-25  
 **シナリオ**: REDEPLOY（Azure リソースを誤削除後の再作成）
 
