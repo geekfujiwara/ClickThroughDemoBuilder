@@ -56,7 +56,7 @@ function getCredential(): ChainedTokenCredential {
 function getClient(): BlobServiceClient {
   if (!_client) {
     if (storageAccountName) {
-      // STORAGE_ACCOUNT_NAME 設定あり → DefaultAzureCredential (Managed Identity) を使用
+      // STORAGE_ACCOUNT_NAME 設定あり → ChainedTokenCredential (MI → AzureCLI) を使用
       // allowSharedKeyAccess=false / publicNetworkAccess=Disabled でも動作
       _client = new BlobServiceClient(
         `https://${storageAccountName}.blob.core.windows.net`,
