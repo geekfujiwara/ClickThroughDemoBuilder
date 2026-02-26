@@ -1,0 +1,51 @@
+name: Restore Storage Network Access
+
+# 毎朝 4:00 JST (19:00 UTC) に実行
+# 会社ポリシーが夜間に publicNetworkAccess=Disabled に変更するため、毎朝 Enabled に戻す
+on:
+  schedule:
+    - cron: '0 19 * * *'
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  restore-network-access:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
+
+      - name: Restore publicNetworkAccess=Enabled
+        run: |
+          echo "現在の設定を確認..."
+          CURRENT=$(az storage account show \
+            --name stclickthroughprod \
+            --resource-group rg-clickthrough-prod \
+            --query "publicNetworkAccess" -o tsv)
+          echo "publicNetworkAccess: $CURRENT"
+
+          if [ "$CURRENT" = "Disabled" ]; then
+            echo "Disabled が検出されました。Enabled に変更します..."
+            az storage account update \
+              --name stclickthroughprod \
+              --resource-group rg-clickthrough-prod \
+              --public-network-access Enabled
+            echo "✓ publicNetworkAccess=Enabled に変更しました"
+          else
+            echo "✓ 既に Enabled です。変更不要。"
+          fi
+
+      - name: Verify settings
+        run: |
+          az storage account show \
+            --name stclickthroughprod \
+            --resource-group rg-clickthrough-prod \
+            --query "{publicNetworkAccess:publicNetworkAccess, defaultAction:networkRuleSet.defaultAction, allowSharedKeyAccess:allowSharedKeyAccess}" \
+            -o table
