@@ -448,6 +448,59 @@ const EN: Partial<MessageCatalog> = {
   navGroups: 'Organizations',
   navCreators: 'Creator Master',
   navUsers: 'User Master',
+  navFeed: 'Feed',
+  navFavorites: 'Favorites',
+  navApplyDesigner: 'Apply for Designer',
+
+  // Designer Application
+  applyDesignerTitle: 'Apply for Designer Access',
+  applyDesignerDescription: 'Designer access is required to create and edit demos. Please fill in the form below.',
+  applyDesignerReason: 'Reason',
+  applyDesignerReasonPlaceholder: 'Enter your reason for requesting designer access (required)',
+  applyDesignerSubmit: 'Submit',
+  applyDesignerSubmitting: 'Submitting...',
+  applyDesignerSuccess: 'Your application has been submitted. Please wait for admin approval.',
+  applyDesignerPending: 'Your application is currently under review. Please wait for approval.',
+  applyDesignerApproved: 'You already have designer access.',
+
+  // Likes
+  like: 'Like',
+  unlike: 'Unlike',
+  likeCount: (n: number) => `${n} likes`,
+
+  // Favorites
+  favorite: 'Favorite',
+  unfavorite: 'Remove from favorites',
+  favoritesTitle: 'Favorites',
+  favoritesEmpty: 'No favorited demos yet.',
+  favoritesPopularTab: 'Popular',
+  favoritesSavedTab: 'Saved',
+
+  // Feed
+  feedTitle: 'Feed',
+  feedEmpty: 'No activity yet.',
+  feedLiked: 'liked a demo',
+  feedCommented: 'commented on a demo',
+  feedNewDemo: 'created a new demo',
+  feedNewDesigner: 'became a designer',
+
+  // Comments
+  commentTitle: 'Comments',
+  commentPlaceholder: 'Write a comment...',
+  commentPost: 'Post',
+  commentEmpty: 'No comments yet.',
+  commentDelete: 'Delete comment',
+
+  // Home Rankings
+  homeRankingByLikes: 'Popular Demos 🏆',
+  homeMyDemos: 'Your Demos 🎞️',
+  homeMyDemosEmpty: 'You have not created any demos yet.',
+  homeRecentDemos: 'Recently Added 🆕',
+  homeRankingByPlay: 'Most Played ▶️',
+  homeRankingByDuration: 'Most Watched ⏱️',
+  homeTopCreatorsByLikes: 'Top Creators by Likes ⭐',
+  homeTopCreatorsByDemos: 'Most Active Creators 📦',
+  homeRecentActivity: 'Recent Activity 💬',
 
   userMasterTitle: 'User Master',
   organizationMasterTitle: 'Organizations',
