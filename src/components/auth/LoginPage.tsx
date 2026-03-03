@@ -8,7 +8,7 @@ import AppSymbol from "@/components/common/AppSymbol";
 import { useAuthStore } from "@/stores/authStore";
 
 const GITHUB_URL =
-  (import.meta.env.VITE_GITHUB_URL as string | undefined) ?? "https://github.com";
+  (import.meta.env.VITE_GITHUB_URL as string | undefined) ?? "https://github.com/geekfujiwara/ClickThroughDemoBuilder";
 
 const useStyles = makeStyles({
   root: {
