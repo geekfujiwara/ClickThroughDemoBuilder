@@ -301,6 +301,18 @@ const JA = {
   demoDetailStatsNoData: 'まだ統計データがありません。',
   demoDetailStatsViews: '再生',
   demoDetailStatsCompletes: '完了',
+
+  // カンファレンスモード
+  conferenceMode: 'カンファレンスモード',
+  conferenceModeShortcuts: 'キーボードショートカット',
+  conferenceModeShortcutClick: 'クリックポイントをクリック — 次のステップへ進む',
+  conferenceModeShortcutPrev: '← キー — 前のクリックポイントに戻る',
+  conferenceModeShortcutRestart: 'R キー — はじめから再生',
+  conferenceModeShortcutExit: 'Esc キー — カンファレンスモードを終了',
+  conferenceModeShortcutFullscreen: 'F11 キー — フルスクリーン切り替え',
+  conferenceModeShortcutNext: 'スペース / Enter — クリックポイントをクリック',
+  conferenceModeDoNotShowAgain: '今後表示しない',
+  conferenceModeStart: 'カンファレンスモードを開始',
 };
 
 type MessageCatalog = typeof JA;
@@ -605,6 +617,18 @@ const EN: Partial<MessageCatalog> = {
   demoDetailStatsNoData: 'No analytics data yet.',
   demoDetailStatsViews: 'Views',
   demoDetailStatsCompletes: 'Completions',
+
+  // Conference mode
+  conferenceMode: 'Conference Mode',
+  conferenceModeShortcuts: 'Keyboard Shortcuts',
+  conferenceModeShortcutClick: 'Click on click point — advance to next step',
+  conferenceModeShortcutPrev: '← key — go back to previous click point',
+  conferenceModeShortcutRestart: 'R key — restart from beginning',
+  conferenceModeShortcutExit: 'Esc key — exit conference mode',
+  conferenceModeShortcutFullscreen: 'F11 key — toggle fullscreen',
+  conferenceModeShortcutNext: 'Space / Enter — click the click point',
+  conferenceModeDoNotShowAgain: 'Do not show again',
+  conferenceModeStart: 'Start Conference Mode',
 };
 
 function getValue<K extends keyof MessageCatalog>(key: K): MessageCatalog[K] {

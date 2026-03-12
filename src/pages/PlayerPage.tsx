@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Checkbox,
 } from '@fluentui/react-components';
 import {
   DismissRegular,
@@ -22,6 +23,7 @@ import {
   HeartFilled,
   BookmarkRegular,
   BookmarkFilled,
+  PresenterRegular,
 } from '@fluentui/react-icons';
 import type { DemoProject, ClickPoint, PlayerState } from '@/types';
 import { PULSE_DURATION_MAP, DEFAULT_DESCRIPTION_STYLE } from '@/types';
@@ -259,6 +261,40 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalL,
     color: '#fff',
   },
+  conferenceModeBtn: {
+    color: '#fff',
+  },
+  conferenceVideoContainer: {
+    position: 'relative',
+    maxWidth: '100%',
+    maxHeight: '100vh',
+  },
+  conferenceVideo: {
+    display: 'block',
+    maxWidth: '100%',
+    maxHeight: '100vh',
+    cursor: 'default',
+  },
+  conferenceClickPoint: {
+    position: 'absolute',
+    cursor: 'pointer',
+    transform: 'translate(-50%, -50%)',
+  },
+  shortcutList: {
+    listStyleType: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: tokens.spacingVerticalS,
+  },
+  shortcutItem: {
+    fontFamily: 'monospace',
+    fontSize: '14px',
+  },
+  shortcutCheckbox: {
+    marginTop: tokens.spacingVerticalM,
+  },
 });
 
 export default function PlayerPage() {
@@ -286,6 +322,10 @@ export default function PlayerPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
+
+  // カンファレンスモード
+  const [isConferenceMode, setIsConferenceMode] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
   // いいね・お気に入りのロード
   useEffect(() => {
@@ -508,19 +548,55 @@ export default function PlayerPage() {
     }
   }, []);
 
+  // カンファレンスモード切り替え
+  const handleEnterConferenceMode = useCallback(() => {
+    setIsConferenceMode(true);
+    const hideShortcuts = localStorage.getItem('conference-mode-hide-shortcuts');
+    if (hideShortcuts !== 'true') {
+      setShowShortcutsModal(true);
+    }
+  }, []);
+
+  const handleExitConferenceMode = useCallback(() => {
+    setIsConferenceMode(false);
+  }, []);
+
   // キーボード
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // ショートカットモーダルが表示中はEscで閉じるだけ
+      if (showShortcutsModal) {
+        if (e.key === 'Escape') {
+          setShowShortcutsModal(false);
+        }
+        return;
+      }
+
       if (e.key === 'F11') {
         e.preventDefault();
         toggleFullscreen();
-      } else if (e.key === 'Escape' && !document.fullscreenElement) {
-        navigate(-1);
+      } else if (e.key === 'Escape') {
+        if (isConferenceMode) {
+          handleExitConferenceMode();
+        } else if (!document.fullscreenElement) {
+          navigate(-1);
+        }
+      } else if (isConferenceMode) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handleGoToPreviousClickPoint();
+        } else if ((e.key === ' ' || e.key === 'Enter') && playerState === 'WAITING') {
+          e.preventDefault();
+          handleClickPointClick();
+        } else if (e.key === 'r' || e.key === 'R') {
+          e.preventDefault();
+          handleRestart();
+        }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [toggleFullscreen, navigate]);
+  }, [toggleFullscreen, navigate, isConferenceMode, showShortcutsModal, handleExitConferenceMode, handleGoToPreviousClickPoint, handleClickPointClick, handleRestart, playerState]);
 
   // (visibleAnnotations removed)
 
@@ -553,7 +629,8 @@ export default function PlayerPage() {
 
   return (
     <div className={classes.root}>
-      {/* Top bar */}
+      {/* Top bar — カンファレンスモードでは非表示 */}
+      {!isConferenceMode && (
       <div className={classes.topBar}>
         <div className={classes.topBarMeta}>
           <Text className={classes.topBarTitle} weight="semibold">{project.title}</Text>
@@ -580,6 +657,14 @@ export default function PlayerPage() {
               onClick={() => void handleFavoriteToggle()}
             />
           </Tooltip>
+          <Tooltip content={MSG.conferenceMode} relationship="label">
+            <Button
+              icon={<PresenterRegular />}
+              appearance="subtle"
+              className={classes.conferenceModeBtn}
+              onClick={handleEnterConferenceMode}
+            />
+          </Tooltip>
           <Button
             icon={<FullScreenMaximizeRegular />}
             appearance="subtle"
@@ -594,21 +679,23 @@ export default function PlayerPage() {
           />
         </div>
       </div>
+      )}
 
       {/* Video */}
-      <div className={classes.videoContainer}>
+      <div className={isConferenceMode ? classes.conferenceVideoContainer : classes.videoContainer}>
         <video
           ref={videoRef}
-          className={classes.video}
+          className={isConferenceMode ? classes.conferenceVideo : classes.video}
           src={videoUrl}
           onCanPlay={handleCanPlay}
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => setIsBuffering(false)}
           onTimeUpdate={handleTimeUpdate}
           onEnded={() => {
-            // 動画が最後まで再生されたら完了
             setPlayerState('COMPLETE');
-            setShowCompletion(true);
+            if (!isConferenceMode) {
+              setShowCompletion(true);
+            }
             if (projectId && !loggedCompleteRef.current) {
               loggedCompleteRef.current = true;
               void logDemoUsage(projectId, 'view_complete').catch(() => undefined);
@@ -618,7 +705,7 @@ export default function PlayerPage() {
 
         {/* Overlay */}
         <div className={classes.overlay}>
-          {isVideoReady && !hasStarted && !showCompletion && (
+          {isVideoReady && !hasStarted && !showCompletion && !isConferenceMode && (
             <div className={classes.overlayCenter}>
               <Button
                 icon={<PlayRegular />}
@@ -631,7 +718,7 @@ export default function PlayerPage() {
             </div>
           )}
 
-          {isBuffering && (
+          {isBuffering && !isConferenceMode && (
             <div className={classes.overlayCenter}>
               <div className={classes.overlayLoading}>
                 <Spinner size="tiny" />
@@ -642,6 +729,30 @@ export default function PlayerPage() {
 
           {/* クリックポイント (待機中のみ表示) */}
           {playerState === 'WAITING' && currentCp && (() => {
+            // カンファレンスモード: 透明だがクリック可能なクリックポイント
+            if (isConferenceMode) {
+              return (
+                <div
+                  className={classes.conferenceClickPoint}
+                  style={{
+                    left: `${currentCp.position.x}%`,
+                    top: `${currentCp.position.y}%`,
+                    ...(currentCp.area.type === 'circle'
+                      ? {
+                          width: `${currentCp.area.radius * 2}px`,
+                          height: `${currentCp.area.radius * 2}px`,
+                          borderRadius: '50%',
+                        }
+                      : {
+                          width: `${currentCp.area.width}px`,
+                          height: `${currentCp.area.height}px`,
+                        }),
+                  }}
+                  onClick={handleClickPointClick}
+                />
+              );
+            }
+
             const descStyle = currentCp.descriptionStyle ?? DEFAULT_DESCRIPTION_STYLE;
             const descOffset = currentCp.descriptionOffset ?? { x: 5, y: -10 };
             return (
@@ -690,8 +801,8 @@ export default function PlayerPage() {
         </div>
       </div>
 
-      {/* 次のCPまで再生ボタン */}
-      {playerState === 'WAITING' && currentCp && (
+      {/* 次のCPまで再生ボタン — カンファレンスモードでは非表示 */}
+      {!isConferenceMode && playerState === 'WAITING' && currentCp && (
         <div className={classes.nextCpArea}>
           <Button
             icon={<PlayRegular />}
@@ -704,8 +815,8 @@ export default function PlayerPage() {
         </div>
       )}
 
-      {/* Progress */}
-      {project.settings.showProgress && (
+      {/* Progress — カンファレンスモードでは非表示 */}
+      {!isConferenceMode && project.settings.showProgress && (
         <div className={classes.progressArea}>
           <div className={classes.controlsRow}>
             <Button className={classes.controlBtn} size="small" onClick={handleRestart}>
@@ -755,8 +866,8 @@ export default function PlayerPage() {
         </div>
       )}
 
-      {/* Completion dialog */}
-      <Dialog open={showCompletion}>
+      {/* Completion dialog — カンファレンスモードでは非表示 */}
+      <Dialog open={showCompletion && !isConferenceMode}>
         <DialogSurface>
           <DialogBody>
             <DialogTitle>🎉 {MSG.playerComplete}</DialogTitle>
@@ -769,6 +880,41 @@ export default function PlayerPage() {
               </Button>
               <Button appearance="primary" onClick={() => navigate('/')}>
                 {MSG.playerBackHome}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+      {/* カンファレンスモード ショートカットモーダル */}
+      <Dialog open={showShortcutsModal}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{MSG.conferenceModeShortcuts}</DialogTitle>
+            <DialogContent>
+              <ul className={classes.shortcutList}>
+                <li className={classes.shortcutItem}>{MSG.conferenceModeShortcutClick}</li>
+                <li className={classes.shortcutItem}>{MSG.conferenceModeShortcutNext}</li>
+                <li className={classes.shortcutItem}>{MSG.conferenceModeShortcutPrev}</li>
+                <li className={classes.shortcutItem}>{MSG.conferenceModeShortcutRestart}</li>
+                <li className={classes.shortcutItem}>{MSG.conferenceModeShortcutFullscreen}</li>
+                <li className={classes.shortcutItem}>{MSG.conferenceModeShortcutExit}</li>
+              </ul>
+              <div className={classes.shortcutCheckbox}>
+                <Checkbox
+                  label={MSG.conferenceModeDoNotShowAgain}
+                  onChange={(_e, data) => {
+                    if (data.checked) {
+                      localStorage.setItem('conference-mode-hide-shortcuts', 'true');
+                    } else {
+                      localStorage.removeItem('conference-mode-hide-shortcuts');
+                    }
+                  }}
+                />
+              </div>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="primary" onClick={() => setShowShortcutsModal(false)}>
+                {MSG.conferenceModeStart}
               </Button>
             </DialogActions>
           </DialogBody>
