@@ -103,9 +103,9 @@ export const useDesignerStore = create<DesignerStoreState & DesignerStoreActions
     state.pushSnapshot();
 
     const newCp: ClickPoint = { ...cp, id: generateId() };
-    const clickPoints = [...state.currentProject.clickPoints, newCp].sort(
-      (a, b) => a.order - b.order,
-    );
+    const clickPoints = [...state.currentProject.clickPoints, newCp]
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map((c, i) => ({ ...c, order: i + 1 }));
 
     set({
       currentProject: { ...state.currentProject, clickPoints },
@@ -120,9 +120,10 @@ export const useDesignerStore = create<DesignerStoreState & DesignerStoreActions
     if (!state.currentProject) return;
     state.pushSnapshot();
 
-    const clickPoints = state.currentProject.clickPoints.map((cp) =>
-      cp.id === id ? { ...cp, ...updates } : cp,
-    );
+    const clickPoints = state.currentProject.clickPoints
+      .map((cp) => (cp.id === id ? { ...cp, ...updates } : cp))
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map((cp, i) => ({ ...cp, order: i + 1 }));
 
     set({
       currentProject: { ...state.currentProject, clickPoints },
