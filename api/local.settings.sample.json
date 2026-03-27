@@ -34,6 +34,10 @@
     "AZURE_CLIENT_SECRET": "",
 
     "GRAPH_SENDER": "<YOUR_SENDER_UPN_eg_noreply@yourtenant.onmicrosoft.com>",
-    "GITHUB_URL": "https://github.com/your-org/click-through-demo-builder"
+    "GITHUB_URL": "https://github.com/your-org/click-through-demo-builder",
+
+    "___COMMENT_GUEST___": "=== ゲストログイン設定 ===",
+    "GUEST_LOGIN_ID": "<SET_GUEST_LOGIN_ID>",
+    "GUEST_LOGIN_PASSWORD": "<SET_GUEST_LOGIN_PASSWORD>"
   }
 }

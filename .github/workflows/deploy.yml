@@ -61,6 +61,26 @@ jobs:
           skip_app_build: true
           skip_api_build: true
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
+
+      - name: Set SWA application settings
+        run: |
+          az staticwebapp appsettings set \
+            --name swa-clickthrough-prod \
+            --resource-group rg-clickthrough-prod \
+            --setting-names \
+              GUEST_LOGIN_ID="${{ secrets.GUEST_LOGIN_ID }}" \
+              GUEST_LOGIN_PASSWORD="${{ secrets.GUEST_LOGIN_PASSWORD }}"
+
   close_pull_request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
