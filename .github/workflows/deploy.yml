@@ -76,6 +76,7 @@ jobs:
 
       - name: Set SWA application settings
         if: steps.azure_login.outcome == 'success'
+        continue-on-error: true
         run: |
           az staticwebapp appsettings set \
             --name swa-clickthrough-prod \
