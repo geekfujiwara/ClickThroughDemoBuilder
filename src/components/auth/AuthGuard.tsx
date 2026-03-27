@@ -23,7 +23,7 @@ interface Props {
 }
 
 export default function AuthGuard({ role }: Props) {
-  const { isAuthenticated, role: currentRole, isLoading, selectedCreator } = useAuthStore();
+  const { isAuthenticated, role: currentRole, isLoading, selectedCreator, isGuest } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -42,10 +42,11 @@ export default function AuthGuard({ role }: Props) {
       return;
     }
 
-    if (!selectedCreator) {
+    // ゲストユーザーは creator プロファイル不要
+    if (!isGuest && !selectedCreator) {
       navigate('/creator/select', { replace: true });
     }
-  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator, hasAccess]);
+  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator, hasAccess, isGuest]);
 
   if (isLoading) {
     return (
@@ -57,7 +58,7 @@ export default function AuthGuard({ role }: Props) {
 
   if (!isAuthenticated) return null;
   if (!hasAccess) return null;
-  if (!selectedCreator) return null;
+  if (!isGuest && !selectedCreator) return null;
 
   return <Outlet />;
 }
