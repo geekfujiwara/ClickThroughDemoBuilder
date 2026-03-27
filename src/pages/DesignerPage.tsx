@@ -20,6 +20,7 @@ import {
   Spinner,
   MessageBar,
   MessageBarBody,
+  Switch,
 } from '@fluentui/react-components';
 import {
   ArrowLeftRegular,
@@ -463,6 +464,22 @@ export default function DesignerPage() {
                   <Text>#{currentProject.demoNumber}</Text>
                 </div>
               ) : null}
+              <div className={classes.settingsField}>
+                <Switch
+                  label="ゲスト公開"
+                  checked={currentProject?.settings?.guestAccessEnabled !== false}
+                  onChange={(_, data) =>
+                    updateProjectMeta({
+                      settings: { ...currentProject!.settings, guestAccessEnabled: data.checked },
+                    })
+                  }
+                />
+                <MessageBar intent="warning" style={{ marginTop: '4px' }}>
+                  <MessageBarBody>
+                    顧客情報等が含まれるデモはゲスト公開を無効にしてください。
+                  </MessageBarBody>
+                </MessageBar>
+              </div>
             </div>
           </PopoverSurface>
         </Popover>

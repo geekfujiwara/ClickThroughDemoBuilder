@@ -34,6 +34,7 @@ import {
   addLike, removeLike, getLikeStatus,
   getFavorites, addFavorite, removeFavorite,
 } from '@/services/socialService';
+import { useAuthStore } from '@/stores/authStore';
 import { MSG } from '@/constants/messages';
 import { formatTime } from '@/utils/time';
 
@@ -302,6 +303,9 @@ export default function PlayerPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
 
+  // ゲストモード検出 (authStore から)
+  const isGuest = useAuthStore((s) => s.isGuest);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const rafRef = useRef<number>(0);
   const loggedStartRef = useRef(false);
@@ -327,9 +331,9 @@ export default function PlayerPage() {
   const [isConferenceMode, setIsConferenceMode] = useState(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
-  // いいね・お気に入りのロード
+  // いいね・お気に入りのロード (ゲストモードでは無効)
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || isGuest) return;
     getLikeStatus(projectId)
       .then((res) => {
         setIsLiked(res.liked);
@@ -341,7 +345,7 @@ export default function PlayerPage() {
         setIsFavorited(favs.some((f) => f.demoId === projectId));
       })
       .catch(() => undefined);
-  }, [projectId]);
+  }, [projectId, isGuest]);
 
   const handleLikeToggle = useCallback(async () => {
     if (!projectId) return;
@@ -637,26 +641,35 @@ export default function PlayerPage() {
           <Text className={classes.topBarTime} size={200}>
             {formatTime(currentTime)} / {formatTime(duration)}
           </Text>
+          {isGuest && (
+            <Text size={200} style={{ color: 'rgba(255,255,255,0.7)', flexShrink: 0 }}>
+              (ゲスト閲覧)
+            </Text>
+          )}
         </div>
         <div className={classes.topBarActions}>
-          <Tooltip content={isLiked ? MSG.unlike : MSG.like} relationship="label">
-            <Button
-              icon={isLiked ? <HeartFilled style={{ color: '#ff6b81' }} /> : <HeartRegular />}
-              appearance="subtle"
-              className={classes.topBarActionBtn}
-              onClick={() => void handleLikeToggle()}
-            >
-              {likeCount > 0 ? likeCount : undefined}
-            </Button>
-          </Tooltip>
-          <Tooltip content={isFavorited ? MSG.unfavorite : MSG.favorite} relationship="label">
-            <Button
-              icon={isFavorited ? <BookmarkFilled style={{ color: '#f0c040' }} /> : <BookmarkRegular />}
-              appearance="subtle"
-              className={classes.topBarActionBtn}
-              onClick={() => void handleFavoriteToggle()}
-            />
-          </Tooltip>
+          {!isGuest && (
+            <>
+              <Tooltip content={isLiked ? MSG.unlike : MSG.like} relationship="label">
+                <Button
+                  icon={isLiked ? <HeartFilled style={{ color: '#ff6b81' }} /> : <HeartRegular />}
+                  appearance="subtle"
+                  className={classes.topBarActionBtn}
+                  onClick={() => void handleLikeToggle()}
+                >
+                  {likeCount > 0 ? likeCount : undefined}
+                </Button>
+              </Tooltip>
+              <Tooltip content={isFavorited ? MSG.unfavorite : MSG.favorite} relationship="label">
+                <Button
+                  icon={isFavorited ? <BookmarkFilled style={{ color: '#f0c040' }} /> : <BookmarkRegular />}
+                  appearance="subtle"
+                  className={classes.topBarActionBtn}
+                  onClick={() => void handleFavoriteToggle()}
+                />
+              </Tooltip>
+            </>
+          )}
           <Tooltip content={MSG.conferenceMode} relationship="label">
             <Button
               icon={<PresenterRegular />}
@@ -671,12 +684,14 @@ export default function PlayerPage() {
             className={classes.topBarActionBtn}
             onClick={toggleFullscreen}
           />
-          <Button
-            icon={<DismissRegular />}
-            appearance="subtle"
-            className={classes.topBarActionBtn}
-            onClick={() => navigate(-1)}
-          />
+          {!isGuest && (
+            <Button
+              icon={<DismissRegular />}
+              appearance="subtle"
+              className={classes.topBarActionBtn}
+              onClick={() => navigate(-1)}
+            />
+          )}
         </div>
       </div>
       )}
@@ -878,9 +893,15 @@ export default function PlayerPage() {
               <Button appearance="secondary" onClick={handleRestart}>
                 {MSG.playerRestart}
               </Button>
-              <Button appearance="primary" onClick={() => navigate('/')}>
-                {MSG.playerBackHome}
-              </Button>
+              {isGuest ? (
+                <Button appearance="primary" onClick={() => window.location.assign('/login')}>
+                  ログインしてフル機能を使う
+                </Button>
+              ) : (
+                <Button appearance="primary" onClick={() => navigate('/')}>
+                  {MSG.playerBackHome}
+                </Button>
+              )}
             </DialogActions>
           </DialogBody>
         </DialogSurface>

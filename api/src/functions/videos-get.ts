@@ -5,6 +5,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { requireRole } from '../middleware/auth.js';
 import * as blobService from '../services/blobService.js';
+import * as projectService from '../services/projectService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'viewer', 'designer');
@@ -14,6 +15,14 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!projectId) return { status: 400, jsonBody: { error: 'projectId は必須です' } };
 
   try {
+    // ゲストユーザーの場合は guestAccessEnabled チェック
+    if (auth.payload.creatorId === 'guest') {
+      const project = await projectService.getProject(projectId);
+      if (!project || project.settings?.guestAccessEnabled === false) {
+        return { status: 404, jsonBody: { error: '動画が見つかりません' } };
+      }
+    }
+
     const url = await blobService.getVideoSasUrl(projectId);
     if (!url) return { status: 404, jsonBody: { error: '動画が見つかりません' } };
     return { status: 200, jsonBody: { url } };

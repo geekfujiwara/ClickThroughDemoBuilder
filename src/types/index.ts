@@ -138,6 +138,8 @@ export interface DemoSettings {
   completionMessage: string;
   allowSkip: boolean;
   defaultDescriptionStyle: DescriptionStyle;
+  /** ゲストユーザーに公開するかどうか (既定: true) */
+  guestAccessEnabled: boolean;
 }
 
 // ============================================================
@@ -150,6 +152,7 @@ export const DEFAULT_DEMO_SETTINGS: DemoSettings = {
   completionMessage: 'お疲れ様でした！デモが完了しました。',
   allowSkip: false,
   defaultDescriptionStyle: { ...DEFAULT_DESCRIPTION_STYLE },
+  guestAccessEnabled: true,
 };
 
 export function createDefaultProject(partial: {

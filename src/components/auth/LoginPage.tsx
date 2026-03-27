@@ -1,7 +1,7 @@
-﻿import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useState, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Button, MessageBar, MessageBarBody,
+  Button, Input, Label, MessageBar, MessageBarBody,
   Spinner, Text, makeStyles, tokens,
 } from "@fluentui/react-components";
 import AppSymbol from "@/components/common/AppSymbol";
@@ -41,26 +41,61 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3, textDecoration: "none",
     fontSize: tokens.fontSizeBase200,
   },
+  guestField: {
+    display: "flex", flexDirection: "column" as const,
+    gap: tokens.spacingVerticalXS,
+  },
 });
 
 export default function LoginPage() {
   const styles = useStyles();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const loginWithEntra = useAuthStore((s) => s.loginWithEntra);
+  const loginAsGuest = useAuthStore((s) => s.loginAsGuest);
+
+  const isExpired = useMemo(() => searchParams.get('expired') === '1', [searchParams]);
+  const isGuestMode = useMemo(() => searchParams.get('guestMode') === 'true', [searchParams]);
 
   const [error, setError] = useState<string | null>(null);
   const [entraLoading, setEntraLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
+  const [guestLoginId, setGuestLoginId] = useState('');
+  const [guestPassword, setGuestPassword] = useState('');
 
   const handleMicrosoftLogin = async () => {
     setError(null);
     setEntraLoading(true);
     try {
       await loginWithEntra();
-      navigate("/");
+      const returnTo = sessionStorage.getItem('returnTo');
+      if (returnTo) {
+        sessionStorage.removeItem('returnTo');
+        navigate(returnTo, { replace: true });
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError((err as Error).message || "Microsoft sign-in failed. Please try again.");
     } finally {
       setEntraLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setError(null);
+    if (!guestLoginId || !guestPassword) {
+      setError('IDとパスワードを入力してください。');
+      return;
+    }
+    setGuestLoading(true);
+    try {
+      await loginAsGuest(guestLoginId, guestPassword);
+      navigate("/", { replace: true });
+    } catch {
+      setError('IDまたはパスワードが正しくありません。');
+    } finally {
+      setGuestLoading(false);
     }
   };
 
@@ -74,23 +109,63 @@ export default function LoginPage() {
           </Text>
         </div>
 
-        <Button
-          appearance="primary"
-          size="large"
-          disabled={entraLoading}
-          onClick={() => void handleMicrosoftLogin()}
-          style={{ width: "100%", justifyContent: "center" }}
-          icon={
-            <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-              <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-              <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-              <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-            </svg>
-          }
-        >
-          {entraLoading ? <Spinner size="tiny" label="Signing in..." /> : "Sign in with Microsoft"}
-        </Button>
+        {isGuestMode ? (
+          <>
+            <div className={styles.guestField}>
+              <Label htmlFor="guest-id">ID</Label>
+              <Input
+                id="guest-id"
+                value={guestLoginId}
+                onChange={(_, data) => setGuestLoginId(data.value)}
+                disabled={guestLoading}
+              />
+            </div>
+            <div className={styles.guestField}>
+              <Label htmlFor="guest-pw">Password</Label>
+              <Input
+                id="guest-pw"
+                type="password"
+                value={guestPassword}
+                onChange={(_, data) => setGuestPassword(data.value)}
+                disabled={guestLoading}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleGuestLogin(); }}
+              />
+            </div>
+            <Button
+              appearance="primary"
+              size="large"
+              disabled={guestLoading}
+              onClick={() => void handleGuestLogin()}
+              style={{ width: "100%", justifyContent: "center" }}
+            >
+              {guestLoading ? <Spinner size="tiny" label="Signing in..." /> : "Sign in as Guest"}
+            </Button>
+          </>
+        ) : (
+          <Button
+            appearance="primary"
+            size="large"
+            disabled={entraLoading}
+            onClick={() => void handleMicrosoftLogin()}
+            style={{ width: "100%", justifyContent: "center" }}
+            icon={
+              <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+              </svg>
+            }
+          >
+            {entraLoading ? <Spinner size="tiny" label="Signing in..." /> : "Sign in with Microsoft"}
+          </Button>
+        )}
+
+        {isExpired && (
+          <MessageBar intent="warning">
+            <MessageBarBody>セッションの有効期限が切れました。再度サインインしてください。</MessageBarBody>
+          </MessageBar>
+        )}
 
         {error && (
           <MessageBar intent="error">

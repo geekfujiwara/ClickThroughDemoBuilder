@@ -23,9 +23,12 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     const creatorGroupMap = new Map(creators.map((c) => [c.id, c.groupId]));
 
     // Viewer 用: 動画が設定されているプロジェクトのみ
+    // ゲストユーザーの場合は guestAccessEnabled のデモのみ表示
+    const isGuestUser = auth.payload.creatorId === 'guest';
     const demos = await Promise.all(
       all
         .filter((p) => p.video && p.video.videoId)
+        .filter((p) => !isGuestUser || (p.settings?.guestAccessEnabled !== false))
         .map(async (p) => ({
           id: p.id,
           demoNumber: p.demoNumber,

@@ -392,6 +392,30 @@ export interface RawUsageLog {
 /**
  * 指定した日付プレフィックス一覧に対応する使用ログを取得 (最大 2000 件)
  */
+// ── Share Tokens ──────────────────────────────────────────────
+
+export async function getShareTokensJson(): Promise<string | null> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('share-tokens.json');
+  try {
+    const buf = await blob.downloadToBuffer();
+    return buf.toString('utf-8');
+  } catch (e: unknown) {
+    if ((e as { statusCode?: number }).statusCode === 404) return null;
+    throw e;
+  }
+}
+
+export async function putShareTokensJson(json: string): Promise<void> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('share-tokens.json');
+  await blob.upload(json, Buffer.byteLength(json, 'utf-8'), {
+    blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
+  });
+}
+
+// ── Usage Logs ────────────────────────────────────────────────
+
 export async function getUsageLogsForDays(datePrefixes: string[]): Promise<RawUsageLog[]> {
   const c = await ensureContainer('usage-logs');
   const results: RawUsageLog[] = [];

@@ -105,3 +105,34 @@ export function requireRole(
   }
   return { payload };
 }
+
+/**
+ * セッション JWT の期限切れを検出する。
+ * Cookie は存在するが署名検証失敗 (期限切れ含む) の場合に true を返す。
+ */
+export function isSessionExpired(req: HttpRequest): boolean {
+  const token = parseCookie(req, 'session');
+  if (!token) return false;
+  try {
+    const secret = getRequiredEnv('JWT_SECRET');
+    jwt.verify(token, secret);
+    return false; // 有効なトークン
+  } catch (e: unknown) {
+    if (e instanceof jwt.TokenExpiredError) return true;
+    return false; // 他のエラー（改ざんなど）は期限切れとは別
+  }
+}
+
+/**
+ * クライアント IP アドレスを取得するヘルパー
+ */
+export function getClientIp(req: HttpRequest): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const ip = forwarded.split(',')[0]?.trim();
+    if (ip) return ip;
+  }
+  const direct = req.headers.get('x-client-ip') ?? req.headers.get('x-ms-client-ip');
+  if (direct) return direct.trim();
+  return 'unknown';
+}

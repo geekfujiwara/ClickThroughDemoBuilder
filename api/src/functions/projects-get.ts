@@ -16,6 +16,12 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   try {
     const project = await projectService.getProject(id);
     if (!project) return { status: 404, jsonBody: { error: 'プロジェクトが見つかりません' } };
+
+    // ゲストユーザーの場合は guestAccessEnabled チェック
+    if (auth.payload.creatorId === 'guest' && project.settings?.guestAccessEnabled === false) {
+      return { status: 404, jsonBody: { error: 'プロジェクトが見つかりません' } };
+    }
+
     return { status: 200, jsonBody: project };
   } catch (e) {
     return { status: 500, jsonBody: { error: (e as Error).message } };

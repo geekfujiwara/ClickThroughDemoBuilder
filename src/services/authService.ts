@@ -26,6 +26,15 @@ export async function loginWithEntra(
   return { role: res.role as UserRole, creatorId: res.creatorId!, name: res.name! };
 }
 
+/** ゲストログイン（ID/パスワード認証） */
+export async function loginAsGuest(
+  loginId: string,
+  password: string,
+): Promise<{ role: UserRole; creatorId: string }> {
+  const res = await apiPost<LoginResponse>('/auth/guest', { loginId, password });
+  return { role: res.role as UserRole, creatorId: res.creatorId ?? 'guest' };
+}
+
 /** ログアウト */
 export async function logout(): Promise<void> {
   await apiPost('/auth/logout');

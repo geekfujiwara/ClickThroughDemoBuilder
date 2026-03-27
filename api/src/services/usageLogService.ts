@@ -173,3 +173,46 @@ export async function logDemoUsage(
   const key = `${day}/${record.timestamp.replace(/[:.]/g, '-')}-${record.id}.json`;
   await blob.putUsageLogJson(key, JSON.stringify(record));
 }
+
+/**
+ * ゲストユーザーのデモ利用ログ記録
+ */
+export async function logGuestDemoUsage(
+  req: HttpRequest,
+  projectId: string,
+  event: 'view_start' | 'view_complete',
+  shareId: string,
+): Promise<void> {
+  const project = await projectService.getProject(projectId);
+  if (!project) {
+    throw new Error('プロジェクトが見つかりません');
+  }
+
+  const groups = await groupService.getAllGroups();
+  const group = project.groupId ? groups.find((g) => g.id === project.groupId) : undefined;
+
+  const ip = getClientIp(req);
+  const site = await resolveSiteFromIp(ip);
+
+  const record: DemoUsageLog = {
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    event,
+    demoId: project.id,
+    demoName: project.title,
+    demoGroupId: project.groupId,
+    demoGroupName: group?.name ?? '未設定',
+    viewerCreatorId: `guest:${shareId}`,
+    viewerCreatorName: 'ゲストユーザー',
+    viewerGroupId: undefined,
+    viewerGroupName: undefined,
+    role: 'unknown',
+    ip,
+    site,
+    userAgent: (req.headers.get('user-agent') ?? '').slice(0, 500),
+  };
+
+  const day = record.timestamp.slice(0, 10);
+  const key = `${day}/${record.timestamp.replace(/[:.]/g, '-')}-${record.id}.json`;
+  await blob.putUsageLogJson(key, JSON.stringify(record));
+}

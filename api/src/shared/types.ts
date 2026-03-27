@@ -68,6 +68,8 @@ export interface DemoSettings {
   completionMessage: string;
   allowSkip: boolean;
   defaultDescriptionStyle: DescriptionStyle;
+  /** ゲストユーザーに公開するかどうか (既定: true) */
+  guestAccessEnabled: boolean;
 }
 
 export type UserRole = 'viewer' | 'designer' | 'user_admin' | 'system_admin';

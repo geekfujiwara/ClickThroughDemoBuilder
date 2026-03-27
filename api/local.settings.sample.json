@@ -1,20 +1,38 @@
 {
   "IsEncrypted": false,
   "Values": {
-    "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "STORAGE_ACCOUNT_NAME": "",
+
+    "___COMMENT_LOCAL_DEV___": "=== ローカル開発 (Azurite) ===",
+    "AzureWebJobsStorage": "",
     "STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
+    "STORAGE_ACCOUNT_NAME": "",
+
+    "___COMMENT_AZURE_PROD___": "=== Azure 本番環境: 接続文字列を使わず Managed Identity で接続 ===",
+    "___COMMENT_AZURE_PROD_DETAIL___": "Azure Portal / CLI で以下を Functions アプリ設定に追加してください (本ファイルには設定不要)",
+    "___COMMENT_AzureWebJobsStorage___": "AzureWebJobsStorage__accountName = <FUNCTIONS_HOST_STORAGE_ACCOUNT_NAME>",
+    "___COMMENT_AzureWebJobsStorage_cred___": "AzureWebJobsStorage__credential = managedidentity",
+    "___COMMENT_AzureWebJobsStorage_blob___": "AzureWebJobsStorage__blobServiceUri = https://<FUNCTIONS_HOST_STORAGE_ACCOUNT_NAME>.blob.core.windows.net",
+    "___COMMENT_AzureWebJobsStorage_queue___": "AzureWebJobsStorage__queueServiceUri = https://<FUNCTIONS_HOST_STORAGE_ACCOUNT_NAME>.queue.core.windows.net",
+    "___COMMENT_AzureWebJobsStorage_table___": "AzureWebJobsStorage__tableServiceUri = https://<FUNCTIONS_HOST_STORAGE_ACCOUNT_NAME>.table.core.windows.net",
+    "___COMMENT_STORAGE_ACCOUNT_NAME___": "STORAGE_ACCOUNT_NAME = <APP_DATA_STORAGE_ACCOUNT_NAME> (アプリデータ用; Managed Identity でアクセス)",
+    "___COMMENT_NETWORK___": "ストレージの publicNetworkAccess=Disabled でも networkAcls.bypass=AzureServices + Managed Identity で動作",
+
     "VIEWER_PASSWORD": "<SET_LOCAL_VIEWER_PASSWORD>",
     "DESIGNER_PASSWORD": "<SET_LOCAL_DESIGNER_PASSWORD>",
     "JWT_SECRET": "<SET_LOCAL_JWT_SECRET_MIN_32_CHARS>",
+    "JWT_SHARE_SECRET": "<SET_LOCAL_JWT_SHARE_SECRET_MIN_32_CHARS>",
     "IP_SITE_RULES": "[{\"prefix\":\"203.0.113.\",\"site\":\"Tokyo HQ\"}]",
     "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "APP_URL": "http://localhost:4280",
     "ENTRA_CLIENT_ID": "<YOUR_AZURE_APP_REGISTRATION_CLIENT_ID>",
     "AZURE_TENANT_ID": "<YOUR_AZURE_TENANT_ID>",
-    "AZURE_CLIENT_ID": "<YOUR_AZURE_CLIENT_ID>",
-    "AZURE_CLIENT_SECRET": "<YOUR_AZURE_CLIENT_SECRET>",
+
+    "___COMMENT_IDENTITY___": "=== ローカル開発での Azure リソースアクセス ===",
+    "___COMMENT_IDENTITY_DETAIL___": "az login でサインイン済みなら AZURE_CLIENT_ID/SECRET は不要 (DefaultAzureCredential が Azure CLI 認証を自動使用)",
+    "AZURE_CLIENT_ID": "",
+    "AZURE_CLIENT_SECRET": "",
+
     "GRAPH_SENDER": "<YOUR_SENDER_UPN_eg_noreply@yourtenant.onmicrosoft.com>",
     "GITHUB_URL": "https://github.com/your-org/click-through-demo-builder"
   }
