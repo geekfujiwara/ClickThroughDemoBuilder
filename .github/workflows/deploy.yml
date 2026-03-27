@@ -75,11 +75,12 @@ jobs:
             }
 
       - name: Set SWA application settings
-        if: steps.azure_login.outcome == 'success'
+        if: steps.azure_login.outcome == 'success' && secrets.GUEST_LOGIN_ID != ''
         continue-on-error: true
         run: |
           az staticwebapp appsettings set \
             --name swa-clickthrough-prod \
+            --resource-group rg-clickthrough-prod \
             --setting-names \
               GUEST_LOGIN_ID="${{ secrets.GUEST_LOGIN_ID }}" \
               GUEST_LOGIN_PASSWORD="${{ secrets.GUEST_LOGIN_PASSWORD }}"
