@@ -63,6 +63,8 @@ jobs:
 
       - name: Azure Login
         uses: azure/login@v2
+        continue-on-error: true
+        id: azure_login
         with:
           creds: |
             {
@@ -73,10 +75,10 @@ jobs:
             }
 
       - name: Set SWA application settings
+        if: steps.azure_login.outcome == 'success'
         run: |
           az staticwebapp appsettings set \
             --name swa-clickthrough-prod \
-            --resource-group rg-clickthrough-prod \
             --setting-names \
               GUEST_LOGIN_ID="${{ secrets.GUEST_LOGIN_ID }}" \
               GUEST_LOGIN_PASSWORD="${{ secrets.GUEST_LOGIN_PASSWORD }}"
