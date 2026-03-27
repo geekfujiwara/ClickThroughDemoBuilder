@@ -75,7 +75,7 @@ jobs:
             }
 
       - name: Set SWA application settings
-        if: steps.azure_login.outcome == 'success' && secrets.GUEST_LOGIN_ID != ''
+        if: steps.azure_login.outcome == 'success'
         continue-on-error: true
         run: |
           az staticwebapp appsettings set \
