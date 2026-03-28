@@ -33,6 +33,7 @@ import SkeletonCard from '@/components/common/SkeletonCard';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
+import { apiGet } from '@/services/apiClient';
 import { useGuestNavigate } from '@/hooks/useGuestNav';
 import * as groupService from '@/services/groupService';
 import * as creatorService from '@/services/creatorService';
@@ -141,14 +142,40 @@ const useStyles = makeStyles({
   },
 });
 
+/** /api/demos が返すサマリー型 */
+interface DemoSummary {
+  id: string;
+  demoNumber: number;
+  title: string;
+  description: string;
+  groupId?: string;
+  creatorId?: string;
+  thumbnailDataUrl: string;
+  clickPointCount: number;
+  duration: number;
+  updatedAt: string;
+  createdAt: string;
+  likeCount: number;
+  commentCount: number;
+  playCount: number;
+}
+
 export default function ProjectsPage() {
   const MSG = useMsg();
   const classes = useStyles();
   const navigate = useGuestNavigate();
-  const { projects, isLoading, loadProjects, deleteProject, duplicateProject } =
+  const { projects: storeProjects, isLoading: storeLoading, loadProjects, deleteProject, duplicateProject } =
     useProjectStore();
   const { role } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
+
+  // Viewer/ゲスト用: /api/demos から取得したデモ一覧
+  const [viewerDemos, setViewerDemos] = useState<DemoProject[]>([]);
+  const [viewerLoading, setViewerLoading] = useState(false);
+
+  // isDesigner に応じてデータソースを切り替え
+  const projects = isDesigner ? storeProjects : viewerDemos;
+  const isLoading = isDesigner ? storeLoading : viewerLoading;
 
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -172,8 +199,27 @@ export default function ProjectsPage() {
     text.length > max ? text.slice(0, max) + '…' : text;
 
   useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
+    if (isDesigner) {
+      loadProjects();
+    } else {
+      // Viewer/ゲスト: /api/demos (viewer ロール対応) からロード
+      setViewerLoading(true);
+      apiGet<DemoSummary[]>('/demos')
+        .then((demos) => {
+          // DemoProject 互換の形状に変換
+          setViewerDemos(
+            demos.map((d) => ({
+              ...d,
+              video: { thumbnailDataUrl: d.thumbnailDataUrl } as DemoProject['video'],
+              clickPoints: Array.from({ length: d.clickPointCount }) as DemoProject['clickPoints'],
+              settings: {},
+            }) as unknown as DemoProject),
+          );
+        })
+        .catch(() => setViewerDemos([]))
+        .finally(() => setViewerLoading(false));
+    }
+  }, [isDesigner, loadProjects]);
 
   // Load favorites on mount
   useEffect(() => {
