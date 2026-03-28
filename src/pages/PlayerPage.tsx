@@ -685,12 +685,19 @@ export default function PlayerPage() {
             className={classes.topBarActionBtn}
             onClick={toggleFullscreen}
           />
-          {!isGuest && (
+          {!isGuest ? (
             <Button
               icon={<DismissRegular />}
               appearance="subtle"
               className={classes.topBarActionBtn}
               onClick={() => navigate(-1)}
+            />
+          ) : (
+            <Button
+              icon={<DismissRegular />}
+              appearance="subtle"
+              className={classes.topBarActionBtn}
+              onClick={() => navigate('/?guestMode=true')}
             />
           )}
         </div>
