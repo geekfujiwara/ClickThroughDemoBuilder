@@ -87,8 +87,9 @@ export default function Navigation() {
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
+    const wasGuest = isGuest;
     await logout();
-    if (isGuest) {
+    if (wasGuest) {
       window.location.assign('/login?guestMode=true');
     } else {
       window.location.assign('/');

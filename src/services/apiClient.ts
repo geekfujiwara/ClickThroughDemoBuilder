@@ -35,7 +35,8 @@ function handleSessionExpiry(path: string, status: number): void {
     redirecting = true;
     // 現在のページを記憶して再ログイン後に戻れるようにする
     sessionStorage.setItem('returnTo', window.location.pathname + window.location.search);
-    window.location.assign('/login?expired=1');
+    const isGuestSession = hadSession === 'guest';
+    window.location.assign(isGuestSession ? '/login?expired=1&guestMode=true' : '/login?expired=1');
   }
 }
 

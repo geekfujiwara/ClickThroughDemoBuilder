@@ -6,7 +6,7 @@
  * role="system_admin" … system_admin のみ許可
  */
 import { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { Spinner } from '@fluentui/react-components';
 import { useAuthStore } from '@/stores/authStore';
 import { useGuestNavigate } from '@/hooks/useGuestNav';
@@ -27,6 +27,8 @@ export default function AuthGuard({ role }: Props) {
   const { isAuthenticated, role: currentRole, isLoading, selectedCreator, isGuest } = useAuthStore();
   const navigate = useGuestNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const guestModeInUrl = searchParams.get('guestMode') === 'true';
 
   const hasAccess = currentRole ? ROLE_LEVEL[currentRole] >= ROLE_LEVEL[role] : false;
 
@@ -34,7 +36,9 @@ export default function AuthGuard({ role }: Props) {
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      navigate('/login', { replace: true });
+      // ゲストモードの場合は guestMode=true を維持してリダイレクト
+      const loginPath = (isGuest || guestModeInUrl) ? '/login?guestMode=true' : '/login';
+      navigate(loginPath, { replace: true });
       return;
     }
 
@@ -47,7 +51,7 @@ export default function AuthGuard({ role }: Props) {
     if (!isGuest && !selectedCreator) {
       navigate('/creator/select', { replace: true });
     }
-  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator, hasAccess, isGuest]);
+  }, [isAuthenticated, currentRole, isLoading, role, navigate, location.pathname, selectedCreator, hasAccess, isGuest, guestModeInUrl]);
 
   if (isLoading) {
     return (
