@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navigation from './Navigation';
+import GroupPromptDialog from './GroupPromptDialog';
 import { makeStyles, tokens } from '@fluentui/react-components';
 
 const useStyles = makeStyles({
@@ -31,6 +32,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className={classes.root}>
       <Navigation />
+      <GroupPromptDialog />
       <main className={classes.main}>{children ?? <Outlet />}</main>
     </div>
   );
