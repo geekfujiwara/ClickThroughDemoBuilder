@@ -43,8 +43,19 @@ function isValidIp(ip: string): boolean {
 function getClientIp(req: HttpRequest): string {
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) {
-    const ip = forwarded.split(',')[0]?.trim();
-    if (ip) return ip;
+    // Azure SWA は "ip:port" 形式で送信することがあるためポートを除去
+    const raw = forwarded.split(',')[0]?.trim();
+    if (raw) {
+      // IPv6 bracket notation [::1]:port or plain IPv4 1.2.3.4:port
+      if (raw.startsWith('[')) {
+        const bracketEnd = raw.indexOf(']');
+        return bracketEnd > 0 ? raw.slice(1, bracketEnd) : raw;
+      }
+      // IPv4:port — コロンが1つだけならポート区切り
+      const colonCount = (raw.match(/:/g) || []).length;
+      if (colonCount === 1) return raw.split(':')[0];
+      return raw; // IPv6 (複数コロン)
+    }
   }
   const direct = req.headers.get('x-client-ip') ?? req.headers.get('x-ms-client-ip');
   if (direct) return direct.trim();
