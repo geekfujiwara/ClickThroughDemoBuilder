@@ -18,10 +18,12 @@ import {
   SignOutRegular,
   BuildingSkyscraper24Regular,
   ShieldKeyholeRegular,
+  LocalLanguageRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
 import AppSymbol from './AppSymbol';
 import { useMsg } from '@/hooks/useMsg';
+import { setCurrentLanguage } from '@/constants/i18n';
 
 const useStyles = makeStyles({
   nav: {
@@ -75,7 +77,7 @@ export default function Navigation() {
   const classes = useStyles();
   const MSG = useMsg();
   const location = useLocation();
-  const { logout, selectedCreator, role } = useAuthStore();
+  const { logout, selectedCreator, role, isGuest } = useAuthStore();
   const isViewer = role === 'viewer';
   const isAdmin = role === 'system_admin' || role === 'user_admin';
 
@@ -153,7 +155,7 @@ export default function Navigation() {
         <MenuTrigger>
           <Button appearance="subtle" size="small" icon={<PersonRegular />} iconPosition="before">
             <span className={classes.profileTrigger}>
-              {selectedCreator?.name ?? MSG.navProfile}
+              {isGuest ? 'ゲスト' : (selectedCreator?.name ?? MSG.navProfile)}
               {isViewer && (
                 <Badge className={classes.roleBadge} appearance="outline" color="informative" size="small">
                   viewer
@@ -175,14 +177,22 @@ export default function Navigation() {
         </MenuTrigger>
         <MenuPopover>
           <MenuList>
-            <MenuItem icon={<PersonRegular />} onClick={() => navigate('/profile')}>
-              {MSG.navProfile}
-            </MenuItem>
-            {isViewer && (
+            {!isGuest && (
+              <MenuItem icon={<PersonRegular />} onClick={() => navigate('/profile')}>
+                {MSG.navProfile}
+              </MenuItem>
+            )}
+            {isViewer && !isGuest && (
               <MenuItem icon={<BuildingSkyscraper24Regular />} onClick={() => navigate('/apply-designer')}>
                 {MSG.navApplyDesigner}
               </MenuItem>
             )}
+            <MenuItem icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('ja')}>
+              日本語
+            </MenuItem>
+            <MenuItem icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('en')}>
+              English
+            </MenuItem>
             <MenuDivider />
             <MenuItem icon={<SignOutRegular />} onClick={() => void handleLogout()}>
               {MSG.logout}
