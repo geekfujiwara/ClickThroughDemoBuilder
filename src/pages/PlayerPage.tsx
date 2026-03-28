@@ -35,7 +35,7 @@ import {
   getFavorites, addFavorite, removeFavorite,
 } from '@/services/socialService';
 import { useAuthStore } from '@/stores/authStore';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 import { formatTime } from '@/utils/time';
 
 const useStyles = makeStyles({
@@ -299,6 +299,7 @@ const useStyles = makeStyles({
 });
 
 export default function PlayerPage() {
+  const MSG = useMsg();
   const classes = useStyles();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();

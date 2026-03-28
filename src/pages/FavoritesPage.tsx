@@ -27,7 +27,7 @@ import EmptyState from '@/components/common/EmptyState';
 import * as socialService from '@/services/socialService';
 import type { DemoSummary } from '@/services/socialService';
 import { apiGet } from '@/services/apiClient';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
   page: {
@@ -68,6 +68,7 @@ const useStyles = makeStyles({
 });
 
 export default function FavoritesPage() {
+  const MSG = useMsg();
   const styles = useStyles();
   const navigate = useGuestNavigate();
   const [tab, setTab] = useState<'saved' | 'popular'>('saved');

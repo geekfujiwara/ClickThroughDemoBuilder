@@ -42,7 +42,7 @@ import { exportDemoToFolder } from '@/services/exportService';
 import * as creatorService from '@/services/creatorService';
 import { validateVideoFile } from '@/utils/validation';
 import { saveVideo, extractVideoMetadata, generateThumbnail, getVideoUrl } from '@/services/videoService';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 import VideoUploader from '@/components/designer/VideoUploader';
 import DesignerCanvas from '@/components/designer/DesignerCanvas';
 import VideoControls from '@/components/designer/VideoControls';
@@ -154,6 +154,7 @@ const useStyles = makeStyles({
 });
 
 export default function DesignerPage() {
+  const MSG = useMsg();
   const classes = useStyles();
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId?: string }>();

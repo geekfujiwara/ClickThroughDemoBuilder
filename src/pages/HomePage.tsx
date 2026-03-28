@@ -27,7 +27,7 @@ import { useGuestNavigate } from '@/hooks/useGuestNav';
 import { getHomeRankings, type HomeRankings, type DemoSummary, type CreatorRankingEntry } from '@/services/socialService';
 import { getAllProjects } from '@/services/projectService';
 import type { DemoProject } from '@/types';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
   hero: {
@@ -216,6 +216,7 @@ function CreatorCard({ entry, rank, valueKey, unit }: {
 }
 
 export default function HomePage() {
+  const MSG = useMsg();
   const classes = useStyles();
   const navigate = useGuestNavigate();
   const { role, selectedCreator } = useAuthStore();

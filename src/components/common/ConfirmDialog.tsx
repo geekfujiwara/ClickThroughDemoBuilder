@@ -8,7 +8,7 @@ import {
   DialogContent,
   Button,
 } from '@fluentui/react-components';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -25,12 +25,15 @@ export default function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = MSG.confirm,
-  cancelLabel = MSG.cancel,
+  confirmLabel,
+  cancelLabel,
   danger = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const MSG = useMsg();
+  const resolvedConfirmLabel = confirmLabel ?? MSG.confirm;
+  const resolvedCancelLabel = cancelLabel ?? MSG.cancel;
   return (
     <Dialog open={open} onOpenChange={(_, data) => !data.open && onCancel()}>
       <DialogSurface>
@@ -40,7 +43,7 @@ export default function ConfirmDialog({
           <DialogActions>
             <DialogTrigger disableButtonEnhancement>
               <Button appearance="secondary" onClick={onCancel}>
-                {cancelLabel}
+                {resolvedCancelLabel}
               </Button>
             </DialogTrigger>
             <Button
@@ -48,7 +51,7 @@ export default function ConfirmDialog({
               onClick={onConfirm}
               style={danger ? { backgroundColor: '#d13438' } : undefined}
             >
-              {confirmLabel}
+              {resolvedConfirmLabel}
             </Button>
           </DialogActions>
         </DialogBody>

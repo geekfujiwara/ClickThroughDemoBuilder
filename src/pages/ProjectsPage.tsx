@@ -41,7 +41,7 @@ import {
   getMyLikes,
   getFavorites, addFavorite, removeFavorite,
 } from '@/services/socialService';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 import type { DemoCreator, DemoGroup, DemoProject } from '@/types';
 
 type SortKey = 'updatedAt' | 'createdAt' | 'title';
@@ -142,6 +142,7 @@ const useStyles = makeStyles({
 });
 
 export default function ProjectsPage() {
+  const MSG = useMsg();
   const classes = useStyles();
   const navigate = useGuestNavigate();
   const { projects, isLoading, loadProjects, deleteProject, duplicateProject } =

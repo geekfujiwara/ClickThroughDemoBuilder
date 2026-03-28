@@ -15,7 +15,7 @@ import {
 } from '@fluentui/react-components';
 import { useAuthStore } from '@/stores/authStore';
 import * as socialService from '@/services/socialService';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
   page: {
@@ -44,6 +44,7 @@ const useStyles = makeStyles({
 });
 
 export default function ApplyDesignerPage() {
+  const MSG = useMsg();
   const styles = useStyles();
   const { selectedCreator, role } = useAuthStore();
   const [reason, setReason] = useState('');

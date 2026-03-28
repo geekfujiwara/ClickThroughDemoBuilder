@@ -14,7 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { DeleteRegular, CheckmarkRegular } from '@fluentui/react-icons';
 import { useDesignerStore } from '@/stores/designerStore';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 import type { ClickPoint, PulseSpeed, DescriptionStyle, DescriptionTemplateId } from '@/types';
 import { DESCRIPTION_TEMPLATES, DEFAULT_DESCRIPTION_STYLE } from '@/types';
 
@@ -114,6 +114,7 @@ function ClickPointProperties({
   onDelete: () => void;
   onBulkApplyStyle: (style: DescriptionStyle) => void;
 }) {
+  const MSG = useMsg();
   const classes = useStyles();
 
   // descriptionStyle が未定義の場合のフォールバック

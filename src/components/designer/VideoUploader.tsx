@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { makeStyles, shorthands, tokens, Text, Button } from '@fluentui/react-components';
 import { ArrowUploadRegular } from '@fluentui/react-icons';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -41,6 +41,7 @@ const useStyles = makeStyles({
 });
 
 export default function VideoUploader() {
+  const MSG = useMsg();
   const classes = useStyles();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);

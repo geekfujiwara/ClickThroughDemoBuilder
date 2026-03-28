@@ -8,7 +8,7 @@ import {
   DeleteDismissRegular,
 } from '@fluentui/react-icons';
 import { useDesignerStore } from '@/stores/designerStore';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 import { formatTime } from '@/utils/time';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 
@@ -93,6 +93,7 @@ const useStyles = makeStyles({
 });
 
 export default function ClickPointList({ onSeek }: { onSeek?: (time: number) => void }) {
+  const MSG = useMsg();
   const classes = useStyles();
   const {
     currentProject,

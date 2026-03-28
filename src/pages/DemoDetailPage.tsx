@@ -46,7 +46,7 @@ import {
 } from '@/services/socialService';
 import { getDemoStats, type DemoStats, type DailyPlay } from '@/services/statsService';
 import type { DemoProject, DemoComment } from '@/types';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 
 // ── Styles ────────────────────────────────────────────────────
 
@@ -392,6 +392,7 @@ function DailyChart({ data }: { data: DailyPlay[] }) {
 // ── Main ──────────────────────────────────────────────────────
 
 export default function DemoDetailPage() {
+  const MSG = useMsg();
   const { demoId } = useParams<{ demoId: string }>();
   const navigate = useGuestNavigate();
   const classes = useStyles();

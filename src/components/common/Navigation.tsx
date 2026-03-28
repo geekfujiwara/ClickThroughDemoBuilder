@@ -124,11 +124,13 @@ export default function Navigation() {
           {MSG.navFeed}
         </Button>
       </Link>
-      <Link to={linkTo('/favorites')} className={classes.link}>
-        <Button appearance={isActive('/favorites') ? 'primary' : 'subtle'} size="small">
-          {MSG.navFavorites}
-        </Button>
-      </Link>
+      {!isGuest && (
+        <Link to={linkTo('/favorites')} className={classes.link}>
+          <Button appearance={isActive('/favorites') ? 'primary' : 'subtle'} size="small">
+            {MSG.navFavorites}
+          </Button>
+        </Link>
+      )}
       {isAdmin && (
         <Link to="/admin/users" className={classes.link}>
           <Button

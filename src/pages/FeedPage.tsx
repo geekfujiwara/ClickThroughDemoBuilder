@@ -19,7 +19,7 @@ import {
 } from '@fluentui/react-icons';
 import * as socialService from '@/services/socialService';
 import type { FeedEntry } from '@/types';
-import { MSG } from '@/constants/messages';
+import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
   page: {
@@ -109,6 +109,7 @@ function formatTime(iso: string): string {
 }
 
 function FeedEntryCard({ entry }: { entry: FeedEntry }) {
+  const MSG = useMsg();
   const styles = useStyles();
 
   const actionText = {
@@ -145,6 +146,7 @@ function FeedEntryCard({ entry }: { entry: FeedEntry }) {
 }
 
 export default function FeedPage() {
+  const MSG = useMsg();
   const styles = useStyles();
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
