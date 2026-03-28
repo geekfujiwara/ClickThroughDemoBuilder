@@ -91,7 +91,7 @@ export default function LoginPage() {
     setGuestLoading(true);
     try {
       await loginAsGuest(guestLoginId, guestPassword);
-      navigate("/", { replace: true });
+      navigate("/?guestMode=true", { replace: true });
     } catch {
       setError('IDまたはパスワードが正しくありません。');
     } finally {

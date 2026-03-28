@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -82,43 +82,50 @@ export default function Navigation() {
   const isAdmin = role === 'system_admin' || role === 'user_admin';
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const guestParam = searchParams.get('guestMode') === 'true' || isGuest ? '?guestMode=true' : '';
+  const linkTo = (path: string) => `${path}${guestParam}`;
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
     await logout();
-    window.location.assign('/');
+    if (isGuest) {
+      window.location.assign('/login?guestMode=true');
+    } else {
+      window.location.assign('/');
+    }
   };
 
   return (
     <nav className={classes.nav}>
-      <Link to="/" className={classes.link}>
+      <Link to={linkTo('/')} className={classes.link}>
         <Text className={classes.logo}>
           <AppSymbol size={22} />
           {MSG.appName}
         </Text>
       </Link>
 
-      <Link to="/" className={classes.link}>
+      <Link to={linkTo('/')} className={classes.link}>
         <Button appearance={isActive('/') ? 'primary' : 'subtle'} size="small">
           {MSG.navHome}
         </Button>
       </Link>
-      <Link to="/projects" className={classes.link}>
+      <Link to={linkTo('/projects')} className={classes.link}>
         <Button appearance={isActive('/projects') ? 'primary' : 'subtle'} size="small">
           {MSG.navProjects}
         </Button>
       </Link>
-      <Link to="/groups" className={classes.link}>
+      <Link to={linkTo('/groups')} className={classes.link}>
         <Button appearance={isActive('/groups') ? 'primary' : 'subtle'} size="small">
           {MSG.navGroups}
         </Button>
       </Link>
-      <Link to="/feed" className={classes.link}>
+      <Link to={linkTo('/feed')} className={classes.link}>
         <Button appearance={isActive('/feed') ? 'primary' : 'subtle'} size="small">
           {MSG.navFeed}
         </Button>
       </Link>
-      <Link to="/favorites" className={classes.link}>
+      <Link to={linkTo('/favorites')} className={classes.link}>
         <Button appearance={isActive('/favorites') ? 'primary' : 'subtle'} size="small">
           {MSG.navFavorites}
         </Button>
