@@ -2,7 +2,7 @@
  * FavoritesPage — お気に入りデモ管理
  */
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 import {
   makeStyles,
   tokens,
@@ -69,7 +69,7 @@ const useStyles = makeStyles({
 
 export default function FavoritesPage() {
   const styles = useStyles();
-  const navigate = useNavigate();
+  const navigate = useGuestNavigate();
   const [tab, setTab] = useState<'saved' | 'popular'>('saved');
   const [demos, setDemos] = useState<DemoSummary[]>([]);
   const [loading, setLoading] = useState(true);

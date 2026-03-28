@@ -2,7 +2,6 @@
  * ViewerDemosPage — Viewer 用デモ一覧ページ
  */
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -18,6 +17,7 @@ import {
 import { PlayRegular, SignOutRegular } from '@fluentui/react-icons';
 import { apiGet } from '@/services/apiClient';
 import { useAuthStore } from '@/stores/authStore';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 import AppSymbol from '@/components/common/AppSymbol';
 
 interface DemoSummary {
@@ -85,7 +85,7 @@ const useStyles = makeStyles({
 
 export default function ViewerDemosPage() {
   const styles = useStyles();
-  const navigate = useNavigate();
+  const navigate = useGuestNavigate();
   const logout = useAuthStore((s) => s.logout);
   const [demos, setDemos] = useState<DemoSummary[]>([]);
   const [loading, setLoading] = useState(true);

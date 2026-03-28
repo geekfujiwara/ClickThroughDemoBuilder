@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -24,6 +23,7 @@ import {
   BookmarkRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 import { getHomeRankings, type HomeRankings, type DemoSummary, type CreatorRankingEntry } from '@/services/socialService';
 import { getAllProjects } from '@/services/projectService';
 import type { DemoProject } from '@/types';
@@ -217,7 +217,7 @@ function CreatorCard({ entry, rank, valueKey, unit }: {
 
 export default function HomePage() {
   const classes = useStyles();
-  const navigate = useNavigate();
+  const navigate = useGuestNavigate();
   const { role, selectedCreator } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 

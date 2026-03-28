@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -34,6 +33,7 @@ import SkeletonCard from '@/components/common/SkeletonCard';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 import * as groupService from '@/services/groupService';
 import * as creatorService from '@/services/creatorService';
 import {
@@ -143,7 +143,7 @@ const useStyles = makeStyles({
 
 export default function ProjectsPage() {
   const classes = useStyles();
-  const navigate = useNavigate();
+  const navigate = useGuestNavigate();
   const { projects, isLoading, loadProjects, deleteProject, duplicateProject } =
     useProjectStore();
   const { role } = useAuthStore();

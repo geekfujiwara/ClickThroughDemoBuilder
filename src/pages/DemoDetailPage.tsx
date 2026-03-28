@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -31,6 +31,7 @@ import {
   DataBarVerticalRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 import { getProject } from '@/services/projectService';
 import {
   getComments,
@@ -392,7 +393,7 @@ function DailyChart({ data }: { data: DailyPlay[] }) {
 
 export default function DemoDetailPage() {
   const { demoId } = useParams<{ demoId: string }>();
-  const navigate = useNavigate();
+  const navigate = useGuestNavigate();
   const classes = useStyles();
   const { role, selectedCreator } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';

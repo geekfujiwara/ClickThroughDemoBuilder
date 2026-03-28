@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/authStore';
 import AppSymbol from './AppSymbol';
 import { useMsg } from '@/hooks/useMsg';
 import { setCurrentLanguage } from '@/constants/i18n';
+import { useGuestPath, useGuestNavigate } from '@/hooks/useGuestNav';
 
 const useStyles = makeStyles({
   nav: {
@@ -81,10 +82,8 @@ export default function Navigation() {
   const isViewer = role === 'viewer';
   const isAdmin = role === 'system_admin' || role === 'user_admin';
 
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const guestParam = searchParams.get('guestMode') === 'true' || isGuest ? '?guestMode=true' : '';
-  const linkTo = (path: string) => `${path}${guestParam}`;
+  const navigate = useGuestNavigate();
+  const linkTo = useGuestPath();
   const isActive = (path: string) => location.pathname === path;
 
   const handleLogout = async () => {
