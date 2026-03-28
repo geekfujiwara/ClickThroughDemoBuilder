@@ -196,12 +196,16 @@ export default function Navigation() {
                 {MSG.navApplyDesigner}
               </MenuItem>
             )}
-            <MenuItem icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('ja')}>
-              日本語
-            </MenuItem>
-            <MenuItem icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('en')}>
-              English
-            </MenuItem>
+            {isGuest && (
+              <>
+                <MenuItem icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('ja')}>
+                  日本語
+                </MenuItem>
+                <MenuItem icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('en')}>
+                  English
+                </MenuItem>
+              </>
+            )}
             <MenuDivider />
             <MenuItem icon={<SignOutRegular />} onClick={() => void handleLogout()}>
               {MSG.logout}
