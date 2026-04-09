@@ -69,9 +69,17 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   },
 
   loginWithEntra: async () => {
+    // ログインフロー中に handleSessionExpiry が誤発動しないよう、
+    // 先に loginSource をクリアする（前回セッションの残骸を除去）
+    localStorage.removeItem(LOGIN_SOURCE_KEY);
+
     const result = await msalService.signInWithMicrosoft();
     const { role, creatorId } = await authService.loginWithEntra(result.idToken);
     const creator = await creatorService.getCreator(creatorId);
+
+    // 全ての API コールが成功した後にのみ loginSource を設定する。
+    // これにより getCreator が 401 を返しても handleSessionExpiry が
+    // リダイレクトせず、エラーメッセージとして表示される。
     localStorage.setItem(LOGIN_SOURCE_KEY, 'entra');
     setCurrentLanguage(creator.language);
     set({ isAuthenticated: true, role, selectedCreator: creator, isEntraUser: true, isGuest: false });

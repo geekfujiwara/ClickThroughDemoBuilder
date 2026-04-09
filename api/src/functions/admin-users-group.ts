@@ -28,6 +28,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-users-group', {
   methods: ['PUT'],
   authLevel: 'anonymous',
-  route: 'manage/users/{creatorId}/group',
+  route: 'management/users/{creatorId}/group',
   handler,
 });

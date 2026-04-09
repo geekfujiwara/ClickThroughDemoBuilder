@@ -21,6 +21,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-trusted-aliases-list', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'manage/trusted-aliases',
+  route: 'management/trusted-aliases',
   handler,
 });

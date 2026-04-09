@@ -32,6 +32,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-users-block', {
   methods: ['PUT'],
   authLevel: 'anonymous',
-  route: 'manage/users/{creatorId}/block',
+  route: 'management/users/{creatorId}/block',
   handler,
 });

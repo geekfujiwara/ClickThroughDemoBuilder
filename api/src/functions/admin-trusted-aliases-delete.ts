@@ -24,6 +24,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-trusted-aliases-delete', {
   methods: ['DELETE'],
   authLevel: 'anonymous',
-  route: 'manage/trusted-aliases/{alias}',
+  route: 'management/trusted-aliases/{alias}',
   handler,
 });

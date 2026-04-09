@@ -21,6 +21,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-users-list', {
   methods: ['GET'],
   authLevel: 'anonymous',
-  route: 'manage/users',
+  route: 'management/users',
   handler,
 });

@@ -30,6 +30,6 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 app.http('admin-trusted-aliases-add', {
   methods: ['POST'],
   authLevel: 'anonymous',
-  route: 'manage/trusted-aliases',
+  route: 'management/trusted-aliases',
   handler,
 });

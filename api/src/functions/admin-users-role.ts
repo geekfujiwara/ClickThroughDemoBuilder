@@ -50,6 +50,6 @@ async function handler(req: HttpRequest, context: InvocationContext): Promise<Ht
 app.http('admin-users-role', {
   methods: ['PUT'],
   authLevel: 'anonymous',
-  route: 'manage/users/{creatorId}/role',
+  route: 'management/users/{creatorId}/role',
   handler,
 });

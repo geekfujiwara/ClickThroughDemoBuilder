@@ -12,9 +12,6 @@
     { "route": "/api/*", "allowedRoles": ["anonymous"] },
     { "route": "/*", "allowedRoles": ["anonymous"] }
   ],
-  "responseOverrides": {
-    "401": { "redirect": "/login" }
-  },
   "platform": {
     "apiRuntime": "node:20"
   }
