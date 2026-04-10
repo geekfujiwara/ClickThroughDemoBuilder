@@ -197,6 +197,7 @@ export interface DemoCreator {
   language: 'ja' | 'en';
   role: 'viewer' | 'designer' | 'user_admin' | 'system_admin';
   email?: string;
+  entraOid?: string;      // Entra Object ID
   designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
   designerApplicationReason?: string;
   designerApplicationDate?: string;

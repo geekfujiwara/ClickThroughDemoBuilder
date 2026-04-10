@@ -105,6 +105,7 @@ export interface DemoCreatorRecord {
   language: 'ja' | 'en';
   role?: UserRole;        // 未設定の場合は既存ユーザーのため 'designer' にフォールバック
   email?: string;         // @microsoft.com のみ許可
+  entraOid?: string;      // Entra Object ID（複数エイリアスでも同一ユーザーを識別）
   passwordHash?: string;  // 後方互換用（新規作成には使わない）
   designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
   designerApplicationReason?: string;
@@ -123,6 +124,7 @@ export interface DemoCreator {
   language: 'ja' | 'en';
   role: UserRole;
   email?: string;
+  entraOid?: string;
   designerApplicationStatus?: 'pending' | 'approved' | 'rejected';
   designerApplicationReason?: string;
   designerApplicationDate?: string;

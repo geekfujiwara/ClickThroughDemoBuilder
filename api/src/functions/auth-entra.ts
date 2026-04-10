@@ -83,11 +83,29 @@ async function handler(
     }
 
     // ④ クリエイターを検索、なければ自動作成
+    //    oid（Entra Object ID）を第一キーとし、フォールバックで email 検索する。
+    //    これにより同一ユーザーが複数エイリアスを持っていても同一クリエイターとして扱う。
+    const oid = payload.oid ?? '';
     let creator;
     try {
-      creator = await creatorService.findCreatorByEmail(email);
+      // まず oid で検索
+      if (oid) {
+        creator = await creatorService.findCreatorByOid(oid);
+      }
 
+      // oid で見つからなければ email でフォールバック検索
       if (!creator) {
+        creator = await creatorService.findCreatorByEmail(email);
+      }
+
+      if (creator) {
+        // 既存ユーザー: oid が未設定または異なるエイリアスでログインした場合にメールと oid を更新
+        if (oid && (!creator.entraOid || creator.email !== email)) {
+          creator = await creatorService.updateCreatorEntraOid(creator.id, oid, email);
+          context.log(`Updated creator entraOid/email: ${creator.id} → oid=${oid}, email=${email}`);
+        }
+      } else {
+        // 新規ユーザー作成
         const displayName = (payload.name ?? email.split('@')[0]) ?? 'Unknown';
         const allCreators = await creatorService.getAllCreators();
         const nameExists = allCreators.some(
@@ -97,12 +115,12 @@ async function handler(
           ? `${displayName} (${email.split('@')[0]})`
           : displayName;
 
-        // 新規ユーザーは viewer ロールで作成
         creator = await creatorService.createCreator({
           name: finalName,
           email,
           language: 'ja',
           role: 'viewer',
+          entraOid: oid || undefined,
         });
       }
     } catch (e) {

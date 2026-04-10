@@ -34,6 +34,7 @@ function toResponse(r: DemoCreatorRecord): DemoCreator {
     // role 未設定の既存ユーザーは 'designer' にフォールバック（後方互換）
     role: r.role ?? 'designer',
     email: r.email,
+    entraOid: r.entraOid,
     designerApplicationStatus: r.designerApplicationStatus,
     designerApplicationReason: r.designerApplicationReason,
     designerApplicationDate: r.designerApplicationDate,
@@ -56,6 +57,7 @@ async function loadMaster(): Promise<CreatorMasterData> {
           language: (raw.language === 'en' ? 'en' : 'ja') as 'ja' | 'en',
           role: raw.role as UserRole | undefined,
           email: raw.email,
+          entraOid: raw.entraOid,
           passwordHash: raw.passwordHash,
           designerApplicationStatus: raw.designerApplicationStatus as DemoCreatorRecord['designerApplicationStatus'],
           designerApplicationReason: raw.designerApplicationReason,
@@ -88,8 +90,9 @@ export async function createCreator(input: {
   language: 'ja' | 'en';
   email?: string;
   role?: UserRole;
+  entraOid?: string;
 }): Promise<DemoCreator> {
-  const { name, groupId, language, email, role } = input;
+  const { name, groupId, language, email, role, entraOid } = input;
   const trimmed = name.trim();
   if (!trimmed) throw new Error('作成者名は必須です');
   if (email) validateEmail(email);
@@ -107,6 +110,7 @@ export async function createCreator(input: {
     language,
     role: role ?? 'designer',
     email: email?.toLowerCase().trim() || undefined,
+    entraOid: entraOid || undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -155,6 +159,35 @@ export async function findCreatorByEmail(email: string): Promise<DemoCreator | n
   const data = await loadMaster();
   const record = data.creators.find((c) => c.email?.toLowerCase() === lower);
   return record ? toResponse(record) : null;
+}
+
+/** Entra Object ID でクリエイターを検索（複数エイリアスでも同一ユーザーを特定） */
+export async function findCreatorByOid(oid: string): Promise<DemoCreator | null> {
+  if (!oid) return null;
+  const data = await loadMaster();
+  const record = data.creators.find((c) => c.entraOid === oid);
+  return record ? toResponse(record) : null;
+}
+
+/** クリエイターの Entra OID とメールアドレスを更新する */
+export async function updateCreatorEntraOid(
+  creatorId: string,
+  oid: string,
+  email?: string,
+): Promise<DemoCreator> {
+  const data = await loadMaster();
+  const index = data.creators.findIndex((c) => c.id === creatorId);
+  if (index < 0) throw new Error('作成者が見つかりません');
+  const existing = data.creators[index]!;
+  const updated: DemoCreatorRecord = {
+    ...existing,
+    entraOid: oid,
+    ...(email ? { email: email.toLowerCase().trim() } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  data.creators[index] = updated;
+  await saveMaster(data);
+  return toResponse(updated);
 }
 
 /** ID でクリエイターを取得 */
