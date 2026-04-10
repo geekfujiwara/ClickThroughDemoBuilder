@@ -161,7 +161,7 @@ async function handler(
     return {
       status: 200,
       headers: { 'Set-Cookie': buildSessionCookie(token, tokenMaxAge) },
-      jsonBody: { role: creatorRole, creatorId: creator.id, name: creator.name },
+      jsonBody: { role: creatorRole, creatorId: creator.id, name: creator.name, creator },
     };
   } catch (e) {
     context.error('Unexpected error in auth-entra:', (e as Error).message, (e as Error).stack ?? '');

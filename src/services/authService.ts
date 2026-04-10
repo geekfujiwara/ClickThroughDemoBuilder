@@ -10,6 +10,7 @@ interface LoginResponse {
   creatorId?: string;
   name?: string;
   message?: string;
+  creator?: Record<string, unknown>;
 }
 
 interface MeResponse {
@@ -21,9 +22,9 @@ interface MeResponse {
 /** Microsoft Entra ID トークンでログイン（SSO） */
 export async function loginWithEntra(
   idToken: string,
-): Promise<{ role: UserRole; creatorId: string; name: string }> {
+): Promise<{ role: UserRole; creatorId: string; name: string; creator?: Record<string, unknown> }> {
   const res = await apiPost<LoginResponse>('/auth/entra', { idToken });
-  return { role: res.role as UserRole, creatorId: res.creatorId!, name: res.name! };
+  return { role: res.role as UserRole, creatorId: res.creatorId!, name: res.name!, creator: res.creator };
 }
 
 /** ゲストログイン（ID/パスワード認証） */

@@ -74,12 +74,19 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     localStorage.removeItem(LOGIN_SOURCE_KEY);
 
     const result = await msalService.signInWithMicrosoft();
-    const { role, creatorId } = await authService.loginWithEntra(result.idToken);
-    const creator = await creatorService.getCreator(creatorId);
+    const { role, creatorId, creator: creatorFromLogin } = await authService.loginWithEntra(result.idToken);
+
+    // auth/entra のレスポンスに creator オブジェクトが含まれていればそれを使う。
+    // これにより追加の getCreator API コールが不要になり、
+    // Set-Cookie がまだ確立していないタイミングで 401 になる問題を回避する。
+    let creator: DemoCreator;
+    if (creatorFromLogin && creatorFromLogin.id) {
+      creator = creatorFromLogin as unknown as DemoCreator;
+    } else {
+      creator = await creatorService.getCreator(creatorId);
+    }
 
     // 全ての API コールが成功した後にのみ loginSource を設定する。
-    // これにより getCreator が 401 を返しても handleSessionExpiry が
-    // リダイレクトせず、エラーメッセージとして表示される。
     localStorage.setItem(LOGIN_SOURCE_KEY, 'entra');
     setCurrentLanguage(creator.language);
     set({ isAuthenticated: true, role, selectedCreator: creator, isEntraUser: true, isGuest: false });
