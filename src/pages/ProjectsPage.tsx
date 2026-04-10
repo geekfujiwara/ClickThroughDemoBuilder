@@ -169,6 +169,13 @@ export default function ProjectsPage() {
   const { role } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
+  // viewer ロールはプロジェクトページにアクセス不可 → ホームへリダイレクト
+  useEffect(() => {
+    if (role && !isDesigner) {
+      navigate('/', { replace: true });
+    }
+  }, [role, isDesigner, navigate]);
+
   // Viewer/ゲスト用: /api/demos から取得したデモ一覧
   const [viewerDemos, setViewerDemos] = useState<DemoProject[]>([]);
   const [viewerLoading, setViewerLoading] = useState(false);
