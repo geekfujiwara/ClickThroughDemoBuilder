@@ -76,6 +76,7 @@ async function handler(
     ).toLowerCase().trim();
 
     if (!email.endsWith(ALLOWED_DOMAIN)) {
+      context.warn(`Login rejected: email="${email}" does not match ${ALLOWED_DOMAIN}`);
       return {
         status: 403,
         jsonBody: { error: 'Only @microsoft.com accounts are allowed.' },
@@ -130,6 +131,7 @@ async function handler(
 
     // ⑤ ブロック済みユーザーはログイン拒否
     if (creator.isBlocked) {
+      context.warn(`Login rejected: blocked user id=${creator.id} email="${email}"`);
       return { status: 403, jsonBody: { error: 'Your account has been blocked.' } };
     }
 
@@ -155,6 +157,7 @@ async function handler(
       : creatorRole === 'designer' ? 8 * 3600
       : 24 * 3600;
     const token = createToken(creatorRole, creator.id);
+    context.log(`Login success: id=${creator.id} email="${email}" role=${creatorRole}`);
     return {
       status: 200,
       headers: { 'Set-Cookie': buildSessionCookie(token, tokenMaxAge) },
