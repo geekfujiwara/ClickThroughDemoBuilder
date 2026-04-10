@@ -86,13 +86,14 @@ export function isAdminRole(role: UserRole): boolean {
 
 /**
  * 指定ロールの認証を要求するヘルパー。
- * 認証失敗時は 401 レスポンスオブジェクトを返す。成功時は payload を返す。
+ * 認証失敗時は 401、権限不足時は 403 のレスポンスオブジェクトを返す。
+ * 成功時は payload を返す。
  * allowedRoles に含まれるロール以上の権限があれば許可する（階層チェック）。
  */
 export function requireRole(
   req: HttpRequest,
   ...allowedRoles: UserRole[]
-): { status: 401; body: string } | { payload: JwtPayload } {
+): { status: 401 | 403; body: string } | { payload: JwtPayload } {
   const payload = authenticate(req);
   if (!payload) {
     return { status: 401, body: 'Unauthorized' };
@@ -101,7 +102,7 @@ export function requireRole(
   const userLevel = ROLE_LEVEL[payload.role] ?? 0;
   const minRequired = Math.min(...allowedRoles.map((r) => ROLE_LEVEL[r] ?? 0));
   if (userLevel < minRequired && !allowedRoles.includes(payload.role)) {
-    return { status: 401, body: 'Unauthorized' };
+    return { status: 403, body: 'Forbidden' };
   }
   return { payload };
 }
