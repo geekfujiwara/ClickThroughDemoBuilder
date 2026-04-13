@@ -1,4 +1,5 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   makeStyles,
   tokens,
@@ -219,12 +220,20 @@ export default function HomePage() {
   const MSG = useMsg();
   const classes = useStyles();
   const navigate = useGuestNavigate();
+  const [searchParams] = useSearchParams();
   const { role, selectedCreator } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   const [rankings, setRankings] = useState<HomeRankings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [myDemos, setMyDemos] = useState<DemoProject[]>([]);
+
+  const filterIds = useMemo(() => {
+    const raw = searchParams.get('id');
+    if (!raw) return null;
+    const ids = raw.split(',').map(Number).filter((n) => !isNaN(n) && n > 0);
+    return ids.length > 0 ? new Set(ids) : null;
+  }, [searchParams]);
 
   useEffect(() => {
     getHomeRankings()
@@ -250,6 +259,20 @@ export default function HomePage() {
   const handlePlay = useCallback((id: string) => navigate(`/player/${id}`), [navigate]);
   const handleEdit = useCallback((id: string) => navigate(`/designer/${id}`), [navigate]);
   const handleDetail = useCallback((id: string) => navigate(`/demos/${id}`), [navigate]);
+
+  const filterDemo = <T extends { demoNumber?: number }>(list: T[]) =>
+    filterIds ? list.filter((d) => d.demoNumber != null && filterIds.has(d.demoNumber)) : list;
+
+  const filteredMyDemos = filterDemo(myDemos);
+  const filteredRankings = rankings
+    ? {
+        ...rankings,
+        popularByLikes: filterDemo(rankings.popularByLikes),
+        recentDemos: filterDemo(rankings.recentDemos),
+        popularByPlay: filterDemo(rankings.popularByPlay),
+        popularByDuration: filterDemo(rankings.popularByDuration),
+      }
+    : null;
 
   return (
     <>
@@ -280,7 +303,7 @@ export default function HomePage() {
         <div className={classes.spinnerArea}>
           <Spinner label="読み込み中..." />
         </div>
-      ) : rankings ? (
+      ) : filteredRankings ? (
         <>
           {/* あなたが作成したデモ */}
           {selectedCreator && (
@@ -288,11 +311,11 @@ export default function HomePage() {
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
                 {MSG.homeMyDemos}
               </Text>
-              {myDemos.length === 0 ? (
+              {filteredMyDemos.length === 0 ? (
                 <Caption1 style={{ color: tokens.colorNeutralForeground3 }}>{MSG.homeMyDemosEmpty}</Caption1>
               ) : (
                 <div className={classes.grid}>
-                  {myDemos.map((demo) => (
+                  {filteredMyDemos.map((demo) => (
                     <DemoCard
                       key={demo.id}
                       demo={{
@@ -323,13 +346,13 @@ export default function HomePage() {
           )}
 
           {/* 人気のデモ (いいね数順) */}
-          {rankings.popularByLikes.length > 0 && (
+          {filteredRankings.popularByLikes.length > 0 && (
             <section className={classes.section}>
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle}>
                 {MSG.homeRankingByLikes}
               </Text>
               <div className={classes.grid}>
-                {rankings.popularByLikes.map((demo) => (
+                {filteredRankings.popularByLikes.map((demo) => (
                   <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
@@ -337,14 +360,14 @@ export default function HomePage() {
           )}
 
           {/* 最近追加されたデモ */}
-          {rankings.recentDemos.length > 0 && (
+          {filteredRankings.recentDemos.length > 0 && (
             <section className={classes.section}>
               <Divider />
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
                 {MSG.homeRecentDemos}
               </Text>
               <div className={classes.grid}>
-                {rankings.recentDemos.map((demo) => (
+                {filteredRankings.recentDemos.map((demo) => (
                   <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
@@ -352,14 +375,14 @@ export default function HomePage() {
           )}
 
           {/* 再生数が多いデモ */}
-          {rankings.popularByPlay.length > 0 && (
+          {filteredRankings.popularByPlay.length > 0 && (
             <section className={classes.section}>
               <Divider />
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
                 {MSG.homeRankingByPlay}
               </Text>
               <div className={classes.grid}>
-                {rankings.popularByPlay.map((demo) => (
+                {filteredRankings.popularByPlay.map((demo) => (
                   <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
@@ -367,14 +390,14 @@ export default function HomePage() {
           )}
 
           {/* 最近のアクティビティ (コメント) */}
-          {rankings.recentComments.length > 0 && (
+          {filteredRankings.recentComments.length > 0 && (
             <section className={classes.section}>
               <Divider />
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
                 {MSG.homeRecentActivity}
               </Text>
               <div className={classes.activityList}>
-                {rankings.recentComments.map((entry) => (
+                {filteredRankings.recentComments.map((entry) => (
                   <div key={entry.id} className={classes.activityItem}>
                     <Avatar name={entry.actorName} size={28} icon={<PersonRegular />} />
                     <div className={classes.activityContent}>
@@ -399,14 +422,14 @@ export default function HomePage() {
           )}
 
           {/* 総再生時間が長いデモ */}
-          {rankings.popularByDuration.length > 0 && (
+          {filteredRankings.popularByDuration.length > 0 && (
             <section className={classes.section}>
               <Divider />
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
                 {MSG.homeRankingByDuration}
               </Text>
               <div className={classes.grid}>
-                {rankings.popularByDuration.map((demo) => (
+                {filteredRankings.popularByDuration.map((demo) => (
                   <DemoCard key={demo.id} demo={demo} onPlay={handlePlay} onEdit={handleEdit} onDetail={handleDetail} isDesigner={isDesigner} />
                 ))}
               </div>
@@ -414,14 +437,14 @@ export default function HomePage() {
           )}
 
           {/* 人気のデモ作成者 */}
-          {rankings.topCreatorsByLikes.length > 0 && (
+          {filteredRankings.topCreatorsByLikes.length > 0 && (
             <section className={classes.section}>
               <Divider />
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
                 {MSG.homeTopCreatorsByLikes}
               </Text>
               <div className={classes.creatorGrid}>
-                {rankings.topCreatorsByLikes.map((entry, i) => (
+                {filteredRankings.topCreatorsByLikes.map((entry, i) => (
                   <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="totalLikes" unit="いいね" />
                 ))}
               </div>
@@ -429,14 +452,14 @@ export default function HomePage() {
           )}
 
           {/* デモ数が多い作成者 */}
-          {rankings.topCreatorsByDemos.length > 0 && (
+          {filteredRankings.topCreatorsByDemos.length > 0 && (
             <section className={classes.section}>
               <Divider />
               <Text as="h2" size={600} weight="semibold" className={classes.sectionTitle} style={{ marginTop: '24px' }}>
                 {MSG.homeTopCreatorsByDemos}
               </Text>
               <div className={classes.creatorGrid}>
-                {rankings.topCreatorsByDemos.map((entry, i) => (
+                {filteredRankings.topCreatorsByDemos.map((entry, i) => (
                   <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="demoCount" unit="デモ" />
                 ))}
               </div>
