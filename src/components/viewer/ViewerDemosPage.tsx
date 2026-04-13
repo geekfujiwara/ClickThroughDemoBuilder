@@ -1,7 +1,8 @@
 /**
  * ViewerDemosPage — Viewer 用デモ一覧ページ
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -86,9 +87,17 @@ const useStyles = makeStyles({
 export default function ViewerDemosPage() {
   const styles = useStyles();
   const navigate = useGuestNavigate();
+  const [searchParams] = useSearchParams();
   const logout = useAuthStore((s) => s.logout);
   const [demos, setDemos] = useState<DemoSummary[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const filterIds = useMemo(() => {
+    const raw = searchParams.get('id');
+    if (!raw) return null;
+    const ids = raw.split(',').map(Number).filter((n) => !isNaN(n) && n > 0);
+    return ids.length > 0 ? new Set(ids) : null;
+  }, [searchParams]);
 
   useEffect(() => {
     apiGet<DemoSummary[]>('/demos')
@@ -96,6 +105,10 @@ export default function ViewerDemosPage() {
       .catch(() => setDemos([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredDemos = filterIds
+    ? demos.filter((d) => filterIds.has(d.demoNumber))
+    : demos;
 
   const handleLogout = async () => {
     await logout();
@@ -128,14 +141,14 @@ export default function ViewerDemosPage() {
         </Button>
       </div>
 
-      {demos.length === 0 ? (
+      {filteredDemos.length === 0 ? (
         <div className={styles.emptyState}>
           <Title2>まだデモがありません</Title2>
           <Body1>デザイナーがデモを作成するまでお待ちください。</Body1>
         </div>
       ) : (
         <div className={styles.grid}>
-          {demos.map((demo) => (
+          {filteredDemos.map((demo) => (
             <Card
               key={demo.id}
               className={styles.card}
