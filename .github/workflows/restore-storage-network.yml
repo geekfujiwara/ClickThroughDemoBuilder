@@ -1,13 +1,12 @@
 name: Manage Storage Network Access
 
 # スケジュール (JST):
-#   03:00 (18:00 UTC) → Enabled/Allow に復元（業務開始前）
-#   02:00 (17:00 UTC) → Disabled/Deny に設定（会社ポリシー検知時間帯に先に閉じる）
-# ※ 会社ポリシーは深夜帯に実行されるため、02:00〜03:00 の1時間のみ Disabled にする
+#   04:00 (19:00 UTC) → Enabled/Allow に復元（業務開始前）
+#   21:00 (12:00 UTC) → Disabled/Deny に設定（会社ポリシー検知時間帯に合わせて先に閉じる）
 on:
   schedule:
-    - cron: '0 18 * * *'  # 03:00 JST → Enabled
-    - cron: '0 17 * * *'  # 02:00 JST → Disabled
+    - cron: '0 19 * * *'  # 04:00 JST → Enabled
+    - cron: '0 12 * * *'  # 21:00 JST → Disabled
   workflow_dispatch:
     inputs:
       action:
