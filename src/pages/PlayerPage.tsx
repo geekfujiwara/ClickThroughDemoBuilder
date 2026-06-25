@@ -244,7 +244,7 @@ const useStyles = makeStyles({
     bottom: '70px',
     left: '50%',
     transform: 'translateX(-50%)',
-    zIndex: 10,
+    zIndex: 20,
   },
   nextCpBtn: {
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -597,11 +597,26 @@ export default function PlayerPage() {
           e.preventDefault();
           handleRestart();
         }
+      } else {
+        // 通常モードのキーボードショートカット
+        if ((e.key === ' ' || e.key === 'Enter') && !hasStarted && isVideoReady) {
+          e.preventDefault();
+          handleStartPlayback();
+        } else if ((e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') && playerState === 'WAITING') {
+          e.preventDefault();
+          handleClickPointClick();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handleGoToPreviousClickPoint();
+        } else if (e.key === 'r' || e.key === 'R') {
+          e.preventDefault();
+          handleRestart();
+        }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [toggleFullscreen, navigate, isConferenceMode, showShortcutsModal, handleExitConferenceMode, handleGoToPreviousClickPoint, handleClickPointClick, handleRestart, playerState]);
+  }, [toggleFullscreen, navigate, isConferenceMode, showShortcutsModal, handleExitConferenceMode, handleGoToPreviousClickPoint, handleClickPointClick, handleRestart, handleStartPlayback, playerState, hasStarted, isVideoReady]);
 
   // (visibleAnnotations removed)
 
