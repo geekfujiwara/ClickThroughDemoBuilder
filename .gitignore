@@ -37,6 +37,13 @@ result.json
 *.tmp
 .azurite/
 
+# 一時 / 診断 / データダンプ (機密・PII を含みうるため追跡しない)
+tmp_*.json
+tmp_*.txt
+*_dump.json
+creators_dump.json
+deploy_log.txt
+
 # Playwright E2E
 /test-results/
 /playwright-report/
@@ -47,3 +54,18 @@ result.json
 /func.zip
 /api-deploy/dist/
 /api-deploy/node_modules/
+
+# 認証キャッシュ / 資格情報 (絶対にコミットしない)
+.azure/
+**/.azure/
+*.publishsettings
+*.PublishSettings
+*.pubxml
+publish-profile*.xml
+*.publishprofile
+azureauth.json
+.msal_cache*
+**/msal_token_cache*
+tokens.json
+# 一時ファイル
+/-
