@@ -164,6 +164,9 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
   linked backend を構築。GitHub Actions(deploy-api.yml) で Function コードをデプロイ。
   検証: ゲストログイン200 / feed・demos(262KB)・rankings(634KB) 200(Blob読取成功) / 動画ストリーム 206(Range, 27.7MB)。
   ブラウザでゲストログイン→デモ(CP1-14)表示確認。**ストレージは Disabled のままポリシー準拠でアプリ復旧。**
+- 2026-07-11: 旧「public化」自動化を撤去。Azure Automation `aa-clickthrough-prod`(runbook Set-StorageNetworkAccess +
+  schedule-storage-enable/disable) を削除。GitHub WF `restore-storage-network.yml` と `storage-policy-exemption.yml` も削除。
+  → B-1 で storage は Disabled 固定のため public 切替は不要。(keepalive.yml は旧schedule維持用で実質不要→必要に応じ削除可)
 - 2026-07-10: Playwright E2E 導入。本番 SWA(ashy-wave-003b36700) に対し smoke 2 + proxy API 3 を実行し全 5 passed。
   プロキシエンドポイント(/api/videos/{id}/stream 他)がデプロイ済・認証保護されていることを確認。
   次: インフラ構築スクリプト(VNet/PE/Func/バックエンドストレージ) → MFA ログインで実行。
