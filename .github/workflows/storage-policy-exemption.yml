@@ -55,6 +55,38 @@ jobs:
           echo "storage_id=$SID" >> $GITHUB_OUTPUT
           echo "Storage resource id: $SID"
 
+      - name: Diagnose - environment constraints (web / network / region)
+        if: inputs.mode == 'diagnose'
+        run: |
+          SID="${{ steps.ids.outputs.storage_id }}"
+          echo "===== [ENV-1] Storage location / SKU ====="
+          az storage account show --name "$STORAGE_NAME" --resource-group "$RESOURCE_GROUP" \
+            --query "{location:location, sku:sku.name, kind:kind}" -o json || true
+
+          echo ""
+          echo "===== [ENV-2] Resource providers registration (Network / PrivateDNS / Web / App) ====="
+          for ns in Microsoft.Network Microsoft.Web Microsoft.App; do
+            state=$(az provider show --namespace "$ns" --query registrationState -o tsv 2>/dev/null || echo "unknown")
+            echo "$ns : $state"
+          done
+
+          echo ""
+          echo "===== [ENV-3] Existing Microsoft.Web / Container Apps resources (subscription) ====="
+          az resource list \
+            --query "[?starts_with(type,'Microsoft.Web/') || starts_with(type,'Microsoft.App/')].{name:name, type:type, location:location, rg:resourceGroup}" \
+            -o json || echo "⚠ resource list 失敗"
+
+          echo ""
+          echo "===== [ENV-4] C1: 各 Microsoft.Web/sites の publicNetworkAccess (ポリシー強制の有無を推測) ====="
+          for id in $(az resource list --resource-type "Microsoft.Web/sites" --query "[].id" -o tsv 2>/dev/null); do
+            pna=$(az rest --method get --url "https://management.azure.com${id}?api-version=2023-12-01" --query "properties.publicNetworkAccess" -o tsv 2>/dev/null || echo "n/a")
+            echo "$id : publicNetworkAccess=$pna"
+          done
+
+          echo ""
+          echo "===== [ENV-5] Static Web App(s) と SKU (linked backend 可否: Standard 必須) ====="
+          az staticwebapp list --query "[].{name:name, sku:sku.name, rg:resourceGroup, location:location}" -o json || echo "⚠ staticwebapp list 失敗"
+
       - name: Diagnose - Network Security Perimeter (NSP) configuration
         if: inputs.mode == 'diagnose'
         run: |
