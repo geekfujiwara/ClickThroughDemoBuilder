@@ -55,6 +55,22 @@ jobs:
           echo "storage_id=$SID" >> $GITHUB_OUTPUT
           echo "Storage resource id: $SID"
 
+      - name: Diagnose - Network Security Perimeter (NSP) configuration
+        if: inputs.mode == 'diagnose'
+        run: |
+          SID="${{ steps.ids.outputs.storage_id }}"
+          echo "===== [NSP-1] storage の networkSecurityPerimeterConfigurations ====="
+          az rest --method get \
+            --url "https://management.azure.com${SID}/networkSecurityPerimeterConfigurations?api-version=2024-01-01" \
+            -o json || echo "⚠ NSP config 取得失敗 (api-version/権限)"
+
+          echo ""
+          echo "===== [NSP-2] publicNetworkAccess / networkAcls (現在値) ====="
+          az rest --method get \
+            --url "https://management.azure.com${SID}?api-version=2023-05-01" \
+            --query "properties.{publicNetworkAccess:publicNetworkAccess, networkAcls:networkAcls}" \
+            -o json || echo "⚠ 取得失敗"
+
       - name: Diagnose - list non-compliant policies affecting the storage
         if: inputs.mode == 'diagnose'
         run: |
