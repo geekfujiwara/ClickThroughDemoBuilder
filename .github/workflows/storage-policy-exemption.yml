@@ -1,0 +1,124 @@
+name: Storage Policy Exemption
+
+# publicNetworkAccess=Disabled を強制している Azure Policy を特定し、
+# 対象ストレージ (stclickthroughprod) に例外(exemption)を作成して
+# publicNetworkAccess=Enabled を復活させるための手動ワークフロー。
+#
+# 使い方 (workflow_dispatch):
+#   mode=diagnose : 強制元のポリシー割り当て(assignmentId/スコープ)を一覧表示するだけ
+#   mode=exempt   : policy_assignment_id を指定して例外を作成し、Enabled を再設定
+#
+# 権限メモ:
+#   - diagnose は Reader/Contributor で可能。
+#   - exempt は Microsoft.Authorization/policyExemptions/write が必要
+#     (Resource Policy Contributor / Owner)。SP に無い場合は失敗するので、
+#     その場合は出力された az コマンドをサブスクリプション所有者が実行する。
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '実行モード'
+        required: true
+        default: 'diagnose'
+        type: choice
+        options:
+          - diagnose
+          - exempt
+      policy_assignment_id:
+        description: 'exempt モード時: 例外対象のポリシー割り当てID (diagnose 出力からコピー)'
+        required: false
+        type: string
+
+env:
+  STORAGE_NAME: stclickthroughprod
+  RESOURCE_GROUP: rg-clickthrough-prod
+
+jobs:
+  policy-exemption:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+            }
+
+      - name: Resolve storage resource id
+        id: ids
+        run: |
+          SID=$(az storage account show --name "$STORAGE_NAME" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
+          echo "storage_id=$SID" >> $GITHUB_OUTPUT
+          echo "Storage resource id: $SID"
+
+      - name: Diagnose - list non-compliant policies affecting the storage
+        if: inputs.mode == 'diagnose'
+        run: |
+          SID="${{ steps.ids.outputs.storage_id }}"
+          echo "===== [1] Policy compliance states (NonCompliant) for this storage ====="
+          az policy state list \
+            --resource "$SID" \
+            --filter "complianceState eq 'NonCompliant'" \
+            --query "[].{policyDefinition:policyDefinitionName, assignment:policyAssignmentName, assignmentId:policyAssignmentId, effect:policyDefinitionAction, scope:policyAssignmentScope}" \
+            -o json || echo "⚠ policy state list に失敗 (Policy Insights 権限不足の可能性)"
+
+          echo ""
+          echo "===== [2] All policy states (any compliance) referencing publicNetworkAccess ====="
+          az policy state list \
+            --resource "$SID" \
+            --query "[?contains(policyDefinitionName, 'network') || contains(policyDefinitionName, 'Network') || contains(policyDefinitionName, 'public')].{policyDefinition:policyDefinitionName, assignmentId:policyAssignmentId, effect:policyDefinitionAction, compliance:complianceState}" \
+            -o json || echo "⚠ 取得失敗"
+
+          echo ""
+          echo "===== [3] Policy assignments effective at this resource scope ====="
+          az policy assignment list \
+            --scope "$SID" \
+            --disable-scope-strict-match \
+            --query "[].{name:name, displayName:displayName, id:id, scope:scope, policyDefinitionId:policyDefinitionId, enforcementMode:enforcementMode}" \
+            -o json || echo "⚠ assignment list に失敗"
+
+          echo ""
+          echo "▶ 上記 [1]/[3] から publicNetworkAccess=Disabled を強制している assignmentId を特定し、"
+          echo "  mode=exempt / policy_assignment_id=<そのID> で再実行してください。"
+
+      - name: Exempt - create policy exemption for the storage
+        if: inputs.mode == 'exempt'
+        run: |
+          SID="${{ steps.ids.outputs.storage_id }}"
+          ASSIGN='${{ inputs.policy_assignment_id }}'
+          if [ -z "$ASSIGN" ]; then
+            echo "✗ policy_assignment_id が空です。diagnose の出力から assignmentId を指定してください。"
+            exit 1
+          fi
+          echo "▶ 例外を作成します: scope=$SID / assignment=$ASSIGN"
+          az policy exemption create \
+            --name "clickthrough-storage-pna-waiver" \
+            --display-name "ClickThrough storage publicNetworkAccess waiver" \
+            --description "ClickThrough Demo Builder のストレージはブラウザ直接アクセス(SAS)が必須のため public network access を許可する" \
+            --exemption-category "Waiver" \
+            --policy-assignment "$ASSIGN" \
+            --scope "$SID"
+          echo "✓ 例外作成完了。反映まで数分かかる場合があります。"
+
+      - name: Exempt - re-enable public network access
+        if: inputs.mode == 'exempt'
+        run: |
+          echo "▶ publicNetworkAccess=Enabled / defaultAction=Allow を再設定します..."
+          az storage account update \
+            --name "$STORAGE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --public-network-access Enabled \
+            --default-action Allow
+          echo "✓ 完了 (下の Verify で Enabled になっているか確認)"
+
+      - name: Verify
+        run: |
+          az storage account show \
+            --name "$STORAGE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "{publicNetworkAccess:publicNetworkAccess, defaultAction:networkRuleSet.defaultAction, bypass:networkRuleSet.bypass}" \
+            -o table
