@@ -100,7 +100,7 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - [x] コード: videos-upload を API 経由バイナリに統一 (SAS 廃止)
 - [x] フロント: videoService を proxy URL / API アップロードへ差替
 - [x] ローカルビルド/型/lint 検証 (API tsc OK / frontend tsc OK / eslint OK)
-- [ ] 統合ブラウザ E2E テスト作成・実行
+- [x] 統合ブラウザ E2E テスト作成・実行 (Playwright: smoke 2 + proxy API 3 = 全 5 passed)
 - [ ] インフラ構築スクリプト (VNet/PE/DNS/Func/バックエンドストレージ)
 - [ ] CI/CD 更新 (linked backend デプロイ)
 - [ ] 本番反映・検証
@@ -126,6 +126,8 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - L10: `StorageAccount_PublicNetwork_Modify` は **“excluding NSP configured resources”**。
   NSP に載せれば Modify 強制から外れる(NSP 探索は正しい直感だった)。
 - L11: 当テナントは **ARM 書込/削除に MFA 必須**(Conditional Access)。インフラ構築時は MFA ステップアップが必要。
+- L12: SWA デプロイは `tsc -b`(include:src/vite.config.ts のみ)なので e2e/playwright はビルド対象外。
+  テスト追加で CI ビルドは壊れない。E2E URL は `E2E_BASE_URL` で切替可(既定=本番SWA)。
 
 ## 7. 実行ログ
 
@@ -139,3 +141,6 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
   次: コード(動画プロキシ化)実装に着手(Azure 不要・MFA不要の部分から)。
 - 2026-07-10: 動画プロキシ化コード実装完了(blobService/videos-get/videos-upload/videoService)。
   API/frontend tsc + eslint 全通過。次: 統合ブラウザ E2E テスト と インフラ構築スクリプト。
+- 2026-07-10: Playwright E2E 導入。本番 SWA(ashy-wave-003b36700) に対し smoke 2 + proxy API 3 を実行し全 5 passed。
+  プロキシエンドポイント(/api/videos/{id}/stream 他)がデプロイ済・認証保護されていることを確認。
+  次: インフラ構築スクリプト(VNet/PE/Func/バックエンドストレージ) → MFA ログインで実行。
