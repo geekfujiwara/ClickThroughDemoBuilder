@@ -32,14 +32,24 @@
 
 | # | 確認項目 | なぜ重要か | 状態 | 結論 |
 |---|---|---|---|---|
-| C1 | **Microsoft.Web(Functions/App Service) の publicNetworkAccess を Disabled 強制するポリシーがあるか** | 公開バックエンドを作れるかが決まる。あるなら Front Door/App GW 等の公開口が別途必要 | 🔲 未確認 | — |
-| C2 | SWA(現行フロント/管理Functions)は公開で動作しているか | 公開 web 自体は許可されている証拠になる | ✅ 動作中(利用者がアクセス可) | 公開 staticSites は可 |
-| C3 | Storage のリージョン | VNet/PE/Func を同一リージョンに揃える | 🔲 未確認 | — |
-| C4 | VNet 統合対応プラン(Flex Consumption 等)が当該リージョンで利用可能か | バックエンド移設先の選定 | 🔲 未確認 | — |
-| C5 | Microsoft.Network / PrivateDNS プロバイダ登録済みか | PE/DNS 作成可否 | 🔲 未確認 | — |
-| C6 | SWA プラン(Free/Standard) と linked backend 可否 | linked backend は Standard 必須 | 🔲 未確認 | — |
-| C7 | サブスクリプション所有者/ネットワーク作成権限 | インフラ構築の実行主体 | 🔲 未確認 | — |
-| C8 | コスト許容(Func プラン/PE/VNet) | 予算 | 🔲 未確認 | — |
+| C1 | **Microsoft.Web(Functions/App Service) の publicNetworkAccess を Disabled 強制するポリシーがあるか** | 公開バックエンドを作れるかが決まる。あるなら Front Door/App GW 等の公開口が別途必要 | ⚠ 要所有者確認 | ポリシー定義の対象リソース型を読む(下記コマンド) |
+| C2 | SWA(現行フロント/管理Functions)は公開で動作しているか | 公開 web 自体は許可されている証拠になる | ✅ 動作中 | 公開 staticSites は可 |
+| C3 | Storage のリージョン | VNet/PE/Func を同一リージョンに揃える | ✅ **eastasia** | eastasia に統一 |
+| C4 | VNet 統合対応プラン(Flex Consumption 等)が当該リージョンで利用可能か | バックエンド移設先の選定 | ⚠ 要確認 | eastasia の Flex 対応確認 |
+| C5 | Microsoft.Network / PrivateDNS / Web / App プロバイダ登録済みか | PE/DNS/Func 作成可否 | ✅ 全て Registered | 作成可 |
+| C6 | SWA プラン(Free/Standard) と linked backend 可否 | linked backend は Standard 必須 | ✅ **Standard** | linked backend 可 |
+| C7 | サブスクリプション所有者/ネットワーク作成権限 | インフラ構築の実行主体 | ⚠ 要確認 | 所有者ローカル実行想定 |
+| C8 | コスト許容(Func プラン/PE/VNet) | 予算 | ⚠ 要確認 | — |
+
+> **C1 確認コマンド(所有者がローカルで `az login` 後に実行):**
+> ```pwsh
+> # storage に効いている強制系ポリシー割当を一覧
+> $sid = az storage account show -n stclickthroughprod -g rg-clickthrough-prod --query id -o tsv
+> az policy assignment list --scope $sid --disable-scope-strict-match -o table
+> # 候補の定義IDから policyRule の対象リソース型/field を確認
+> az policy definition show --name <policyDefinitionName> --query "policyRule.if" -o json
+> # → Microsoft.Storage のみ = C1:No(案B-1) / Microsoft.Web も含む = C1:Yes(案B-2)
+> ```
 
 ### VNet 統合と「公開」の関係(要点)
 - **VNet 統合は OUTBOUND のみ**に作用する(Func → Private Storage へ到達するため)。
@@ -102,4 +112,8 @@ C1: Web も publicNetworkAccess=Disabled 強制？
 ## 7. 実行ログ
 
 - 2026-07-10: 原因診断、NSP 未関連付け確認、enable ワークフロー改善(毎時+bypass)、
-  本設計 MD 作成。次: C1(Web のポリシー強制有無) を診断予定。
+  本設計 MD 作成。
+- 2026-07-10: 環境制約診断実行。確定: Storage=eastasia/Standard_LRS、
+  プロバイダ(Network/Web/App)全て Registered、既存 Web は **SWA(Standard) のみ**、
+  既存 Function App なし。linked backend 可(Standard)。残る不確定は **C1**。
+  次: C1 を所有者ローカルで確定 → アーキテクチャ(B-1/B-2)確定 → コード実装へ。
