@@ -328,6 +328,70 @@ export async function uploadVideoBuffer(
 }
 
 /**
+ * 動画を API プロキシ経由でストリーム配信するための取得。
+ * Private Endpoint 環境 (publicNetworkAccess=Disabled) ではブラウザが Blob に直接
+ * 到達できないため、Function App が Managed Identity で Blob を読み取りブラウザへ中継する。
+ * HTTP Range に対応 (シーク・大容量動画のため)。
+ *
+ * @param range 省略時は全体を返す。指定時は [start, end] (両端含む) の部分範囲。
+ * @returns 動画が存在しない場合は null。
+ */
+export interface VideoStreamResult {
+  stream: NodeJS.ReadableStream;
+  contentType: string;
+  /** このレスポンスで返すバイト数 (範囲指定時は範囲長) */
+  contentLength: number;
+  /** Blob 全体のサイズ */
+  totalSize: number;
+  start: number;
+  end: number;
+}
+
+export async function getVideoStream(
+  projectId: string,
+  range?: { start: number; end?: number },
+): Promise<VideoStreamResult | null> {
+  const c = await ensureContainer('videos');
+
+  // 拡張子を探す (最初の1件)
+  let blobName: string | null = null;
+  for await (const item of c.listBlobsFlat({ prefix: `${projectId}/` })) {
+    blobName = item.name;
+    break;
+  }
+  if (!blobName) return null;
+
+  const blob = c.getBlockBlobClient(blobName);
+  const props = await blob.getProperties();
+  const totalSize = props.contentLength ?? 0;
+  const contentType = props.contentType ?? 'video/mp4';
+
+  let start = 0;
+  let end = totalSize > 0 ? totalSize - 1 : 0;
+  if (range) {
+    start = Math.max(0, range.start);
+    end = range.end !== undefined ? Math.min(range.end, totalSize - 1) : totalSize - 1;
+    if (start > end) start = end;
+  }
+  const count = totalSize === 0 ? 0 : end - start + 1;
+
+  const resp = await blob.download(start, count);
+  const stream = resp.readableStreamBody;
+  if (!stream) return null;
+
+  return { stream, contentType, contentLength: count, totalSize, start, end };
+}
+
+/** 動画が存在するか (ダウンロードせず存在のみ確認) */
+export async function videoExists(projectId: string): Promise<boolean> {
+  const c = await ensureContainer('videos');
+  for await (const _item of c.listBlobsFlat({ prefix: `${projectId}/` })) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * プロジェクトに紐づく動画を削除
  */
 export async function deleteProjectVideo(projectId: string): Promise<void> {

@@ -95,13 +95,13 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - [x] 設計/進捗/教訓 MD 作成 (本ファイル)
 - [ ] **C1〜C8 環境制約の確認 (進行中)**
 - [ ] アーキテクチャ確定 (B-1 or B-2)
-- [ ] コード: blobService ストリーム取得/アップロード
-- [ ] コード: videos-get を Range 対応プロキシ化
-- [ ] コード: videos-upload を API 経由に統一
-- [ ] フロント: videoService を proxy URL へ差替
-- [ ] ローカルビルド/型チェック
+- [x] コード: blobService ストリーム取得/存在確認 (getVideoStream/videoExists)
+- [x] コード: videos-get を Range 対応プロキシ化 (/api/videos/{id}/stream)
+- [x] コード: videos-upload を API 経由バイナリに統一 (SAS 廃止)
+- [x] フロント: videoService を proxy URL / API アップロードへ差替
+- [x] ローカルビルド/型/lint 検証 (API tsc OK / frontend tsc OK / eslint OK)
 - [ ] 統合ブラウザ E2E テスト作成・実行
-- [ ] インフラ構築スクリプト (VNet/PE/DNS/Func)
+- [ ] インフラ構築スクリプト (VNet/PE/DNS/Func/バックエンドストレージ)
 - [ ] CI/CD 更新 (linked backend デプロイ)
 - [ ] 本番反映・検証
 
@@ -137,3 +137,5 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - 2026-07-10: 所有者ログインでガバナンス確定。MCAPSGov/SFI の `StorageAccount_PublicNetwork_Modify` が原因と確定。
   **C1=No**(Web は対象外) → **アーキテクチャ B-1 に確定**。MFA 必須・モダンリソース作成は可を確認。
   次: コード(動画プロキシ化)実装に着手(Azure 不要・MFA不要の部分から)。
+- 2026-07-10: 動画プロキシ化コード実装完了(blobService/videos-get/videos-upload/videoService)。
+  API/frontend tsc + eslint 全通過。次: 統合ブラウザ E2E テスト と インフラ構築スクリプト。

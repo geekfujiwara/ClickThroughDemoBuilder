@@ -30,39 +30,9 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   const auth = requireRole(req, 'designer');
   if ('status' in auth) return auth;
 
-  const contentType = req.headers.get('content-type') ?? '';
-
-  // ── JSON モード: SAS URL 返却 ────────────────────────────
-  if (contentType.includes('application/json')) {
-    try {
-      const body = (await req.json()) as { projectId?: string; mimeType?: string };
-      if (!body.projectId || !body.mimeType) {
-        return { status: 400, jsonBody: { error: 'projectId と mimeType は必須です' } };
-      }
-      if (!ALLOWED_MIME_TYPES.has(body.mimeType)) {
-        return { status: 400, jsonBody: { error: 'MP4 または WebM 形式のみ許可されます' } };
-      }
-
-      // 所有者チェック (IDOR 防止)
-      const ownerCheck = await verifyProjectOwner(body.projectId, auth.payload.creatorId);
-      if (ownerCheck) return ownerCheck;
-
-      const ext = extFromMime(body.mimeType);
-
-      // 既存動画を削除
-      await blobService.deleteProjectVideo(body.projectId);
-
-      const { uploadUrl, blobName } = await blobService.getVideoUploadSasUrl(body.projectId, ext);
-      return {
-        status: 200,
-        jsonBody: { uploadUrl, blobName, projectId: body.projectId },
-      };
-    } catch {
-      return { status: 500, jsonBody: { error: '動画アップロードの準備に失敗しました' } };
-    }
-  }
-
-  // ── Binary モード: 直接アップロード ──────────────────────
+  // ── Binary モード: API 経由で直接アップロード ─────────────
+  // publicNetworkAccess=Disabled + Private Endpoint 環境ではブラウザが Blob に直接
+  // 到達できないため、SAS 直 PUT は使わず必ず API 経由でアップロードする。
   try {
     const projectId = req.query.get('projectId');
     const mimeType = req.query.get('mimeType') ?? 'video/mp4';
