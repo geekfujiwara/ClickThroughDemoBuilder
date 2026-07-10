@@ -1,12 +1,20 @@
 name: Manage Storage Network Access
 
 # スケジュール (JST):
-#   04:00 (19:00 UTC) → Enabled/Allow に復元（業務開始前）
-#   21:00 (12:00 UTC) → Disabled/Deny に設定（会社ポリシー検知時間帯に合わせて先に閉じる）
+#   04:00〜20:00 の毎時 → Enabled/Allow に復元（自己回復）
+#   21:00 (12:00 UTC)  → Disabled/Deny に設定（会社ポリシー検知時間帯に合わせて先に閉じる）
+#
+# ⚠ 重要: enable を「毎時」実行するのは単一障害点を無くすため。
+#   GitHub Actions のスケジュールは高負荷帯で遅延・スキップされることがあり、
+#   1 日 1 回の cron では 1 回のスキップで終日 Private のままになる。
+#   営業時間中は毎時 enable を試行し、スキップされても次の正時に自己回復させる。
+#   (enable は冪等なので何度実行しても副作用はない)
 on:
   schedule:
-    - cron: '0 19 * * *'  # 04:00 JST → Enabled
-    - cron: '0 12 * * *'  # 21:00 JST → Disabled
+    # 04:00〜20:00 JST の毎時 = 19-23 UTC と 00-11 UTC (12 UTC=disable を除く)。
+    # 分は 15 分オフセットして GitHub の「正時0分」高負荷スキップを回避。
+    - cron: '15 0-11,19-23 * * *'  # 04:00〜20:00 JST → Enabled (毎時・自己回復)
+    - cron: '15 12 * * *'          # 21:00 JST       → Disabled
   workflow_dispatch:
     inputs:
       action:
@@ -38,22 +46,30 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "target=${{ inputs.action }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event.schedule }}" = "0 12 * * *" ]; then
+          elif [ "${{ github.event.schedule }}" = "15 12 * * *" ]; then
             echo "target=disable" >> $GITHUB_OUTPUT
           else
             echo "target=enable" >> $GITHUB_OUTPUT
           fi
 
-      - name: Enable storage network access (04:00 JST)
+      - name: Enable storage network access (04:00〜20:00 JST)
         if: steps.action.outputs.target == 'enable'
         run: |
           echo "▶ publicNetworkAccess=Enabled / defaultAction=Allow に設定します..."
-          az storage account update \
-            --name stclickthroughprod \
-            --resource-group rg-clickthrough-prod \
-            --public-network-access Enabled \
-            --default-action Allow
-          echo "✓ 完了"
+          for i in 1 2 3; do
+            if az storage account update \
+              --name stclickthroughprod \
+              --resource-group rg-clickthrough-prod \
+              --public-network-access Enabled \
+              --default-action Allow; then
+              echo "✓ 完了 (試行 $i 回目)"
+              exit 0
+            fi
+            echo "⚠ 試行 $i 回目失敗。再試行します..."
+            sleep 10
+          done
+          echo "✗ enable に 3 回失敗しました"
+          exit 1
 
       - name: Disable storage network access (21:00 JST)
         if: steps.action.outputs.target == 'disable'
