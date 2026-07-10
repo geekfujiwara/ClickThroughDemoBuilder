@@ -55,13 +55,24 @@ jobs:
       - name: Enable storage network access (04:00〜20:00 JST)
         if: steps.action.outputs.target == 'enable'
         run: |
-          echo "▶ publicNetworkAccess=Enabled / defaultAction=Allow に設定します..."
+          # 会社の Azure Policy が publicNetworkAccess=Disabled を強制しているため、
+          # --public-network-access Enabled は反映されない（Disabled のまま戻される）。
+          # publicNetworkAccess=Disabled 環境で Functions(信頼済み Azure サービス)を
+          # 通すには networkRuleSet.bypass=AzureServices が必須。これを確実に維持する。
+          echo "▶ bypass=AzureServices / defaultAction=Allow を設定 (+ publicNetworkAccess=Enabled も試行)..."
           for i in 1 2 3; do
+            # まず bypass を必ず設定（これが Disabled 環境での実効的なアクセス経路）
             if az storage account update \
               --name stclickthroughprod \
               --resource-group rg-clickthrough-prod \
-              --public-network-access Enabled \
+              --bypass AzureServices \
               --default-action Allow; then
+              # publicNetworkAccess=Enabled はポリシーで拒否/巻き戻される場合があるため
+              # 失敗しても無視する（bypass 設定が成功していれば OK）
+              az storage account update \
+                --name stclickthroughprod \
+                --resource-group rg-clickthrough-prod \
+                --public-network-access Enabled || echo "ℹ publicNetworkAccess=Enabled はポリシーにより反映されない可能性があります（想定内）"
               echo "✓ 完了 (試行 $i 回目)"
               exit 0
             fi
@@ -84,8 +95,15 @@ jobs:
 
       - name: Verify settings
         run: |
+          echo "===== 概要 ====="
           az storage account show \
             --name stclickthroughprod \
             --resource-group rg-clickthrough-prod \
-            --query "{publicNetworkAccess:publicNetworkAccess, defaultAction:networkRuleSet.defaultAction, allowSharedKeyAccess:allowSharedKeyAccess}" \
+            --query "{publicNetworkAccess:publicNetworkAccess, defaultAction:networkRuleSet.defaultAction, bypass:networkRuleSet.bypass, allowSharedKeyAccess:allowSharedKeyAccess}" \
             -o table
+          echo "===== networkRuleSet 詳細 (bypass / resourceAccessRules / privateEndpoint) ====="
+          az storage account show \
+            --name stclickthroughprod \
+            --resource-group rg-clickthrough-prod \
+            --query "{networkRuleSet:networkRuleSet, privateEndpointConnections:privateEndpointConnections}" \
+            -o json
