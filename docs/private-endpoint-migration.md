@@ -17,14 +17,27 @@
 
 ## 2. 確定した事実 (診断済み)
 
-| 項目 | 結果 | 根拠 |
-|---|---|---|
-| publicNetworkAccess | Disabled 強制(enable しても戻る) | CI 診断ログ |
-| NSP 関連付け | 無し (`networkSecurityPerimeterConfigurations={value:[]}`) | CI 診断ログ |
-| Private Endpoint | 無し | networkAcls 照会 |
-| networkAcls | bypass=AzureServices, defaultAction=Allow, ipRules=219.104.137.230 | 照会 |
-| SP 権限 | policy 読取/例外作成 **不可** | AuthorizationFailed |
-| フロント配信 | ブラウザ→SAS URL 直アクセス | videoService.ts / blobService.ts |
+### ガバナンスの正体 (2026-07-10 所有者ログインで確定)
+- 環境は **Microsoft コーポレートテナント (Tenant Root Group: f092b281…, “Contoso”)**。
+- Tenant Root MG に **MCAPSGov / SFI(Secure Future Initiative)** ガバナンスが割当:
+  - **`StorageAccount_PublicNetwork_Modify`** (effect=modify) ← publicNetworkAccess=Disabled を強制(本件の直接原因)。
+    displayName: “SFI - Disable public network access on Storage accounts (**excluding NSP configured resources**)”。
+  - `StorageAccount_DisableLocalAuth_Modify` → allowSharedKeyAccess=false (共有キー禁止 → MI/AAD 必須)。
+  - `StorageAccount_BlobAnonymousAccess_Modify` → 匿名アクセス禁止。
+  - **MFA Enforcement for Resource Write/Delete** → ARM 書込/削除に MFA 必須。
+  - **Block Azure RM Resource Creation** → **Classic リソースのみ拒否**(モダン VNet/PE/Func は作成可)。
+- **PublicNetwork_Modify の対象は Storage/CosmosDB/KeyVault/SQL/AIFoundry のみ。Microsoft.Web は対象外** → **C1=No**。
+- ⇒ 重要: **これは自己で例外不可な Microsoft コーポレートセキュリティポリシー**。方針 A(自己例外)は不可/不適切。
+
+### ストレージ/ネットワークの現状
+
+| 項目 | 結果 |
+|---|---|
+| publicNetworkAccess | Disabled (Modify 強制 → 変更しても inline で戻る) |
+| NSP 関連付け | 無し (ただし NSP に載せれば Modify 対象外になる) |
+| Private Endpoint | 無し |
+| allowSharedKeyAccess | false (共有キー禁止) |
+| フロント配信 | ブラウザ→SAS URL 直アクセス |
 
 ## 3. 環境制約チェックリスト (実装前に確定させる)
 
@@ -32,7 +45,7 @@
 
 | # | 確認項目 | なぜ重要か | 状態 | 結論 |
 |---|---|---|---|---|
-| C1 | **Microsoft.Web(Functions/App Service) の publicNetworkAccess を Disabled 強制するポリシーがあるか** | 公開バックエンドを作れるかが決まる。あるなら Front Door/App GW 等の公開口が別途必要 | ⚠ 要所有者確認 | ポリシー定義の対象リソース型を読む(下記コマンド) |
+| C1 | **Microsoft.Web(Functions/App Service) の publicNetworkAccess を Disabled 強制するポリシーがあるか** | 公開バックエンドを作れるかが決まる | ✅ **No(Webは対象外)** | 案 **B-1** 採用可 |
 | C2 | SWA(現行フロント/管理Functions)は公開で動作しているか | 公開 web 自体は許可されている証拠になる | ✅ 動作中 | 公開 staticSites は可 |
 | C3 | Storage のリージョン | VNet/PE/Func を同一リージョンに揃える | ✅ **eastasia** | eastasia に統一 |
 | C4 | VNet 統合対応プラン(Flex Consumption 等)が当該リージョンで利用可能か | バックエンド移設先の選定 | ⚠ 要確認 | eastasia の Flex 対応確認 |
@@ -60,21 +73,19 @@
   - あるいは SWA(公開) → Private Endpoint 経由で linked backend(要 SWA Dedicated)
   という追加構成が必要になる。→ **C1 の確認が設計の分岐点**。
 
-## 4. アーキテクチャ決定木 (C1 の結果で分岐)
+## 4. アーキテクチャ (確定: **案 B-1**)
+
+C1=No が確定したため、公開 Function App をプロキシとして使う **B-1** を採用。
 
 ```
-C1: Web も publicNetworkAccess=Disabled 強制？
-├─ No (公開 Function App 可)  → 【案B-1: 推奨・最小】
-│    ブラウザ → SWA(公開) → linked backend: Function App(Flex Consumption)
-│                          ├ inbound: 公開(SWAからのみ許可)
-│                          └ outbound: VNet統合 → Private Endpoint → Storage
-│    + 動画は API プロキシ(Range対応)
-│
-└─ Yes (公開 Web も不可)      → 【案B-2: 重い】
-     公開口: Azure Front Door / App Gateway (WAF)
-       → Private Endpoint → Function App(private inbound) → VNet → Storage PE
-     + 動画は API プロキシ
+ブラウザ ─HTTPS─> SWA(公開/Standard) ─linked backend─> Function App(Flex, eastasia)
+                                              ├ inbound : 公開(SWA からのみ許可)
+                                              └ outbound: VNet統合 → Private Endpoint → Storage(Disabledのまま/ポリシー準拠)
+動画は Function App で API プロキシ(Range対応)。ストレージアクセスは Managed Identity(allowSharedKeyAccess=false 準拠)。
 ```
+
+補足(代替案): Storage を **NSP** に関連付ければ `StorageAccount_PublicNetwork_Modify` の対象外になり、
+ペリメータ inbound ルールで制御できるが、不特定多数のブラウザ許可は不向きのため B-1 を優先。
 
 ## 5. タスク一覧 (進捗)
 
@@ -108,6 +119,13 @@ C1: Web も publicNetworkAccess=Disabled 強制？
 - L6: CI の SP は最小権限(Storage 書込のみ)。policy 読取/例外作成/network 作成は不可。
   ポリシー/ネットワーク操作は所有者アカウントのローカル実行が必要。
 - L7: **VNet 統合は outbound のみ。公開可否は別問題(C1)**。設計はここを先に確定する。
+- L8: 強制元は **Microsoft コーポレートテナントの MCAPSGov/SFI ポリシー**(`StorageAccount_PublicNetwork_Modify`)。
+  Tenant Root MG 割当のため **自己例外不可**。方針 A はこの環境では不適。
+- L9: MCAPSGov は **リソース型ごと**にポリシーが分かれている。Storage/Cosmos/KV/SQL は public 禁止だが
+  **Microsoft.Web は対象外** → 公開 Function App をプロキシにできる(B-1 成立の根拠)。
+- L10: `StorageAccount_PublicNetwork_Modify` は **“excluding NSP configured resources”**。
+  NSP に載せれば Modify 強制から外れる(NSP 探索は正しい直感だった)。
+- L11: 当テナントは **ARM 書込/削除に MFA 必須**(Conditional Access)。インフラ構築時は MFA ステップアップが必要。
 
 ## 7. 実行ログ
 
@@ -116,4 +134,6 @@ C1: Web も publicNetworkAccess=Disabled 強制？
 - 2026-07-10: 環境制約診断実行。確定: Storage=eastasia/Standard_LRS、
   プロバイダ(Network/Web/App)全て Registered、既存 Web は **SWA(Standard) のみ**、
   既存 Function App なし。linked backend 可(Standard)。残る不確定は **C1**。
-  次: C1 を所有者ローカルで確定 → アーキテクチャ(B-1/B-2)確定 → コード実装へ。
+- 2026-07-10: 所有者ログインでガバナンス確定。MCAPSGov/SFI の `StorageAccount_PublicNetwork_Modify` が原因と確定。
+  **C1=No**(Web は対象外) → **アーキテクチャ B-1 に確定**。MFA 必須・モダンリソース作成は可を確認。
+  次: コード(動画プロキシ化)実装に着手(Azure 不要・MFA不要の部分から)。
