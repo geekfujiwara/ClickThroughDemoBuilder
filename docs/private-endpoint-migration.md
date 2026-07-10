@@ -101,9 +101,12 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - [x] フロント: videoService を proxy URL / API アップロードへ差替
 - [x] ローカルビルド/型/lint 検証 (API tsc OK / frontend tsc OK / eslint OK)
 - [x] 統合ブラウザ E2E テスト作成・実行 (Playwright: smoke 2 + proxy API 3 = 全 5 passed)
-- [ ] インフラ構築スクリプト (VNet/PE/DNS/Func/バックエンドストレージ)
+- [x] インフラ: Auth_Helper(MFAキャッシュ再利用) 作成
+- [x] インフラ Stage1-7: subnet/DNS/PE(データ)/backend storage+PE/Function App(VNet統合)/RBAC/appsettings
+- [ ] Function コードデプロイ (Core Tools / リモートビルド)
+- [ ] Stage8: SWA linked backend 接続
+- [ ] 本番検証 (E2E 再実行 / 動画視聴)
 - [ ] CI/CD 更新 (linked backend デプロイ)
-- [ ] 本番反映・検証
 
 ## 6. 教訓 (Lessons Learned)
 
@@ -128,6 +131,14 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - L11: 当テナントは **ARM 書込/削除に MFA 必須**(Conditional Access)。インフラ構築時は MFA ステップアップが必要。
 - L12: SWA デプロイは `tsc -b`(include:src/vite.config.ts のみ)なので e2e/playwright はビルド対象外。
   テスト追加で CI ビルドは壊れない。E2E URL は `E2E_BASE_URL` で切替可(既定=本番SWA)。
+- L13: **MFA は amr クレームで判定**。ARM アクセストークンを base64url デコードし
+  amr に mfa/rsa 等があるかで判別できる(pwd のみは MFA 未)。Auth_Helper がこれでキャッシュ再利用。
+- L14: PowerShell は `$Stage`(param) と 関数引数 `$stage` が大文字小文字非区別で衝突する。
+  別名(例: `$target`)にする。また az の非0終了で止めるには `$PSNativeCommandUseErrorActionPreference=$true`。
+- L15: Flex Consumption はバックエンドストレージが private なとき **create 時に `--vnet/--subnet` 必須**
+  (後付け不可。`…your app will not start` エラー)。
+- L16: 既存に `vnetclickthrough`(japaneast) + SWA用PE + Automation `aa-clickthrough-prod/Set-StorageNetworkAccess`
+  が存在。VNetを再利用。FunctionはVNetと同リージョン(japaneast)必須。PEはクロスリージョン可(→eastasia storage)。
 
 ## 7. 実行ログ
 

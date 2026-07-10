@@ -42,3 +42,8 @@ result.json
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Function deploy package
+/func.zip
+/api-deploy/dist/
+/api-deploy/node_modules/
