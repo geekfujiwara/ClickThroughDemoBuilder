@@ -103,10 +103,10 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
 - [x] 統合ブラウザ E2E テスト作成・実行 (Playwright: smoke 2 + proxy API 3 = 全 5 passed)
 - [x] インフラ: Auth_Helper(MFAキャッシュ再利用) 作成
 - [x] インフラ Stage1-7: subnet/DNS/PE(データ)/backend storage+PE/Function App(VNet統合)/RBAC/appsettings
-- [ ] Function コードデプロイ (Core Tools / リモートビルド)
-- [ ] Stage8: SWA linked backend 接続
-- [ ] 本番検証 (E2E 再実行 / 動画視聴)
-- [ ] CI/CD 更新 (linked backend デプロイ)
+- [x] Function コードデプロイ (GitHub Actions deploy-api.yml / MIデプロイ認証)
+- [x] Stage8: SWA linked backend 接続
+- [x] 本番検証: ゲストログイン→feed/demos/rankings(Blob読取) 200 / 動画ストリーム 206(Range)
+- [x] **完了: アプリ復旧(ポリシー準拠のまま)**
 
 ## 6. 教訓 (Lessons Learned)
 
@@ -139,6 +139,14 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
   (後付け不可。`…your app will not start` エラー)。
 - L16: 既存に `vnetclickthrough`(japaneast) + SWA用PE + Automation `aa-clickthrough-prod/Set-StorageNetworkAccess`
   が存在。VNetを再利用。FunctionはVNetと同リージョン(japaneast)必須。PEはクロスリージョン可(→eastasia storage)。
+- L17: **MFA は amr=pwd なら未認証**。アカウントに実際に MFA を実行させないと amr=pwd のまま。
+  Auth_Helper は amr を見て MFA トークンをキャッシュ再利用(不要なダイアログを出さない)。
+- L18: **Flex Consumption + 共有キー禁止ストレージ**では、deployment ストレージ認証を
+  **作成時に `--deployment-storage-auth-type SystemAssignedIdentity`** で指定する。
+  作成後の ARM PATCH では Kudu(Legion) に反映されず `Key based authentication is not permitted` で失敗する。
+- L19: コーポレート網からの大容量 POST (Kudu zipdeploy) はリセットされる。**デプロイは GitHub Actions** から行う。
+- L20: 動画の `net::ERR_ABORTED` は video 要素が初回リクエストをキャンセルし Range 再要求する正常挙動。
+  サーバー側は 206 + Content-Range で正しく配信されている。
 
 ## 7. 実行ログ
 
@@ -152,6 +160,10 @@ C1=No が確定したため、公開 Function App をプロキシとして使う
   次: コード(動画プロキシ化)実装に着手(Azure 不要・MFA不要の部分から)。
 - 2026-07-10: 動画プロキシ化コード実装完了(blobService/videos-get/videos-upload/videoService)。
   API/frontend tsc + eslint 全通過。次: 統合ブラウザ E2E テスト と インフラ構築スクリプト。
+- 2026-07-10: **移行完了**。VNetサブネット/Private DNS/PE(データ&backend)/Flex Function(VNet統合,MIデプロイ認証)/RBAC/appsettings/
+  linked backend を構築。GitHub Actions(deploy-api.yml) で Function コードをデプロイ。
+  検証: ゲストログイン200 / feed・demos(262KB)・rankings(634KB) 200(Blob読取成功) / 動画ストリーム 206(Range, 27.7MB)。
+  ブラウザでゲストログイン→デモ(CP1-14)表示確認。**ストレージは Disabled のままポリシー準拠でアプリ復旧。**
 - 2026-07-10: Playwright E2E 導入。本番 SWA(ashy-wave-003b36700) に対し smoke 2 + proxy API 3 を実行し全 5 passed。
   プロキシエンドポイント(/api/videos/{id}/stream 他)がデプロイ済・認証保護されていることを確認。
   次: インフラ構築スクリプト(VNet/PE/Func/バックエンドストレージ) → MFA ログインで実行。

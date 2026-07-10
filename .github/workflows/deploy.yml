@@ -33,22 +33,10 @@ jobs:
       - name: Copy SWA config to dist
         run: cp staticwebapp.config.json dist/staticwebapp.config.json
 
-      - name: Install API dependencies
-        run: cd api && npm ci
-
-      - name: Build API
-        run: cd api && npm run build
-
-      - name: Prepare API deployment folder
-        run: |
-          rm -rf api-deploy/dist
-          mkdir -p api-deploy
-          cp -r api/dist api-deploy/
-          cp api/host.json api-deploy/
-          cp api/package.json api-deploy/
-          cp api/package-lock.json api-deploy/
-          cd api-deploy && npm ci --production --ignore-scripts
-
+      # API は linked backend (func-clickthrough-prod) にデプロイ (deploy-api.yml)。
+      # SWA managed functions は使わないため api_location は空にする
+      # (Private Endpoint 経由でストレージへアクセスするため VNet 統合が必要で、
+      #  SWA managed functions は VNet 非対応)。
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -56,7 +44,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "dist"
-          api_location: "api-deploy"
+          api_location: ""
           output_location: ""
           skip_app_build: true
           skip_api_build: true

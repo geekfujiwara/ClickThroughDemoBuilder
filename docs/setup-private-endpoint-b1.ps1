@@ -113,15 +113,17 @@ if (Should '4') {
 # ── Stage 5: Flex Consumption Function App + VNet統合 ─────────
 if (Should '5') {
   Section 5 'Flex Consumption Function App'
-  # バックエンドストレージが private のため、作成時に VNet 統合を指定する必要がある
+  # バックエンドストレージが private かつ共有キー禁止のため:
+  #  - 作成時に VNet 統合を指定 (--vnet/--subnet)
+  #  - deployment ストレージ認証を SystemAssignedIdentity に (作成後変更では Kudu に反映されにくい)
   az functionapp create -n $FuncApp -g $ResourceGroup `
     --storage-account $FuncStorage `
     --flexconsumption-location $Location `
     --runtime node --runtime-version 20 `
-    --vnet $VnetName --subnet $FuncSubnet -o none
-  Ok "Function App $FuncApp (VNet統合込み作成)"
-  az functionapp identity assign -n $FuncApp -g $ResourceGroup -o none
-  Ok 'System-assigned MI'
+    --vnet $VnetName --subnet $FuncSubnet `
+    --deployment-storage-auth-type SystemAssignedIdentity `
+    --assign-identity '[system]' -o none
+  Ok "Function App $FuncApp (VNet統合 + MIデプロイ認証込み作成)"
 }
 
 # ── Stage 6: RBAC ─────────────────────────────────────────────
