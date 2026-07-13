@@ -110,7 +110,7 @@ export default function Navigation() {
           {MSG.navHome}
         </Button>
       </Link>
-      {!isViewer && (
+      {(!isViewer || isGuest) && (
         <Link to={linkTo('/projects')} className={classes.link}>
           <Button appearance={isActive('/projects') ? 'primary' : 'subtle'} size="small">
             {MSG.navProjects}

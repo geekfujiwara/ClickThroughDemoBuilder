@@ -166,15 +166,16 @@ export default function ProjectsPage() {
   const navigate = useGuestNavigate();
   const { projects: storeProjects, isLoading: storeLoading, loadProjects, deleteProject, duplicateProject } =
     useProjectStore();
-  const { role } = useAuthStore();
+  const { role, isGuest } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   // viewer ロールはプロジェクトページにアクセス不可 → ホームへリダイレクト
+  // ただしゲストユーザーはデモ閲覧のためアクセス許可
   useEffect(() => {
-    if (role && !isDesigner) {
+    if (role && !isDesigner && !isGuest) {
       navigate('/', { replace: true });
     }
-  }, [role, isDesigner, navigate]);
+  }, [role, isDesigner, isGuest, navigate]);
 
   // Viewer/ゲスト用: /api/demos から取得したデモ一覧
   const [viewerDemos, setViewerDemos] = useState<DemoProject[]>([]);
