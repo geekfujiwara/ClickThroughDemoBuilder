@@ -14,13 +14,29 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   if (!id) return { status: 400, jsonBody: { error: 'id は必須です' } };
 
   try {
-    const body = (await req.json()) as { name?: string; groupId?: string; language?: 'ja' | 'en'; email?: string; color?: string };
+    const body = (await req.json()) as {
+      name?: string;
+      groupId?: string;
+      language?: 'ja' | 'en';
+      email?: string;
+      color?: string;
+      bio?: string;
+      xUrl?: string;
+      linkedInUrl?: string;
+      youTubeUrl?: string;
+    };
     const name = body.name ?? '';
     const groupId = typeof body.groupId === 'string' && body.groupId.trim() ? body.groupId : undefined;
     const language = body.language === 'en' ? 'en' : 'ja';
     const email = typeof body.email === 'string' ? body.email : undefined;
     const color = typeof body.color === 'string' ? body.color : undefined;
-    const creator = await creatorService.updateCreator(id, { name, groupId, language, email, color });
+    const bio = typeof body.bio === 'string' ? body.bio : undefined;
+    const xUrl = typeof body.xUrl === 'string' ? body.xUrl : undefined;
+    const linkedInUrl = typeof body.linkedInUrl === 'string' ? body.linkedInUrl : undefined;
+    const youTubeUrl = typeof body.youTubeUrl === 'string' ? body.youTubeUrl : undefined;
+    const creator = await creatorService.updateCreator(id, {
+      name, groupId, language, email, color, bio, xUrl, linkedInUrl, youTubeUrl,
+    });
     return { status: 200, jsonBody: creator };
   } catch (e) {
     return { status: 400, jsonBody: { error: (e as Error).message } };

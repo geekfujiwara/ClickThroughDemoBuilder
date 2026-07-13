@@ -194,6 +194,28 @@ export async function putTrustedAliasesJson(json: string): Promise<void> {
   });
 }
 
+// ── Pinned Demos JSON ──────────────────────────────────────
+
+export async function getPinnedDemosJson(): Promise<string | null> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('pinned-demos.json');
+  try {
+    const buf = await blob.downloadToBuffer();
+    return buf.toString('utf-8');
+  } catch (e: unknown) {
+    if ((e as { statusCode?: number }).statusCode === 404) return null;
+    throw e;
+  }
+}
+
+export async function putPinnedDemosJson(json: string): Promise<void> {
+  const c = await ensureContainer('masters');
+  const blob = c.getBlockBlobClient('pinned-demos.json');
+  await blob.upload(json, Buffer.byteLength(json, 'utf-8'), {
+    blobHTTPHeaders: { blobContentType: 'application/json; charset=utf-8' },
+  });
+}
+
 export async function putUsageLogJson(path: string, json: string): Promise<void> {
   const c = await ensureContainer('usage-logs');
   const blob = c.getBlockBlobClient(path);
@@ -431,6 +453,8 @@ export const getCommentsJson  = () => getSocialJson('comments.json');
 export const putCommentsJson  = (j: string) => putSocialJson('comments.json', j);
 export const getFeedJson      = () => getSocialJson('feed.json');
 export const putFeedJson      = (j: string) => putSocialJson('feed.json', j);
+export const getProfileCommentsJson = () => getSocialJson('profile-comments.json');
+export const putProfileCommentsJson = (j: string) => putSocialJson('profile-comments.json', j);
 
 // ── Usage Logs ────────────────────────────────────────────────
 

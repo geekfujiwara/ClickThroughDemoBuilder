@@ -126,7 +126,11 @@ function FeedEntryCard({ entry }: { entry: FeedEntry }) {
       <FeedIcon type={entry.eventType} />
       <div className={styles.content}>
         <Text>
-          <strong>{entry.actorName}</strong>{' '}
+          <strong>
+            <Link to={`/creators/${entry.actorId}`} className={styles.demoLink}>
+              {entry.actorName}
+            </Link>
+          </strong>{' '}
           {actionText}
           {entry.demoTitle && entry.demoId && (
             <>

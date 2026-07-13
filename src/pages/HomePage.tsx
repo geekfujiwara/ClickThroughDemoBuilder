@@ -126,6 +126,42 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     padding: tokens.spacingVerticalXXXL,
   },
+  layout: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) 340px',
+    gap: tokens.spacingHorizontalXXL,
+    alignItems: 'start',
+    '@media (max-width: 900px)': {
+      gridTemplateColumns: '1fr',
+    },
+  },
+  mainCol: {
+    minWidth: 0,
+  },
+  aside: {
+    position: 'sticky',
+    top: tokens.spacingVerticalL,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalL,
+    borderRadius: tokens.borderRadiusLarge,
+    backgroundColor: tokens.colorNeutralBackground2,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    '@media (max-width: 900px)': {
+      position: 'static',
+    },
+  },
+  asideTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
+  pinnedList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+  },
 });
 
 /** デモカード (ランキング共通) */
@@ -192,21 +228,22 @@ function DemoCard({ demo, onPlay, onEdit, onDetail, isDesigner }: {
 }
 
 /** 作成者ランキングカード */
-function CreatorCard({ entry, rank, valueKey, unit }: {
+function CreatorCard({ entry, rank, valueKey, unit, onOpen }: {
   entry: CreatorRankingEntry;
   rank: number;
   valueKey: 'totalLikes' | 'demoCount';
   unit: string;
+  onOpen: (id: string) => void;
 }) {
   const classes = useStyles();
   const value = entry[valueKey] ?? 0;
   return (
-    <Card className={classes.card}>
+    <Card className={classes.card} onClick={() => onOpen(entry.id)}>
       <div className={classes.creatorCard}>
         <Badge appearance="filled" color={rank === 1 ? 'warning' : rank === 2 ? 'informative' : 'subtle'}>
           #{rank}
         </Badge>
-        <Avatar name={entry.name} size={36} icon={<PersonRegular />} />
+        <Avatar name={entry.name} size={36} icon={<PersonRegular />} color="colorful" />
         <div className={classes.creatorInfo}>
           <Body1><strong>{entry.name}</strong></Body1>
           <Caption1 style={{ display: 'block', color: 'var(--colorNeutralForeground3)' }}>
@@ -261,11 +298,13 @@ export default function HomePage() {
   const handlePlay = useCallback((id: string) => navigate(`/player/${id}`), [navigate]);
   const handleEdit = useCallback((id: string) => navigate(`/designer/${id}`), [navigate]);
   const handleDetail = useCallback((id: string) => navigate(`/demos/${id}`), [navigate]);
+  const handleCreator = useCallback((id: string) => navigate(`/creators/${id}`), [navigate]);
 
   const filterDemo = <T extends { demoNumber?: number }>(list: T[]) =>
     filterIds ? list.filter((d) => d.demoNumber != null && filterIds.has(d.demoNumber)) : list;
 
   const filteredMyDemos = filterDemo(myDemos);
+  const pinnedDemos = rankings?.pinnedDemos ?? [];
   const filteredRankings = rankings
     ? {
         ...rankings,
@@ -316,6 +355,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <div className={pinnedDemos.length > 0 ? classes.layout : undefined}>
+        <div className={classes.mainCol}>
       {isLoading ? (
         <div className={classes.spinnerArea}>
           <Spinner label="読み込み中..." />
@@ -416,10 +457,15 @@ export default function HomePage() {
               <div className={classes.activityList}>
                 {filteredRankings.recentComments.map((entry) => (
                   <div key={entry.id} className={classes.activityItem}>
-                    <Avatar name={entry.actorName} size={28} icon={<PersonRegular />} />
+                    <Avatar name={entry.actorName} size={28} icon={<PersonRegular />} color="colorful" />
                     <div className={classes.activityContent}>
                       <Caption1>
-                        <strong>{entry.actorName}</strong>{' '}
+                        <strong
+                          style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                          onClick={() => handleCreator(entry.actorId)}
+                        >
+                          {entry.actorName}
+                        </strong>{' '}
                         {entry.eventType === 'comment' ? 'がコメントしました' : 'がいいねしました'}
                         {entry.demoTitle ? ` 「${entry.demoTitle}」` : ''}
                       </Caption1>
@@ -462,7 +508,7 @@ export default function HomePage() {
               </Text>
               <div className={classes.creatorGrid}>
                 {filteredRankings.topCreatorsByLikes.map((entry, i) => (
-                  <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="totalLikes" unit="いいね" />
+                  <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="totalLikes" unit="いいね" onOpen={handleCreator} />
                 ))}
               </div>
             </section>
@@ -477,7 +523,7 @@ export default function HomePage() {
               </Text>
               <div className={classes.creatorGrid}>
                 {filteredRankings.topCreatorsByDemos.map((entry, i) => (
-                  <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="demoCount" unit="デモ" />
+                  <CreatorCard key={entry.id} entry={entry} rank={i + 1} valueKey="demoCount" unit="デモ" onOpen={handleCreator} />
                 ))}
               </div>
             </section>
@@ -489,6 +535,28 @@ export default function HomePage() {
           <Text>{MSG.homeEmptyDescription}</Text>
         </section>
       )}
+        </div>
+
+        {pinnedDemos.length > 0 && (
+          <aside className={classes.aside}>
+            <Text as="h2" size={500} weight="semibold" className={classes.asideTitle}>
+              {MSG.homePinnedTitle}
+            </Text>
+            <div className={classes.pinnedList}>
+              {pinnedDemos.map((demo) => (
+                <DemoCard
+                  key={demo.id}
+                  demo={demo}
+                  onPlay={handlePlay}
+                  onEdit={handleEdit}
+                  onDetail={handleDetail}
+                  isDesigner={isDesigner}
+                />
+              ))}
+            </div>
+          </aside>
+        )}
+      </div>
     </>
   );
 }

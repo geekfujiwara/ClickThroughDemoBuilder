@@ -45,7 +45,8 @@ import {
   removeFavorite,
 } from '@/services/socialService';
 import { getDemoStats, type DemoStats, type DailyPlay } from '@/services/statsService';
-import type { DemoProject, DemoComment } from '@/types';
+import { getCreator } from '@/services/creatorService';
+import type { DemoProject, DemoComment, DemoCreator } from '@/types';
 import { useMsg } from '@/hooks/useMsg';
 
 // ── Styles ────────────────────────────────────────────────────
@@ -81,6 +82,22 @@ const useStyles = makeStyles({
   },
   title: {
     lineHeight: '1.3',
+  },
+  creatorRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXS,
+    cursor: 'pointer',
+    width: 'fit-content',
+    padding: `2px ${tokens.spacingHorizontalXS}`,
+    borderRadius: tokens.borderRadiusMedium,
+    ':hover': {
+      backgroundColor: tokens.colorNeutralBackground2Hover,
+    },
+  },
+  creatorName: {
+    color: tokens.colorBrandForeground1,
+    fontWeight: tokens.fontWeightSemibold,
   },
   description: {
     color: tokens.colorNeutralForeground2,
@@ -401,6 +418,7 @@ export default function DemoDetailPage() {
 
   const [demo, setDemo] = useState<DemoProject | null>(null);
   const [demoLoading, setDemoLoading] = useState(true);
+  const [creator, setCreator] = useState<DemoCreator | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
@@ -427,6 +445,12 @@ export default function DemoDetailPage() {
         setLikeCount(likeStatus.count);
         setIsFavorited(favorites.some((f) => f.demoId === demoId));
         setComments(cmts.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+        // 作成者情報を取得（プロフィールリンク用）
+        if (project?.creatorId) {
+          getCreator(project.creatorId).then(setCreator).catch(() => setCreator(null));
+        } else {
+          setCreator(null);
+        }
       })
       .catch(() => setDemo(null))
       .finally(() => setDemoLoading(false));
@@ -532,6 +556,20 @@ export default function DemoDetailPage() {
           <Text as="h2" size={600} weight="semibold" className={classes.title}>
             {demo.title}
           </Text>
+
+          {/* 作成者 (プロフィールへのリンク) */}
+          {creator && (
+            <div
+              className={classes.creatorRow}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/creators/${creator.id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/creators/${creator.id}`); }}
+            >
+              <Avatar name={creator.name} size={24} icon={<PersonRegular />} color="colorful" />
+              <Caption1 className={classes.creatorName}>{creator.name}</Caption1>
+            </div>
+          )}
 
           {/* 説明 */}
           {demo.description ? (

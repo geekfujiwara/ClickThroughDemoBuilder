@@ -3,7 +3,7 @@
  * いいね / お気に入り / コメント / フィード
  */
 import crypto from 'node:crypto';
-import type { DemoLike, DemoComment, DemoFavorite, FeedEntry, FeedEventType } from '../shared/types.js';
+import type { DemoLike, DemoComment, DemoFavorite, FeedEntry, FeedEventType, ProfileComment } from '../shared/types.js';
 import * as blob from './blobService.js';
 
 // ── Likes ────────────────────────────────────────────────────
@@ -149,6 +149,58 @@ export async function deleteComment(commentId: string, creatorId: string): Promi
 export async function getCommentCountByDemo(demoId: string): Promise<number> {
   const all = await loadComments();
   return all.filter((c) => c.demoId === demoId).length;
+}
+
+// ── Profile Comments ─────────────────────────────────────────
+
+async function loadProfileComments(): Promise<ProfileComment[]> {
+  const json = await blob.getProfileCommentsJson();
+  if (!json) return [];
+  try { return JSON.parse(json) as ProfileComment[]; } catch { return []; }
+}
+
+async function saveProfileComments(comments: ProfileComment[]): Promise<void> {
+  await blob.putProfileCommentsJson(JSON.stringify(comments));
+}
+
+export async function getProfileComments(profileId: string): Promise<ProfileComment[]> {
+  const all = await loadProfileComments();
+  return all
+    .filter((c) => c.profileId === profileId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function addProfileComment(
+  profileId: string,
+  creatorId: string,
+  creatorName: string,
+  body: string,
+): Promise<ProfileComment> {
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error('コメント本文は必須です');
+  const all = await loadProfileComments();
+  const comment: ProfileComment = {
+    id: crypto.randomUUID(),
+    profileId,
+    creatorId,
+    creatorName,
+    body: trimmed,
+    createdAt: new Date().toISOString(),
+  };
+  all.push(comment);
+  await saveProfileComments(all);
+  return comment;
+}
+
+export async function deleteProfileComment(commentId: string, creatorId: string): Promise<void> {
+  const all = await loadProfileComments();
+  const target = all.find((c) => c.id === commentId);
+  if (!target) throw new Error('コメントが見つかりません');
+  // 投稿者本人、またはプロフィール所有者のみ削除可
+  if (target.creatorId !== creatorId && target.profileId !== creatorId) {
+    throw new Error('このコメントを削除する権限がありません');
+  }
+  await saveProfileComments(all.filter((c) => c.id !== commentId));
 }
 
 // ── Feed ─────────────────────────────────────────────────────

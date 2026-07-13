@@ -2,7 +2,7 @@
  * ソーシャル機能 API クライアント
  */
 import { apiGet, apiPost, apiDelete } from './apiClient';
-import type { DemoLike, DemoComment, DemoFavorite, FeedEntry } from '@/types';
+import type { DemoLike, DemoComment, DemoFavorite, FeedEntry, ProfileComment } from '@/types';
 
 // ── 共通 ─────────────────────────────────────────────────────
 
@@ -58,6 +58,20 @@ export async function deleteComment(demoId: string, commentId: string): Promise<
   await apiDelete(`/demos/${demoId}/comments/${commentId}`);
 }
 
+// ── プロフィールコメント ──────────────────────────────────────
+
+export async function getProfileComments(creatorId: string): Promise<ProfileComment[]> {
+  return apiGet<ProfileComment[]>(`/creators/${creatorId}/comments`);
+}
+
+export async function addProfileComment(creatorId: string, body: string): Promise<ProfileComment> {
+  return apiPost<ProfileComment>(`/creators/${creatorId}/comments`, { body });
+}
+
+export async function deleteProfileComment(creatorId: string, commentId: string): Promise<void> {
+  await apiDelete(`/creators/${creatorId}/comments/${commentId}`);
+}
+
 // ── フィード ─────────────────────────────────────────────────
 
 export async function getFeed(limit = 20, before?: string): Promise<FeedEntry[]> {
@@ -100,6 +114,7 @@ export interface CreatorRankingEntry {
 }
 
 export interface HomeRankings {
+  pinnedDemos: DemoSummary[];
   popularByLikes: DemoSummary[];
   recentDemos: DemoSummary[];
   popularByPlay: DemoSummary[];

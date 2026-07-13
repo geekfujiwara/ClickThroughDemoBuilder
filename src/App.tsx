@@ -10,6 +10,7 @@ const HomePage = lazy(() => import('@/pages/HomePage'));
 const ProjectsPage = lazy(() => import('@/pages/ProjectsPage'));
 const GroupMasterPage = lazy(() => import('@/pages/GroupMasterPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const CreatorProfilePage = lazy(() => import('@/pages/CreatorProfilePage'));
 const DesignerPage = lazy(() => import('@/pages/DesignerPage'));
 const PlayerPage = lazy(() => import('@/pages/PlayerPage'));
 const LoginPage = lazy(() => import('@/components/auth/LoginPage'));
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/groups" element={<GroupMasterPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/creators/:creatorId" element={<CreatorProfilePage />} />
             <Route path="/feed" element={<FeedPage />} />
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/apply-designer" element={<ApplyDesignerPage />} />

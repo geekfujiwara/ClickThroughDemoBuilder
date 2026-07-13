@@ -111,6 +111,11 @@ export interface DemoCreatorRecord {
   designerApplicationReason?: string;
   designerApplicationDate?: string;
   isBlocked?: boolean;
+  // 公開プロフィール
+  bio?: string;           // 自己紹介
+  xUrl?: string;          // X (Twitter) URL
+  linkedInUrl?: string;   // LinkedIn URL
+  youTubeUrl?: string;    // YouTube URL
   createdAt: string;
   updatedAt: string;
 }
@@ -129,6 +134,11 @@ export interface DemoCreator {
   designerApplicationReason?: string;
   designerApplicationDate?: string;
   isBlocked?: boolean;
+  // 公開プロフィール
+  bio?: string;
+  xUrl?: string;
+  linkedInUrl?: string;
+  youTubeUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -146,6 +156,16 @@ export interface DemoComment {
   id: string;
   demoId: string;
   creatorId: string;
+  creatorName: string;
+  body: string;
+  createdAt: string;
+}
+
+/** ユーザーの公開プロフィールに残されたコメント */
+export interface ProfileComment {
+  id: string;
+  profileId: string;    // 対象ユーザー（プロフィール所有者）の creatorId
+  creatorId: string;    // コメント投稿者の creatorId
   creatorName: string;
   body: string;
   createdAt: string;

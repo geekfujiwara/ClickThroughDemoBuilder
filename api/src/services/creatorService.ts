@@ -24,6 +24,23 @@ function validateEmail(email: string): void {
   }
 }
 
+/** SNS などの URL を検証・正規化する（http/https のみ許可） */
+function normalizeUrl(url: string | undefined): string | undefined {
+  if (url === undefined) return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new Error('URL の形式が正しくありません');
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('URL は http または https で始まる必要があります');
+  }
+  return parsed.toString();
+}
+
 function toResponse(r: DemoCreatorRecord): DemoCreator {
   return {
     id: r.id,
@@ -39,6 +56,10 @@ function toResponse(r: DemoCreatorRecord): DemoCreator {
     designerApplicationReason: r.designerApplicationReason,
     designerApplicationDate: r.designerApplicationDate,
     isBlocked: r.isBlocked,
+    bio: r.bio,
+    xUrl: r.xUrl,
+    linkedInUrl: r.linkedInUrl,
+    youTubeUrl: r.youTubeUrl,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   };
@@ -63,6 +84,10 @@ async function loadMaster(): Promise<CreatorMasterData> {
           designerApplicationReason: raw.designerApplicationReason,
           designerApplicationDate: raw.designerApplicationDate,
           isBlocked: raw.isBlocked,
+          bio: raw.bio,
+          xUrl: raw.xUrl,
+          linkedInUrl: raw.linkedInUrl,
+          youTubeUrl: raw.youTubeUrl,
           createdAt: raw.createdAt,
           updatedAt: raw.updatedAt,
         }))
@@ -122,12 +147,26 @@ export async function createCreator(input: {
 
 export async function updateCreator(
   creatorId: string,
-  input: { name: string; groupId?: string; language: 'ja' | 'en'; email?: string; color?: string },
+  input: {
+    name: string;
+    groupId?: string;
+    language: 'ja' | 'en';
+    email?: string;
+    color?: string;
+    bio?: string;
+    xUrl?: string;
+    linkedInUrl?: string;
+    youTubeUrl?: string;
+  },
 ): Promise<DemoCreator> {
-  const { name, groupId, language, email, color } = input;
+  const { name, groupId, language, email, color, bio, xUrl, linkedInUrl, youTubeUrl } = input;
   const trimmed = name.trim();
   if (!trimmed) throw new Error('作成者名は必須です');
   if (email) validateEmail(email);
+  if (bio !== undefined && bio.length > 1000) throw new Error('自己紹介は1000文字以内です');
+  const normalizedX = normalizeUrl(xUrl);
+  const normalizedLinkedIn = normalizeUrl(linkedInUrl);
+  const normalizedYouTube = normalizeUrl(youTubeUrl);
 
   const data = await loadMaster();
   const index = data.creators.findIndex((c) => c.id === creatorId);
@@ -145,6 +184,10 @@ export async function updateCreator(
     color: color !== undefined ? (color || undefined) : existing.color,
     language,
     email: email !== undefined ? (email.toLowerCase().trim() || undefined) : existing.email,
+    bio: bio !== undefined ? (bio.trim() || undefined) : existing.bio,
+    xUrl: xUrl !== undefined ? normalizedX : existing.xUrl,
+    linkedInUrl: linkedInUrl !== undefined ? normalizedLinkedIn : existing.linkedInUrl,
+    youTubeUrl: youTubeUrl !== undefined ? normalizedYouTube : existing.youTubeUrl,
     updatedAt: new Date().toISOString(),
   };
   data.creators[index] = updated;

@@ -4,6 +4,7 @@
  * - メールアドレス: ローカルユーザーのみ変更可（Entra ユーザーは読み取り専用）
  */
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Button,
   Input,
@@ -13,9 +14,11 @@ import {
   Select,
   Spinner,
   Text,
+  Textarea,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import { OpenRegular } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
 import * as creatorService from '@/services/creatorService';
 import * as groupService from '@/services/groupService';
@@ -54,6 +57,12 @@ export default function ProfilePage() {
   const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [infoError, setInfoError] = useState(false);
 
+  // 公開プロフィール
+  const [bio, setBio] = useState('');
+  const [xUrl, setXUrl] = useState('');
+  const [linkedInUrl, setLinkedInUrl] = useState('');
+  const [youTubeUrl, setYouTubeUrl] = useState('');
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -66,6 +75,10 @@ export default function ProfilePage() {
       setEmail(selectedCreator.email ?? '');
       setLanguage(selectedCreator.language);
       setGroupId(selectedCreator.groupId ?? '');
+      setBio(selectedCreator.bio ?? '');
+      setXUrl(selectedCreator.xUrl ?? '');
+      setLinkedInUrl(selectedCreator.linkedInUrl ?? '');
+      setYouTubeUrl(selectedCreator.youTubeUrl ?? '');
     }
   }, [selectedCreator]);
 
@@ -87,6 +100,10 @@ export default function ProfilePage() {
         ...(!isEntraUser && { email: email.trim() || undefined }),
         language,
         groupId: groupId || undefined,
+        bio: bio.trim(),
+        xUrl: xUrl.trim(),
+        linkedInUrl: linkedInUrl.trim(),
+        youTubeUrl: youTubeUrl.trim(),
       });
       // 選択中のクリエイター情報を更新（言語切り替えも含む）
       selectCreator(updated);
@@ -98,7 +115,7 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  }, [selectedCreator, name, email, language, groupId, isEntraUser, MSG, selectCreator]);
+  }, [selectedCreator, name, email, language, groupId, bio, xUrl, linkedInUrl, youTubeUrl, isEntraUser, MSG, selectCreator]);
 
   if (!selectedCreator) return <Spinner label="Loading..." />;
 
@@ -159,6 +176,50 @@ export default function ProfilePage() {
             <MessageBarBody>{infoMsg}</MessageBarBody>
           </MessageBar>
         )}
+        <div>
+          <Button appearance="primary" disabled={saving || !name.trim()} onClick={() => void handleSaveInfo()}>
+            {saving ? <Spinner size="tiny" /> : MSG.profileSaveInfo}
+          </Button>
+        </div>
+      </section>
+
+      {/* ── 公開プロフィール ── */}
+      <section className={styles.section}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: tokens.spacingHorizontalS }} className={styles.sectionTitle}>
+          <Text as="h2" size={500} weight="semibold">
+            {MSG.profilePublicSection}
+          </Text>
+          <Link to={`/creators/${selectedCreator.id}`} style={{ textDecoration: 'none' }}>
+            <Button appearance="subtle" size="small" icon={<OpenRegular />}>
+              {MSG.profileViewPublic}
+            </Button>
+          </Link>
+        </div>
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: `-${tokens.spacingVerticalS}` }}>
+          {MSG.profilePublicDescription}
+        </Text>
+        <div className={styles.field}>
+          <Label>{MSG.profileBio}</Label>
+          <Textarea
+            value={bio}
+            placeholder={MSG.profileBioPlaceholder}
+            onChange={(_, d) => setBio(d.value)}
+            resize="vertical"
+            maxLength={1000}
+          />
+        </div>
+        <div className={styles.field}>
+          <Label>{MSG.profileXUrl}</Label>
+          <Input type="url" value={xUrl} placeholder="https://x.com/..." onChange={(_, d) => setXUrl(d.value)} />
+        </div>
+        <div className={styles.field}>
+          <Label>{MSG.profileLinkedInUrl}</Label>
+          <Input type="url" value={linkedInUrl} placeholder="https://www.linkedin.com/in/..." onChange={(_, d) => setLinkedInUrl(d.value)} />
+        </div>
+        <div className={styles.field}>
+          <Label>{MSG.profileYouTubeUrl}</Label>
+          <Input type="url" value={youTubeUrl} placeholder="https://www.youtube.com/@..." onChange={(_, d) => setYouTubeUrl(d.value)} />
+        </div>
         <div>
           <Button appearance="primary" disabled={saving || !name.trim()} onClick={() => void handleSaveInfo()}>
             {saving ? <Spinner size="tiny" /> : MSG.profileSaveInfo}
