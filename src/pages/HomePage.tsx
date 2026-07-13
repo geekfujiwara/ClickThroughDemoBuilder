@@ -22,6 +22,7 @@ import {
   ArrowRepeatAllRegular,
   PersonRegular,
   BookmarkRegular,
+  LocalLanguageRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useGuestNavigate } from '@/hooks/useGuestNav';
@@ -29,6 +30,7 @@ import { getHomeRankings, type HomeRankings, type DemoSummary, type CreatorRanki
 import { getAllProjects } from '@/services/projectService';
 import type { DemoProject } from '@/types';
 import { useMsg } from '@/hooks/useMsg';
+import { getCurrentLanguage, setCurrentLanguage } from '@/constants/i18n';
 
 const useStyles = makeStyles({
   hero: {
@@ -221,7 +223,7 @@ export default function HomePage() {
   const classes = useStyles();
   const navigate = useGuestNavigate();
   const [searchParams] = useSearchParams();
-  const { role, selectedCreator } = useAuthStore();
+  const { role, selectedCreator, isGuest } = useAuthStore();
   const isDesigner = role === 'designer' || role === 'user_admin' || role === 'system_admin';
 
   const [rankings, setRankings] = useState<HomeRankings | null>(null);
@@ -290,12 +292,27 @@ export default function HomePage() {
           <Button appearance="secondary" size="large" onClick={() => navigate('/projects')}>
             {MSG.homeViewProjects}
           </Button>
-          <Button appearance="subtle" size="large" icon={<ArrowRepeatAllRegular />} onClick={() => navigate('/feed')}>
-            {MSG.navFeed}
-          </Button>
-          <Button appearance="subtle" size="large" icon={<BookmarkRegular />} onClick={() => navigate('/favorites')}>
-            {MSG.navFavorites}
-          </Button>
+          {!isGuest && (
+            <>
+              <Button appearance="subtle" size="large" icon={<ArrowRepeatAllRegular />} onClick={() => navigate('/feed')}>
+                {MSG.navFeed}
+              </Button>
+              <Button appearance="subtle" size="large" icon={<BookmarkRegular />} onClick={() => navigate('/favorites')}>
+                {MSG.navFavorites}
+              </Button>
+            </>
+          )}
+          {isGuest && (
+            getCurrentLanguage() === 'en' ? (
+              <Button appearance="subtle" size="large" icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('ja')}>
+                日本語
+              </Button>
+            ) : (
+              <Button appearance="subtle" size="large" icon={<LocalLanguageRegular />} onClick={() => setCurrentLanguage('en')}>
+                English
+              </Button>
+            )
+          )}
         </div>
       </section>
 
