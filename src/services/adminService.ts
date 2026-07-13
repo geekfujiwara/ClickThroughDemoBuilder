@@ -54,3 +54,13 @@ export async function upsertTrustedAlias(alias: string, role: 'designer' | 'user
 export async function deleteTrustedAlias(alias: string): Promise<{ message: string }> {
   return apiDelete<{ message: string }>(`/management/trusted-aliases/${encodeURIComponent(alias)}`);
 }
+
+/** ピン留めデモ ID 一覧を取得 (system_admin のみ) */
+export async function getPinnedDemoIds(): Promise<string[]> {
+  return apiGet<string[]>('/management/pinned');
+}
+
+/** ピン留めデモ ID 一覧を設定する（追加・削除・並べ替え兵用）(system_admin のみ) */
+export async function setPinnedDemoIds(demoIds: string[]): Promise<string[]> {
+  return apiPut<string[]>('/management/pinned', { demoIds });
+}

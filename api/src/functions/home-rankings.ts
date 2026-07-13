@@ -7,12 +7,13 @@ import { requireRole } from '../middleware/auth.js';
 import * as projectService from '../services/projectService.js';
 import * as socialService from '../services/socialService.js';
 import * as creatorService from '../services/creatorService.js';
+import * as pinnedService from '../services/pinnedService.js';
 
 async function handler(req: HttpRequest, _context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'viewer', 'designer');
   if ('status' in auth) return auth;
 
-  const [projects, likes, comments, creators] = await Promise.all([
+  const [projects, likes, comments, creators, pinnedIds] = await Promise.all([
     projectService.getAllProjects(),
     // 全いいね (demoId -> count)
     socialService.getLikeCountsByCreator(),
@@ -23,6 +24,7 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
       try { return JSON.parse(json) as Array<{ demoId: string }>; } catch { return []; }
     })(),
     creatorService.getAllCreators(),
+    pinnedService.listPinnedIds(),
   ]);
 
   // demoId -> likeCount
@@ -49,6 +51,12 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 
   const top = (arr: typeof enriched, key: keyof typeof enriched[0], n = 5) =>
     [...arr].sort((a, b) => (Number(b[key]) - Number(a[key]))).slice(0, n);
+
+  // ピン留めデモ（指定された順序を保持）
+  const enrichedById = new Map(enriched.map((e) => [e.id, e]));
+  const pinnedDemos = pinnedIds
+    .map((id) => enrichedById.get(id))
+    .filter((e): e is typeof enriched[0] => e != null);
 
   // creatorId -> totalLikes
   const creatorLikeMap = new Map<string, number>();
@@ -80,6 +88,7 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   return {
     status: 200,
     jsonBody: {
+      pinnedDemos,
       popularByLikes: top(enriched, 'likeCount'),
       recentDemos: [...enriched].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5),
       popularByPlay: top(enriched, 'playCount'),
