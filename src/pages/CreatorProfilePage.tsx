@@ -31,6 +31,7 @@ import {
   HeartRegular,
   ChatRegular,
   DeleteRegular,
+  EditRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
 import { useGuestNavigate } from '@/hooks/useGuestNav';
@@ -291,6 +292,7 @@ export default function CreatorProfilePage() {
   }
 
   const { creator, stats, demos } = profile;
+  const isOwnProfile = selectedCreator?.id === creator.id;
 
   return (
     <div className={classes.page}>
@@ -330,6 +332,16 @@ export default function CreatorProfilePage() {
             </div>
           )}
         </div>
+        {isOwnProfile && (
+          <Button
+            appearance="primary"
+            icon={<EditRegular />}
+            style={{ marginLeft: 'auto', alignSelf: 'flex-start' }}
+            onClick={() => navigate('/profile')}
+          >
+            {MSG.creatorProfileEdit}
+          </Button>
+        )}
       </div>
 
       {/* 統計サマリ */}

@@ -39,16 +39,12 @@ import {
   AddRegular,
   DeleteRegular,
   KeyResetRegular,
-  PinRegular,
-  ArrowUpRegular,
-  ArrowDownRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
-import type { DemoCreator, DemoGroup, DemoProject, TrustedAlias } from '@/types';
+import type { DemoCreator, DemoGroup, TrustedAlias } from '@/types';
 import type { UserRole } from '@/services/authService';
 import * as adminService from '@/services/adminService';
 import * as groupService from '@/services/groupService';
-import * as projectService from '@/services/projectService';
 import { useMsg } from '@/hooks/useMsg';
 
 const useStyles = makeStyles({
@@ -187,7 +183,7 @@ export default function UserManagementPage() {
   const { role: currentUserRole } = useAuthStore();
   const isSystemAdmin = currentUserRole === 'system_admin';
 
-  const [tab, setTab] = useState<'users' | 'applications' | 'trusted-aliases' | 'pinned'>('users');
+  const [tab, setTab] = useState<'users' | 'applications' | 'trusted-aliases'>('users');
   const [users, setUsers] = useState<DemoCreator[]>([]);
   const [applications, setApplications] = useState<DemoCreator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,12 +201,6 @@ export default function UserManagementPage() {
   const [newAlias, setNewAlias] = useState('');
   const [newAliasRole, setNewAliasRole] = useState<'designer' | 'user_admin'>('user_admin');
   const [aliasOperating, setAliasOperating] = useState(false);
-
-  // Pinned demos (system_admin only)
-  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
-  const [allProjects, setAllProjects] = useState<DemoProject[]>([]);
-  const [pinnedSelect, setPinnedSelect] = useState<string>('');
-  const [pinnedOperating, setPinnedOperating] = useState(false);
 
   // Group change dialog
   const [groups, setGroups] = useState<DemoGroup[]>([]);
@@ -235,23 +225,17 @@ export default function UserManagementPage() {
         Promise<DemoCreator[]>,
         Promise<DemoGroup[]>,
         Promise<TrustedAlias[]>,
-        Promise<string[]>,
-        Promise<DemoProject[]>,
       ] = [
         adminService.getAdminUsers(),
         adminService.getPendingApplications(),
         groupService.getAllGroups(),
         isSystemAdmin ? adminService.getTrustedAliases() : Promise.resolve([]),
-        isSystemAdmin ? adminService.getPinnedDemoIds() : Promise.resolve([]),
-        isSystemAdmin ? projectService.getAllProjects() : Promise.resolve([]),
       ];
-      const [userList, appList, groupList, aliasList, pinnedList, projectList] = await Promise.all(requests);
+      const [userList, appList, groupList, aliasList] = await Promise.all(requests);
       setUsers(userList);
       setApplications(appList);
       setGroups(groupList);
       setAliases(aliasList);
-      setPinnedIds(pinnedList);
-      setAllProjects(projectList);
     } catch (e) {
       setMessage({ text: (e as Error).message, intent: 'error' });
     } finally {
@@ -369,45 +353,6 @@ export default function UserManagementPage() {
   }, [MSG]);
 
   // Pinned demos --------------------------------------------------------
-  const projectMap = useMemo(() => {
-    const map = new Map<string, DemoProject>();
-    for (const p of allProjects) map.set(p.id, p);
-    return map;
-  }, [allProjects]);
-
-  const savePinned = useCallback(async (ids: string[]) => {
-    setPinnedOperating(true);
-    try {
-      const updated = await adminService.setPinnedDemoIds(ids);
-      setPinnedIds(updated);
-      setMessage({ text: MSG.adminPinnedSaved, intent: 'success' });
-    } catch (e) {
-      setMessage({ text: (e as Error).message, intent: 'error' });
-    } finally {
-      setPinnedOperating(false);
-    }
-  }, [MSG]);
-
-  const handleAddPinned = useCallback(() => {
-    if (!pinnedSelect || pinnedIds.includes(pinnedSelect)) return;
-    const next = [...pinnedIds, pinnedSelect];
-    setPinnedSelect('');
-    void savePinned(next);
-  }, [pinnedSelect, pinnedIds, savePinned]);
-
-  const handleRemovePinned = useCallback((id: string) => {
-    void savePinned(pinnedIds.filter((p) => p !== id));
-  }, [pinnedIds, savePinned]);
-
-  const handleMovePinned = useCallback((index: number, dir: -1 | 1) => {
-    const target = index + dir;
-    if (target < 0 || target >= pinnedIds.length) return;
-    const next = [...pinnedIds];
-    const [moved] = next.splice(index, 1);
-    next.splice(target, 0, moved!);
-    void savePinned(next);
-  }, [pinnedIds, savePinned]);
-
 
   const handleChangeGroup = useCallback(async () => {
     if (!groupTarget) return;
@@ -455,7 +400,7 @@ export default function UserManagementPage() {
 
       <TabList
         selectedValue={tab}
-        onTabSelect={(_, d) => setTab(d.value as 'users' | 'applications' | 'trusted-aliases' | 'pinned')}
+        onTabSelect={(_, d) => setTab(d.value as 'users' | 'applications' | 'trusted-aliases')}
       >
         <Tab value="users" icon={<PersonRegular />}>
           {MSG.adminTabUsers} ({users.length})
@@ -466,11 +411,6 @@ export default function UserManagementPage() {
         {isSystemAdmin && (
           <Tab value="trusted-aliases" icon={<KeyResetRegular />}>
             {MSG.adminTabTrustedAliases} ({aliases.length})
-          </Tab>
-        )}
-        {isSystemAdmin && (
-          <Tab value="pinned" icon={<PinRegular />}>
-            {MSG.adminTabPinned} ({pinnedIds.length})
           </Tab>
         )}
       </TabList>
@@ -706,119 +646,6 @@ export default function UserManagementPage() {
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Pinned Demos Tab */}
-      {tab === 'pinned' && isSystemAdmin && (
-        <div className={styles.aliasTabContent}>
-          <Text size={200} className={styles.aliasDescText}>
-            {MSG.adminPinnedDesc}
-          </Text>
-
-          {/* Add form */}
-          <div className={styles.pinnedAddForm}>
-            <div className={styles.aliasFieldGroup}>
-              <Text size={200} weight="semibold">{MSG.adminPinnedAdd}</Text>
-              <Dropdown
-                className={styles.pinnedSelect}
-                placeholder={MSG.adminPinnedSelectPlaceholder}
-                value={pinnedSelect ? (projectMap.get(pinnedSelect)?.title ?? '') : ''}
-                selectedOptions={pinnedSelect ? [pinnedSelect] : []}
-                onOptionSelect={(_: SelectionEvents, data: OptionOnSelectData) => {
-                  setPinnedSelect(data.optionValue ?? '');
-                }}
-              >
-                {allProjects
-                  .filter((p) => !pinnedIds.includes(p.id))
-                  .map((p) => {
-                    const label = `${p.demoNumber ? `#${p.demoNumber} ` : ''}${p.title}`;
-                    return (
-                      <Option key={p.id} value={p.id} text={label}>
-                        {label}
-                      </Option>
-                    );
-                  })}
-              </Dropdown>
-            </div>
-            <Button
-              appearance="primary"
-              icon={pinnedOperating ? <Spinner size="tiny" /> : <AddRegular />}
-              disabled={!pinnedSelect || pinnedOperating}
-              onClick={handleAddPinned}
-            >
-              {MSG.adminPinnedAdd}
-            </Button>
-          </div>
-
-          {/* Pinned list */}
-          {pinnedIds.length === 0 ? (
-            <div className={styles.empty}>
-              <Text>{MSG.adminPinnedEmpty}</Text>
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.th}>{MSG.adminPinnedColOrder}</th>
-                  <th className={styles.th}>{MSG.adminPinnedColTitle}</th>
-                  <th className={styles.th}>{MSG.adminPinnedColAction}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pinnedIds.map((id, index) => {
-                  const project = projectMap.get(id);
-                  return (
-                    <tr key={id}>
-                      <td className={styles.td}>
-                        <Badge appearance="outline" size="small">{index + 1}</Badge>
-                      </td>
-                      <td className={styles.td}>
-                        {project ? (
-                          <Text weight="semibold">
-                            {project.demoNumber ? `#${project.demoNumber} ` : ''}{project.title}
-                          </Text>
-                        ) : (
-                          <Text size={200} className={styles.aliasDimText}>{id}</Text>
-                        )}
-                      </td>
-                      <td className={styles.td}>
-                        <div className={styles.actions}>
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            icon={<ArrowUpRegular />}
-                            disabled={index === 0 || pinnedOperating}
-                            onClick={() => handleMovePinned(index, -1)}
-                          >
-                            {MSG.adminPinnedMoveUp}
-                          </Button>
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            icon={<ArrowDownRegular />}
-                            disabled={index === pinnedIds.length - 1 || pinnedOperating}
-                            onClick={() => handleMovePinned(index, 1)}
-                          >
-                            {MSG.adminPinnedMoveDown}
-                          </Button>
-                          <Button
-                            size="small"
-                            appearance="subtle"
-                            icon={<DeleteRegular />}
-                            disabled={pinnedOperating}
-                            onClick={() => handleRemovePinned(id)}
-                          >
-                            {MSG.adminPinnedRemove}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
               </tbody>
             </table>
           )}

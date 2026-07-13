@@ -198,6 +198,41 @@ const useStyles = makeStyles({
   cropSliderRow: {
     display: 'flex', alignItems: 'center', gap: '8px',
   },
+  // ── 編集レイアウト（右カラム） ──
+  layout: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) 380px',
+    gap: tokens.spacingHorizontalXL,
+    alignItems: 'start',
+    '@media (max-width: 900px)': { gridTemplateColumns: '1fr' },
+  },
+  gridCol: { minWidth: 0 },
+  editPanel: {
+    position: 'sticky',
+    top: tokens.spacingVerticalL,
+    display: 'flex', flexDirection: 'column',
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusMedium,
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: tokens.shadow16,
+    overflow: 'hidden',
+    '@media (max-width: 900px)': { position: 'static' },
+  },
+  editPanelHeader: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
+    backgroundColor: tokens.colorNeutralBackground2,
+  },
+  editPanelActions: {
+    display: 'flex', gap: tokens.spacingHorizontalS,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM} ${tokens.spacingVerticalM}`,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+  },
+  cardEditingHighlight: {
+    outline: `2px solid ${tokens.colorBrandBackground}`,
+    outlineOffset: '1px',
+  },
 });
 
 // ── ImageCropDialog ───────────────────────────────────────────
@@ -620,6 +655,8 @@ export default function GroupMasterPage() {
     } catch (e) { alert((e as Error).message); }
   }, [MSG, load]);
 
+  const editingGroup = editingId ? (groups.find((g) => g.id === editingId) ?? null) : null;
+
   if (isLoading) return <Spinner label="Loading..." />;
 
   return (
@@ -636,31 +673,16 @@ export default function GroupMasterPage() {
       {groups.length === 0 ? (
         <Text size={300} className={styles.emptyText}>{MSG.organizationNoGroups}</Text>
       ) : (
-        <div className={styles.grid}>
-          {groups.map((group) => {
-            const bg = group.color ?? DEFAULT_COLOR;
-            const fg = group.textColor ?? (isLight(bg) ? '#212121' : '#FFFFFF');
-            const isEditing = editingId === group.id;
+        <div className={editingGroup ? styles.layout : undefined}>
+          <div className={styles.gridCol}>
+            <div className={styles.grid}>
+              {groups.map((group) => {
+                const bg = group.color ?? DEFAULT_COLOR;
+                const fg = group.textColor ?? (isLight(bg) ? '#212121' : '#FFFFFF');
+                const isEditing = editingId === group.id;
 
-            return (
-              <Card key={group.id} className={styles.card}>
-                {isEditing ? (
-                  <>
-                    <EditForm value={editState} onChange={setEditState} groupName={group.name} />
-                    <div className={styles.editActions} style={{ padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM} ${tokens.spacingVerticalM}` }}>
-                      <Button size="small" appearance="primary" icon={<SaveRegular />}
-                        disabled={saving || !editState.name.trim()}
-                        onClick={() => void handleSave(group.id)}
-                      >
-                        保存
-                      </Button>
-                      <Button size="small" appearance="subtle" icon={<DismissRegular />} onClick={() => setEditingId(null)}>
-                        キャンセル
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
+                return (
+                  <Card key={group.id} className={`${styles.card} ${isEditing ? styles.cardEditingHighlight : ''}`}>
                     {/* カードヘッダー: 画像または背景色 */}
                     <div className={styles.cardHead} style={{ height: `${CARD_H}px`, backgroundColor: bg }}>
                       {group.imageDataUrl && (
@@ -686,7 +708,7 @@ export default function GroupMasterPage() {
                       <CardFooter className={styles.cardFooterCustom}>
                         {canEdit && (
                           <Tooltip content="編集" relationship="label">
-                            <Button icon={<EditRegular />} size="small" appearance="subtle" onClick={() => startEdit(group)}>
+                            <Button icon={<EditRegular />} size="small" appearance={isEditing ? 'primary' : 'subtle'} onClick={() => startEdit(group)}>
                               編集
                             </Button>
                           </Tooltip>
@@ -700,11 +722,35 @@ export default function GroupMasterPage() {
                         )}
                       </CardFooter>
                     )}
-                  </>
-                )}
-              </Card>
-            );
-          })}
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 右カラム: 編集パネル */}
+          {editingGroup && (
+            <aside className={styles.editPanel}>
+              <div className={styles.editPanelHeader}>
+                <Text weight="semibold" size={400}>組織を編集</Text>
+                <Button appearance="subtle" size="small" icon={<DismissRegular />} onClick={() => setEditingId(null)} aria-label="閉じる" />
+              </div>
+              <EditForm value={editState} onChange={setEditState} groupName={editingGroup.name} />
+              <div className={styles.editPanelActions}>
+                <Button
+                  appearance="primary"
+                  icon={<SaveRegular />}
+                  disabled={saving || !editState.name.trim()}
+                  onClick={() => void handleSave(editingGroup.id)}
+                >
+                  {saving ? <Spinner size="tiny" /> : '保存'}
+                </Button>
+                <Button appearance="subtle" icon={<DismissRegular />} onClick={() => setEditingId(null)}>
+                  キャンセル
+                </Button>
+              </div>
+            </aside>
+          )}
         </div>
       )}
 

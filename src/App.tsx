@@ -20,6 +20,7 @@ const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const ApplyDesignerPage = lazy(() => import('@/pages/ApplyDesignerPage'));
 const DemoDetailPage = lazy(() => import('@/pages/DemoDetailPage'));
 const UserManagementPage = lazy(() => import('@/pages/UserManagementPage'));
+const PinnedVideosPage = lazy(() => import('@/pages/PinnedVideosPage'));
 
 function Loading() {
   return (
@@ -75,6 +76,13 @@ export default function App() {
         <Route element={<AuthGuard role="user_admin" />}>
           <Route element={<AppLayout />}>
             <Route path="/admin/users" element={<UserManagementPage />} />
+          </Route>
+        </Route>
+
+        {/* システム管理者専用ページ（system_admin のみ） */}
+        <Route element={<AuthGuard role="system_admin" />}>
+          <Route element={<AppLayout />}>
+            <Route path="/admin/pinned" element={<PinnedVideosPage />} />
           </Route>
         </Route>
       </Routes>

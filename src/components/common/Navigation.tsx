@@ -18,6 +18,7 @@ import {
   SignOutRegular,
   BuildingSkyscraper24Regular,
   ShieldKeyholeRegular,
+  PinRegular,
   LocalLanguageRegular,
 } from '@fluentui/react-icons';
 import { useAuthStore } from '@/stores/authStore';
@@ -81,6 +82,7 @@ export default function Navigation() {
   const { logout, selectedCreator, role, isGuest } = useAuthStore();
   const isViewer = role === 'viewer';
   const isAdmin = role === 'system_admin' || role === 'user_admin';
+  const isSystemAdmin = role === 'system_admin';
 
   const navigate = useGuestNavigate();
   const linkTo = useGuestPath();
@@ -146,6 +148,17 @@ export default function Navigation() {
             icon={<ShieldKeyholeRegular />}
           >
             {MSG.navUserManagement}
+          </Button>
+        </Link>
+      )}
+      {isSystemAdmin && (
+        <Link to="/admin/pinned" className={classes.link}>
+          <Button
+            appearance={isActive('/admin/pinned') ? 'primary' : 'subtle'}
+            size="small"
+            icon={<PinRegular />}
+          >
+            {MSG.navPinned}
           </Button>
         </Link>
       )}
