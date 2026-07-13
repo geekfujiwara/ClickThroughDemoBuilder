@@ -4,6 +4,7 @@ import { Spinner } from '@fluentui/react-components';
 import AppLayout from '@/components/common/AppLayout';
 import AuthGuard from '@/components/auth/AuthGuard';
 import { useAuthStore } from '@/stores/authStore';
+import { useLanguageUrlSync } from '@/hooks/useGuestNav';
 
 const HomePage = lazy(() => import('@/pages/HomePage'));
 const ProjectsPage = lazy(() => import('@/pages/ProjectsPage'));
@@ -33,6 +34,9 @@ export default function App() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // 言語モードを URL の lang パラメータで永続化（リフレッシュ後の復元）
+  useLanguageUrlSync();
 
   return (
     <Suspense fallback={<Loading />}>
