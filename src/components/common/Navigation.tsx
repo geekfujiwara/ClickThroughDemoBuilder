@@ -117,16 +117,20 @@ export default function Navigation() {
           </Button>
         </Link>
       )}
-      <Link to={linkTo('/groups')} className={classes.link}>
-        <Button appearance={isActive('/groups') ? 'primary' : 'subtle'} size="small">
-          {MSG.navGroups}
-        </Button>
-      </Link>
-      <Link to={linkTo('/feed')} className={classes.link}>
-        <Button appearance={isActive('/feed') ? 'primary' : 'subtle'} size="small">
-          {MSG.navFeed}
-        </Button>
-      </Link>
+      {!isGuest && (
+        <Link to={linkTo('/groups')} className={classes.link}>
+          <Button appearance={isActive('/groups') ? 'primary' : 'subtle'} size="small">
+            {MSG.navGroups}
+          </Button>
+        </Link>
+      )}
+      {!isGuest && (
+        <Link to={linkTo('/feed')} className={classes.link}>
+          <Button appearance={isActive('/feed') ? 'primary' : 'subtle'} size="small">
+            {MSG.navFeed}
+          </Button>
+        </Link>
+      )}
       {!isGuest && (
         <Link to={linkTo('/favorites')} className={classes.link}>
           <Button appearance={isActive('/favorites') ? 'primary' : 'subtle'} size="small">

@@ -20,6 +20,8 @@ import {
 import * as socialService from '@/services/socialService';
 import type { FeedEntry } from '@/types';
 import { useMsg } from '@/hooks/useMsg';
+import { useAuthStore } from '@/stores/authStore';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 
 const useStyles = makeStyles({
   page: {
@@ -148,10 +150,19 @@ function FeedEntryCard({ entry }: { entry: FeedEntry }) {
 export default function FeedPage() {
   const MSG = useMsg();
   const styles = useStyles();
+  const { isGuest } = useAuthStore();
+  const navigate = useGuestNavigate();
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
+  // ゲストはフィード閲覧不可 → ホームへリダイレクト
+  useEffect(() => {
+    if (isGuest) {
+      navigate('/', { replace: true });
+    }
+  }, [isGuest, navigate]);
 
   const load = useCallback(async (before?: string) => {
     const data = await socialService.getFeed(20, before);

@@ -39,6 +39,7 @@ import * as groupService from '@/services/groupService';
 import type { GroupInput } from '@/services/groupService';
 import { useAuthStore } from '@/stores/authStore';
 import { useMsg } from '@/hooks/useMsg';
+import { useGuestNavigate } from '@/hooks/useGuestNav';
 
 // ── カラーパレット ──────────────────────────────────────────
 
@@ -537,10 +538,18 @@ function makeDefault(): EditState {
 export default function GroupMasterPage() {
   const styles = useStyles();
   const MSG = useMsg();
-  const { role } = useAuthStore();
+  const { role, isGuest } = useAuthStore();
+  const navigate = useGuestNavigate();
   // designer 以上は作成・編集可、user_admin 以上は削除可
   const canEdit = role === 'designer' || role === 'user_admin' || role === 'system_admin';
   const canDelete = role === 'user_admin' || role === 'system_admin';
+
+  // ゲストは組織（グループ）閲覧不可 → ホームへリダイレクト
+  useEffect(() => {
+    if (isGuest) {
+      navigate('/', { replace: true });
+    }
+  }, [isGuest, navigate]);
 
   const [groups, setGroups] = useState<DemoGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
