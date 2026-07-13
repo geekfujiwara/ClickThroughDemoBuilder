@@ -140,6 +140,40 @@ const useStyles = makeStyles({
     WebkitLineClamp: 2,
     WebkitBoxOrient: 'vertical' as const,
   },
+  // ── 左サイドメニュー（検索・組織フィルター） ──
+  layout: {
+    display: 'grid',
+    gridTemplateColumns: '260px minmax(0, 1fr)',
+    gap: tokens.spacingHorizontalXL,
+    alignItems: 'start',
+    '@media (max-width: 768px)': { gridTemplateColumns: '1fr' },
+  },
+  sidebar: {
+    position: 'sticky',
+    top: tokens.spacingVerticalL,
+    display: 'flex', flexDirection: 'column',
+    gap: tokens.spacingVerticalL,
+    '@media (max-width: 768px)': { position: 'static' },
+  },
+  sidebarSection: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
+  sidebarTitle: {
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    color: tokens.colorNeutralForeground3,
+    textTransform: 'uppercase',
+    letterSpacing: '0.03em',
+    marginBottom: tokens.spacingVerticalXXS,
+  },
+  orgList: { display: 'flex', flexDirection: 'column', gap: '2px' },
+  orgButton: {
+    justifyContent: 'space-between',
+    width: '100%',
+    minWidth: 0,
+    fontWeight: tokens.fontWeightRegular,
+  },
+  orgName: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
+  orgCount: { opacity: 0.75, fontVariantNumeric: 'tabular-nums', marginLeft: tokens.spacingHorizontalS, flexShrink: 0 },
+  mainCol: { minWidth: 0 },
 });
 
 /** /api/demos が返すサマリー型 */
@@ -338,6 +372,21 @@ export default function ProjectsPage() {
     }
   }, [deleteTarget, deleteProject]);
 
+  // 組織ごとの件数（検索・作成者フィルタ適用後、組織フィルタ自体は除外）
+  const orgFilteredBase = projects.filter((p) => {
+    const q = search.toLowerCase();
+    const hitKeyword = p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
+    const hitCreator = creatorFilter === 'all' ? true : (creatorFilter === 'none' ? !p.creatorId : p.creatorId === creatorFilter);
+    return hitKeyword && hitCreator;
+  });
+  const orgCounts = new Map<string, number>();
+  let noGroupCount = 0;
+  for (const p of orgFilteredBase) {
+    if (p.groupId) orgCounts.set(p.groupId, (orgCounts.get(p.groupId) ?? 0) + 1);
+    else noGroupCount++;
+  }
+  const totalDemoCount = orgFilteredBase.length;
+
   const loadGroups = useCallback(async () => {
     const all = await groupService.getAllGroups();
     setGroups(all);
@@ -378,47 +427,84 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      {/* ツールバー */}
-      <div className={classes.toolbar}>
-        <Input
-          className={classes.searchInput}
-          contentBefore={<SearchRegular />}
-          placeholder={MSG.projectsSearch}
-          value={search}
-          onChange={(_, data) => setSearch(data.value)}
-        />
-        <Select
-          className={classes.groupFilter}
-          value={groupFilter}
-          onChange={(_, data) => setGroupFilter(data.value)}
-        >
-          <option value="all">{MSG.projectsGroupAll}</option>
-          <option value="none">{MSG.projectsNoGroup}</option>
-          {groups.map((group) => (
-            <option key={group.id} value={group.id}>{group.name}</option>
-          ))}
-        </Select>
-        <Select
-          className={classes.groupFilter}
-          value={creatorFilter}
-          onChange={(_, data) => setCreatorFilter(data.value)}
-        >
-          <option value="all">{MSG.projectsCreatorAll}</option>
-          <option value="none">{MSG.projectsNoCreator}</option>
-          {creators.map((creator) => (
-            <option key={creator.id} value={creator.id}>{creator.name}</option>
-          ))}
-        </Select>
-        <Select
-          value={sortKey}
-          onChange={(_, data) => setSortKey(data.value as SortKey)}
-        >
-          <option value="updatedAt">{MSG.projectsSortUpdated}</option>
-          <option value="createdAt">{MSG.projectsSortCreated}</option>
-          <option value="title">{MSG.projectsSortTitle}</option>
-        </Select>
+      <div className={classes.layout}>
+        {/* 左サイドメニュー: 検索・組織フィルター */}
+        <aside className={classes.sidebar}>
+          <div className={classes.sidebarSection}>
+            <Input
+              className={classes.searchInput}
+              style={{ width: '100%' }}
+              contentBefore={<SearchRegular />}
+              placeholder={MSG.projectsSearch}
+              value={search}
+              onChange={(_, data) => setSearch(data.value)}
+            />
+          </div>
 
-      </div>
+          <div className={classes.sidebarSection}>
+            <Text className={classes.sidebarTitle}>{MSG.projectsGroupFilter}</Text>
+            <div className={classes.orgList}>
+              <Button
+                appearance={groupFilter === 'all' ? 'primary' : 'subtle'}
+                className={classes.orgButton}
+                onClick={() => setGroupFilter('all')}
+              >
+                <span className={classes.orgName}>{MSG.projectsGroupAll}</span>
+                <span className={classes.orgCount}>{totalDemoCount}</span>
+              </Button>
+              {groups.map((group) => {
+                const count = orgCounts.get(group.id) ?? 0;
+                return (
+                  <Button
+                    key={group.id}
+                    appearance={groupFilter === group.id ? 'primary' : 'subtle'}
+                    className={classes.orgButton}
+                    disabled={count === 0}
+                    onClick={() => setGroupFilter(group.id)}
+                  >
+                    <span className={classes.orgName}>{group.name}</span>
+                    <span className={classes.orgCount}>{count}</span>
+                  </Button>
+                );
+              })}
+              {noGroupCount > 0 && (
+                <Button
+                  appearance={groupFilter === 'none' ? 'primary' : 'subtle'}
+                  className={classes.orgButton}
+                  onClick={() => setGroupFilter('none')}
+                >
+                  <span className={classes.orgName}>{MSG.projectsNoGroup}</span>
+                  <span className={classes.orgCount}>{noGroupCount}</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* メインカラム */}
+        <div className={classes.mainCol}>
+          {/* ツールバー: 作成者・並び替え */}
+          <div className={classes.toolbar}>
+            <Select
+              className={classes.groupFilter}
+              value={creatorFilter}
+              onChange={(_, data) => setCreatorFilter(data.value)}
+            >
+              <option value="all">{MSG.projectsCreatorAll}</option>
+              <option value="none">{MSG.projectsNoCreator}</option>
+              {creators.map((creator) => (
+                <option key={creator.id} value={creator.id}>{creator.name}</option>
+              ))}
+            </Select>
+            <Select
+              value={sortKey}
+              onChange={(_, data) => setSortKey(data.value as SortKey)}
+            >
+              <option value="updatedAt">{MSG.projectsSortUpdated}</option>
+              <option value="createdAt">{MSG.projectsSortCreated}</option>
+              <option value="title">{MSG.projectsSortTitle}</option>
+            </Select>
+          </div>
 
       {/* コンテンツ */}
       {isLoading ? (
@@ -561,6 +647,8 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
+        </div>
+      </div>
 
       {/* 削除確認ダイアログ */}
       <ConfirmDialog
