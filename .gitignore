@@ -5,6 +5,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Generated (copied from node_modules by scripts/copy-ffmpeg.mjs)
+public/ffmpeg/
+
 # Environment
 .env
 .env.local

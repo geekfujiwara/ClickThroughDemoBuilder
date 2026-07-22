@@ -7,30 +7,76 @@
 import { apiGet, apiDelete } from './apiClient';
 import { generateId } from '@/utils/id';
 
+/** チャンクサイズ (SWA linked backend の 413 / 45秒制限を避けるため小さく分割) */
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MB
+
+/** アップロード API のエラーレスポンスからメッセージを抽出 */
+async function extractUploadError(res: Response): Promise<string> {
+  let msg = '動画のアップロードに失敗しました';
+  if (res.status === 413) {
+    msg = 'アップロードサイズが大きすぎます。動画を圧縮してから再試行してください。';
+  }
+  try {
+    const b = (await res.json()) as { error?: string };
+    if (b.error) msg = b.error;
+  } catch {
+    // ignore
+  }
+  return msg;
+}
+
 /** 動画をアップロードし videoId (= projectId) を返す (API 経由バイナリアップロード) */
 export async function saveVideo(
   file: File,
   projectId?: string,
+  onProgress?: (fraction: number) => void,
 ): Promise<{ videoId: string; mimeType: string }> {
   const videoId = projectId ?? generateId();
+  const base = `projectId=${encodeURIComponent(videoId)}&mimeType=${encodeURIComponent(file.type)}`;
 
-  const qs = `projectId=${encodeURIComponent(videoId)}&mimeType=${encodeURIComponent(file.type)}`;
-  const res = await fetch(`/api/videos/upload?${qs}`, {
+  // ── 小容量: 単発アップロード ─────────────────────────────
+  if (file.size <= CHUNK_SIZE) {
+    const res = await fetch(`/api/videos/upload?${base}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error(await extractUploadError(res));
+    onProgress?.(1);
+    return { videoId, mimeType: file.type };
+  }
+
+  // ── 大容量: チャンク分割アップロード (ブロックステージング) ──────
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  const blockIds: string[] = [];
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const chunk = file.slice(start, start + CHUNK_SIZE);
+    // ブロックID は全ブロックで同じ長さの base64 文字列である必要がある
+    const blockId = btoa(`block-${String(i).padStart(6, '0')}`);
+    blockIds.push(blockId);
+
+    const res = await fetch(`/api/videos/upload?${base}&blockId=${encodeURIComponent(blockId)}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: chunk,
+    });
+    if (!res.ok) throw new Error(await extractUploadError(res));
+    // 確定(commit)分を残して進捗を按分
+    onProgress?.((i + 1) / (totalChunks + 1));
+  }
+
+  // ── ブロックリスト確定 ──────────────────────────────────
+  const commitRes = await fetch(`/api/videos/upload?${base}&commit=1`, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'Content-Type': file.type },
-    body: file,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ blockIds }),
   });
-  if (!res.ok) {
-    let msg = '動画のアップロードに失敗しました';
-    try {
-      const b = (await res.json()) as { error?: string };
-      if (b.error) msg = b.error;
-    } catch {
-      // ignore
-    }
-    throw new Error(msg);
-  }
+  if (!commitRes.ok) throw new Error(await extractUploadError(commitRes));
+  onProgress?.(1);
 
   return { videoId, mimeType: file.type };
 }

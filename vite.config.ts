@@ -13,6 +13,11 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  // ffmpeg.wasm は独自の Web Worker を同梱しており、Vite の依存最適化で
+  // ワーカーが壊れることがあるため事前バンドルから除外する。
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+  },
   build: {
     rollupOptions: {
       output: {

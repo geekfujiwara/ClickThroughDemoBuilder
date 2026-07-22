@@ -65,6 +65,9 @@ const JA = {
   uploadTooLarge: 'ファイルサイズは 500MB 以下にしてください。',
   uploadFailed: '動画の読み込みに失敗しました。',
   uploadReplaceConfirm: '動画を差し替えると、すべてのクリックポイントが削除されます。続行しますか？',
+  uploadStagePreparing: '準備しています…',
+  uploadStageCompressing: '動画を圧縮しています（最大 1920×1080 / 30fps）',
+  uploadStageUploading: 'アップロードしています',
 
   cpAdd: 'クリックポイント追加',
   cpListTitle: 'クリックポイント一覧',
@@ -445,6 +448,9 @@ const EN: Partial<MessageCatalog> = {
   uploadTooLarge: 'File size must be 500MB or less.',
   uploadFailed: 'Failed to load video.',
   uploadReplaceConfirm: 'Replacing video will remove all click points. Continue?',
+  uploadStagePreparing: 'Preparing…',
+  uploadStageCompressing: 'Compressing video (max 1920×1080 / 30fps)',
+  uploadStageUploading: 'Uploading',
 
   cpAdd: 'Add Click Point',
   cpListTitle: 'Click Point List',

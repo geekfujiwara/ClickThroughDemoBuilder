@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { makeStyles, shorthands, tokens, Text, Button } from '@fluentui/react-components';
+import { makeStyles, shorthands, tokens, Text, Button, ProgressBar } from '@fluentui/react-components';
 import { ArrowUploadRegular } from '@fluentui/react-icons';
 import { useMsg } from '@/hooks/useMsg';
 import { useDesignerStore } from '@/stores/designerStore';
@@ -7,7 +7,15 @@ import { useProjectStore } from '@/stores/projectStore';
 import { useAuthStore } from '@/stores/authStore';
 import { validateVideoFile } from '@/utils/validation';
 import { saveVideo, extractVideoMetadata, generateThumbnail } from '@/services/videoService';
+import { compressVideo, isCompressionSupported } from '@/services/videoCompressionService';
 import { createDefaultProject, type VideoInfo } from '@/types';
+
+/** これを超えるサイズ、または解像度が上限超の場合に圧縮する */
+const COMPRESS_SIZE_THRESHOLD = 10 * 1024 * 1024; // 10 MB
+const MAX_WIDTH = 1920;
+const MAX_HEIGHT = 1080;
+
+type UploadStage = 'idle' | 'preparing' | 'compressing' | 'uploading';
 
 const useStyles = makeStyles({
   dropzone: {
@@ -38,6 +46,18 @@ const useStyles = makeStyles({
   loading: {
     marginTop: tokens.spacingVerticalS,
   },
+  progressWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    marginTop: tokens.spacingVerticalM,
+  },
+  progressLabel: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: tokens.spacingHorizontalS,
+  },
 });
 
 export default function VideoUploader() {
@@ -46,7 +66,11 @@ export default function VideoUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [stage, setStage] = useState<UploadStage>('idle');
+  const [compressPct, setCompressPct] = useState(0);
+  const [uploadPct, setUploadPct] = useState(0);
+
+  const isProcessing = stage !== 'idle';
 
   const { setProject } = useDesignerStore();
   const { createProject } = useProjectStore();
@@ -61,7 +85,9 @@ export default function VideoUploader() {
         return;
       }
 
-      setIsProcessing(true);
+      setStage('preparing');
+      setCompressPct(0);
+      setUploadPct(0);
       try {
         // 動画のメタデータ解析 + サムネイル生成を並行
         const [metadata, thumbnailDataUrl] = await Promise.all([
@@ -69,13 +95,51 @@ export default function VideoUploader() {
           generateThumbnail(file),
         ]);
 
+        // ── 変動圧縮: 解像度が上限超、または一定サイズ超のときのみ圧縮 ──
+        let uploadFile = file;
+        let outWidth = metadata.width;
+        let outHeight = metadata.height;
+        let outMime = file.type as VideoInfo['mimeType'];
+        let outName = file.name;
+
+        const overResolution = metadata.width > MAX_WIDTH || metadata.height > MAX_HEIGHT;
+        const shouldCompress =
+          isCompressionSupported() && (overResolution || file.size > COMPRESS_SIZE_THRESHOLD);
+
+        if (shouldCompress) {
+          setStage('compressing');
+          try {
+            const result = await compressVideo(
+              file,
+              { width: metadata.width, height: metadata.height },
+              {
+                maxWidth: MAX_WIDTH,
+                maxHeight: MAX_HEIGHT,
+                maxFps: 30,
+                onProgress: (f) => setCompressPct(f),
+              },
+            );
+            if (result.compressed) {
+              uploadFile = result.file;
+              outWidth = result.width;
+              outHeight = result.height;
+              outMime = 'video/mp4';
+              outName = result.file.name;
+            }
+            setCompressPct(1);
+          } catch {
+            // 圧縮失敗時は元動画をそのままアップロード
+            uploadFile = file;
+          }
+        }
+
         const videoInfo: VideoInfo = {
           videoId: '',
-          fileName: file.name,
-          mimeType: file.type as VideoInfo['mimeType'],
+          fileName: outName,
+          mimeType: outMime,
           duration: metadata.duration,
-          width: metadata.width,
-          height: metadata.height,
+          width: outWidth,
+          height: outHeight,
           thumbnailDataUrl,
         };
 
@@ -90,7 +154,8 @@ export default function VideoUploader() {
         const project = await createProject(projectData);
 
         // プロジェクト作成後に動画をアップロード
-        const { videoId } = await saveVideo(file, project.id);
+        setStage('uploading');
+        const { videoId } = await saveVideo(uploadFile, project.id, (f) => setUploadPct(f));
         project.video.videoId = videoId;
         setProject(project);
 
@@ -99,7 +164,7 @@ export default function VideoUploader() {
       } catch (e) {
         setError((e as Error).message || MSG.uploadFailed);
       } finally {
-        setIsProcessing(false);
+        setStage('idle');
       }
     },
     [setProject, createProject, selectedCreator],
@@ -151,9 +216,29 @@ export default function VideoUploader() {
         />
       </div>
       {isProcessing && (
-        <Text className={classes.loading} align="center">
-          {MSG.loading}
-        </Text>
+        <div className={classes.progressWrap}>
+          {stage === 'preparing' && (
+            <Text align="center">{MSG.uploadStagePreparing}</Text>
+          )}
+          {stage === 'compressing' && (
+            <>
+              <div className={classes.progressLabel}>
+                <Text size={200}>{MSG.uploadStageCompressing}</Text>
+                <Text size={200}>{Math.round(compressPct * 100)}%</Text>
+              </div>
+              <ProgressBar value={compressPct} thickness="large" />
+            </>
+          )}
+          {stage === 'uploading' && (
+            <>
+              <div className={classes.progressLabel}>
+                <Text size={200}>{MSG.uploadStageUploading}</Text>
+                <Text size={200}>{Math.round(uploadPct * 100)}%</Text>
+              </div>
+              <ProgressBar value={uploadPct} thickness="large" />
+            </>
+          )}
+        </div>
       )}
       {error && (
         <Text className={classes.error} align="center">

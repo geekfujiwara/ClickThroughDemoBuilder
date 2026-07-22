@@ -12,6 +12,7 @@ import * as projectService from '../services/projectService.js';
 
 const ALLOWED_MIME_TYPES = new Set(['video/mp4', 'video/webm']);
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
+const MAX_BLOCK_SIZE = 8 * 1024 * 1024; // 8 MB (クライアントのチャンクサイズ上限 + 余裕)
 
 function extFromMime(mime: string): string {
   if (mime === 'video/webm') return 'webm';
@@ -33,6 +34,13 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
   // ── Binary モード: API 経由で直接アップロード ─────────────
   // publicNetworkAccess=Disabled + Private Endpoint 環境ではブラウザが Blob に直接
   // 到達できないため、SAS 直 PUT は使わず必ず API 経由でアップロードする。
+  //
+  // SWA linked backend / リバースプロキシは 1 リクエストのボディサイズ (413) と
+  // 実行時間 (45秒) に制限があるため、大容量ファイルは複数の小さなチャンクに分割し
+  // ブロック単位でステージング → 最後にまとめて確定 (commit) する。
+  //   - stage:  ?projectId=..&mimeType=..&blockId=.. (body = チャンク bytes)
+  //   - commit: ?projectId=..&mimeType=..&commit=1  (body = JSON string[] of blockIds)
+  //   - 単発:   ?projectId=..&mimeType=..           (body = ファイル全体; 小容量向け)
   try {
     const projectId = req.query.get('projectId');
     const mimeType = req.query.get('mimeType') ?? 'video/mp4';
@@ -48,7 +56,39 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     if (ownerCheck) return ownerCheck;
 
     const ext = extFromMime(mimeType);
+    const blockId = req.query.get('blockId');
+    const isCommit = req.query.get('commit') === '1';
 
+    // ── ブロックステージング (チャンク) ─────────────────
+    if (blockId) {
+      const arrayBuf = await req.arrayBuffer();
+      if (arrayBuf.byteLength > MAX_BLOCK_SIZE) {
+        return { status: 400, jsonBody: { error: 'チャンクサイズが大きすぎます' } };
+      }
+      await blobService.stageVideoBlock(projectId, ext, blockId, Buffer.from(arrayBuf));
+      return { status: 202, jsonBody: { message: 'ブロック受信', blockId } };
+    }
+
+    // ── ブロックリスト確定 (チャンクアップロード完了) ───────
+    if (isCommit) {
+      let blockIds: string[];
+      try {
+        const body = (await req.json()) as { blockIds?: unknown };
+        blockIds = Array.isArray(body.blockIds) ? (body.blockIds as string[]) : [];
+      } catch {
+        return { status: 400, jsonBody: { error: 'blockIds が不正です' } };
+      }
+      if (blockIds.length === 0) {
+        return { status: 400, jsonBody: { error: 'blockIds が空です' } };
+      }
+      if (blockIds.length * MAX_BLOCK_SIZE > MAX_VIDEO_SIZE) {
+        return { status: 400, jsonBody: { error: 'ファイルサイズは 500MB 以下にしてください' } };
+      }
+      await blobService.commitVideoBlocks(projectId, ext, blockIds, mimeType);
+      return { status: 201, jsonBody: { message: 'アップロード完了', projectId } };
+    }
+
+    // ── 単発アップロード (小容量フォールバック) ────────────
     // 既存動画を削除
     await blobService.deleteProjectVideo(projectId);
 

@@ -350,6 +350,42 @@ export async function uploadVideoBuffer(
 }
 
 /**
+ * チャンクアップロード: 1ブロックをステージングする。
+ *
+ * SWA linked backend / リバースプロキシは 1 リクエストのボディサイズ (413) と
+ * 実行時間 (45秒) に制限があるため、大容量動画は小さいブロックに分割して送る。
+ * 全ブロックを stageBlock した後、commitVideoBlocks でまとめて確定する。
+ */
+export async function stageVideoBlock(
+  projectId: string,
+  ext: string,
+  blockId: string,
+  buffer: Buffer,
+): Promise<void> {
+  const c = await ensureContainer('videos');
+  const name = videoBlobName(projectId, ext);
+  const blob = c.getBlockBlobClient(name);
+  await blob.stageBlock(blockId, buffer, buffer.length);
+}
+
+/**
+ * チャンクアップロード: ステージ済みブロックを順序どおりに確定する。
+ */
+export async function commitVideoBlocks(
+  projectId: string,
+  ext: string,
+  blockIds: string[],
+  contentType: string,
+): Promise<void> {
+  const c = await ensureContainer('videos');
+  const name = videoBlobName(projectId, ext);
+  const blob = c.getBlockBlobClient(name);
+  await blob.commitBlockList(blockIds, {
+    blobHTTPHeaders: { blobContentType: contentType },
+  });
+}
+
+/**
  * 動画を API プロキシ経由でストリーム配信するための取得。
  * Private Endpoint 環境 (publicNetworkAccess=Disabled) ではブラウザが Blob に直接
  * 到達できないため、Function App が Managed Identity で Blob を読み取りブラウザへ中継する。
