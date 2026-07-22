@@ -31,6 +31,7 @@ jobs:
 
       - name: Azure Login
         uses: azure/login@v2
+        id: azure_login
         with:
           creds: |
             {
@@ -39,6 +40,29 @@ jobs:
               "tenantId": "${{ secrets.AZURE_TENANT_ID }}",
               "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
             }
+
+      # GitHub Secrets を Function App のアプリ設定へ反映する。
+      # - 値はシェルに直書きせず env 経由で渡す (インジェクション/特殊文字対策)。
+      # - 未設定のシークレットはスキップし、既存値を空で上書きしない。
+      # - ARM 書込に MFA が必要な環境ではこのステップが失敗し得るため continue-on-error。
+      - name: Set Function App application settings
+        if: steps.azure_login.outcome == 'success'
+        continue-on-error: true
+        env:
+          APPROVAL_SECRET: ${{ secrets.APPROVAL_SECRET }}
+          ENTRA_TENANT_ID: ${{ secrets.ENTRA_TENANT_ID }}
+        run: |
+          SETTINGS=()
+          if [ -n "$APPROVAL_SECRET" ]; then SETTINGS+=("APPROVAL_SECRET=$APPROVAL_SECRET"); fi
+          if [ -n "$ENTRA_TENANT_ID" ]; then SETTINGS+=("ENTRA_TENANT_ID=$ENTRA_TENANT_ID"); fi
+          if [ ${#SETTINGS[@]} -gt 0 ]; then
+            az functionapp config appsettings set \
+              --name func-clickthrough-prod \
+              --resource-group rg-clickthrough-prod \
+              --settings "${SETTINGS[@]}"
+          else
+            echo "No APPROVAL_SECRET/ENTRA_TENANT_ID secrets provided; skipping."
+          fi
 
       - name: Deploy to Function App
         uses: Azure/functions-action@v1
