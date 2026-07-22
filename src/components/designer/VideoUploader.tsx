@@ -111,7 +111,7 @@ export default function VideoUploader() {
           try {
             const result = await compressVideo(
               file,
-              { width: metadata.width, height: metadata.height },
+              { width: metadata.width, height: metadata.height, duration: metadata.duration },
               {
                 maxWidth: MAX_WIDTH,
                 maxHeight: MAX_HEIGHT,

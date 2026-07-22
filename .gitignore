@@ -55,6 +55,7 @@ deploy_log.txt
 
 # Function deploy package
 /func.zip
+*.zip
 /api-deploy/dist/
 /api-deploy/node_modules/
 

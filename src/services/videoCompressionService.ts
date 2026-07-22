@@ -86,7 +86,7 @@ function parseFps(logs: string): number | null {
  */
 export async function compressVideo(
   file: File,
-  meta: { width: number; height: number },
+  meta: { width: number; height: number; duration?: number },
   opts: CompressOptions = {},
 ): Promise<CompressResult> {
   const maxWidth = opts.maxWidth ?? DEFAULT_MAX_WIDTH;
@@ -134,11 +134,32 @@ export async function compressVideo(
       sourceFps !== null && sourceFps > maxFps ? ['-r', String(maxFps)] : [];
 
     // ── 圧縮進捗 ─────────────────────────────────────────
+    // ffmpeg.wasm の native `progress` イベントは core の duration 検出に依存して
+    // 0 のまま/いきなり 1 になることがあり不安定。既知の duration があるログの
+    // `time=HH:MM:SS.xx` を解析して進捗を算出する (こちらが確実)。
     const onProgress = opts.onProgress;
-    const progListener = ({ progress }: { progress: number }) => {
-      if (onProgress) onProgress(Math.min(1, Math.max(0, progress)));
+    const duration = meta.duration && meta.duration > 0 ? meta.duration : null;
+    const timeRe = /time=\s*(\d+):(\d+):(\d+(?:\.\d+)?)/;
+
+    const nativeProgressListener = ({ progress }: { progress: number }) => {
+      // duration 不明時のフォールバック
+      if (onProgress && duration === null) {
+        onProgress(Math.min(0.99, Math.max(0, progress)));
+      }
     };
-    if (onProgress) ff.on('progress', progListener);
+    const logProgressListener = ({ message }: { message: string }) => {
+      if (!onProgress || duration === null) return;
+      const m = message.match(timeRe);
+      if (!m) return;
+      const secs = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+      if (Number.isFinite(secs)) {
+        onProgress(Math.min(0.99, Math.max(0, secs / duration)));
+      }
+    };
+    if (onProgress) {
+      ff.on('progress', nativeProgressListener);
+      ff.on('log', logProgressListener);
+    }
 
     const args = [
       '-i',
@@ -163,7 +184,10 @@ export async function compressVideo(
     ];
 
     const code = await ff.exec(args);
-    if (onProgress) ff.off('progress', progListener);
+    if (onProgress) {
+      ff.off('progress', nativeProgressListener);
+      ff.off('log', logProgressListener);
+    }
     if (code !== 0) {
       // 圧縮失敗 — 元ファイルにフォールバック
       return { file, compressed: false, width: meta.width, height: meta.height };
