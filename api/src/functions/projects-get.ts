@@ -24,7 +24,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
 
     return { status: 200, jsonBody: project };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[projects-get]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

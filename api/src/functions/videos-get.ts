@@ -48,7 +48,8 @@ async function metaHandler(req: HttpRequest, _ctx: InvocationContext): Promise<H
     if (!exists) return { status: 404, jsonBody: { error: '動画が見つかりません' } };
     return { status: 200, jsonBody: { url: `/api/videos/${projectId}/stream` } };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[videos-get:meta]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 
@@ -85,7 +86,8 @@ async function streamHandler(req: HttpRequest, _ctx: InvocationContext): Promise
     }
     return { status: 200, headers, body };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[videos-get:stream]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

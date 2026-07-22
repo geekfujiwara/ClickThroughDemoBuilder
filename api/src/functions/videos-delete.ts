@@ -17,7 +17,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     await blobService.deleteProjectVideo(projectId);
     return { status: 200, jsonBody: { message: '動画を削除しました' } };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[videos-delete]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

@@ -14,7 +14,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     const groups = await groupService.getAllGroups();
     return { status: 200, jsonBody: groups };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[groups-list]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

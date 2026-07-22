@@ -18,7 +18,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     if (!creator) return { status: 404, jsonBody: { error: '作成者が見つかりません' } };
     return { status: 200, jsonBody: creator };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[creators-get]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

@@ -48,7 +48,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     );
     return { status: 200, jsonBody: demos };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[demos-list]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

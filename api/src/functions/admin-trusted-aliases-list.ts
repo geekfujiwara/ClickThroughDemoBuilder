@@ -14,7 +14,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     const aliases = await trustedAliasService.listAliases();
     return { status: 200, jsonBody: aliases };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[admin-trusted-aliases-list]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

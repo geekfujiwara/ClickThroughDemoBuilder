@@ -14,7 +14,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     const applications = await creatorService.getPendingApplications();
     return { status: 200, jsonBody: applications };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[admin-applications-list]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

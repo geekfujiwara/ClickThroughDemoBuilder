@@ -14,7 +14,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     const creators = await creatorService.getAllCreators();
     return { status: 200, jsonBody: creators };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[admin-users-list]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

@@ -137,7 +137,8 @@ async function handler(req: HttpRequest, _ctx: InvocationContext): Promise<HttpR
       },
     };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[demos-stats]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

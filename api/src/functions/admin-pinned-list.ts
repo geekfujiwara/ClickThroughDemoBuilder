@@ -14,7 +14,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
     const demoIds = await pinnedService.listPinnedIds();
     return { status: 200, jsonBody: demoIds };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[admin-pinned-list]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 

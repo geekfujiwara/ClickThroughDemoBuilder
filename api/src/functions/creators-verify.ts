@@ -10,7 +10,12 @@ import * as socialService from '../services/socialService.js';
 
 function verifyApprovalToken(creatorId: string, token: string): boolean {
   try {
-    const secret = process.env.APPROVAL_SECRET ?? 'local-dev-secret';
+    const secret = process.env.APPROVAL_SECRET?.trim();
+    // フォールバックの既定シークレットは廃止。未設定時は必ず失敗させる (fail-closed)。
+    // 公開リポジトリに固定値があると承認トークンを偽造され権限昇格に悪用される恐れがあるため。
+    if (!secret) {
+      return false;
+    }
     const decoded = Buffer.from(token, 'base64url').toString('utf-8');
     const parts = decoded.split(':');
     if (parts.length !== 3) return false;

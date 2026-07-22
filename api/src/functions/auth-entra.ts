@@ -11,6 +11,8 @@ import * as trustedAliasService from '../services/trustedAliasService.js';
 
 const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID ?? '';
 const ALLOWED_DOMAIN = '@microsoft.com';
+// 任意: 設定した場合、この tid のトークンのみ受け付ける (多層防御)。
+const ALLOWED_TENANT_ID = (process.env.ENTRA_TENANT_ID ?? '').trim().toLowerCase();
 
 type TokenClaims = {
   tid?: string;
@@ -52,6 +54,11 @@ async function handler(
     // S-03: SSRF 防止 — tid は UUID 形式のみ許可
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tid)) {
       return { status: 400, jsonBody: { error: 'Invalid token format.' } };
+    }
+    // 任意: テナント固定が設定されていれば tid を照合 (多層防御)
+    if (ALLOWED_TENANT_ID && tid.toLowerCase() !== ALLOWED_TENANT_ID) {
+      context.warn(`Login rejected: tenant tid="${tid}" not allowed`);
+      return { status: 403, jsonBody: { error: 'Tenant not allowed.' } };
     }
 
     // ② テナント固有の JWKS で署名を検証
@@ -126,7 +133,7 @@ async function handler(
       }
     } catch (e) {
       context.error('Creator service error:', (e as Error).message, (e as Error).stack ?? '');
-      return { status: 500, jsonBody: { error: `Storage error: ${(e as Error).message}` } };
+      return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
     }
 
     // ⑤ ブロック済みユーザーはログイン拒否

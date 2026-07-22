@@ -77,7 +77,8 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
       jsonBody: { creator, stats, demos },
     };
   } catch (e) {
-    return { status: 500, jsonBody: { error: (e as Error).message } };
+    console.error('[creators-profile]', e);
+    return { status: 500, jsonBody: { error: 'サーバーエラーが発生しました' } };
   }
 }
 
