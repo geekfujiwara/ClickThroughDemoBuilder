@@ -13,7 +13,10 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const srcDir = resolve(root, 'node_modules/@ffmpeg/core/dist/umd');
+// ESM ビルドを使う。@ffmpeg/ffmpeg 0.12 は module worker を生成するため、
+// worker 内フォールバックの動的 import() が成功する必要があり、UMD ではなく
+// ESM (export default) の core でなければ "failed to import ffmpeg-core.js" になる。
+const srcDir = resolve(root, 'node_modules/@ffmpeg/core/dist/esm');
 const outDir = resolve(root, 'public/ffmpeg');
 
 const files = ['ffmpeg-core.js', 'ffmpeg-core.wasm'];

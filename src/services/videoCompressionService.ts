@@ -27,10 +27,20 @@ async function getFFmpeg(): Promise<FFmpeg> {
   if (!loadPromise) {
     loadPromise = (async () => {
       const ff = new FFmpeg();
-      await ff.load({
-        coreURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
+      try {
+        // 同一オリジンから core を読み込む。@ffmpeg/core は ESM ビルドを使用する
+        // (0.12 は module worker を生成するため、worker 内の動的 import() が
+        //  成功する ESM (export default) core が必須。UMD だと import に失敗する)。
+        const coreURL = await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.js`, 'text/javascript');
+        const wasmURL = await toBlobURL(`${FFMPEG_BASE}/ffmpeg-core.wasm`, 'application/wasm');
+        await ff.load({ coreURL, wasmURL });
+      } catch (err) {
+        // 失敗した Promise をキャッシュしない (次回の圧縮で再試行できるように)
+        loadPromise = null;
+        // eslint-disable-next-line no-console
+        console.error('[videoCompression] ffmpeg load failed:', err);
+        throw err;
+      }
       ffmpegInstance = ff;
       return ff;
     })();

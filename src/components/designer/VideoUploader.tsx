@@ -224,9 +224,9 @@ export default function VideoUploader() {
             <>
               <div className={classes.progressLabel}>
                 <Text size={200}>{MSG.uploadStageCompressing}</Text>
-                <Text size={200}>{Math.round(compressPct * 100)}%</Text>
+                <Text size={200}>{compressPct > 0 ? `${Math.round(compressPct * 100)}%` : ''}</Text>
               </div>
-              <ProgressBar value={compressPct} thickness="large" />
+              <ProgressBar value={compressPct > 0 ? compressPct : undefined} thickness="large" />
             </>
           )}
           {stage === 'uploading' && (
