@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Build API
         working-directory: api
@@ -63,6 +63,14 @@ jobs:
           else
             echo "No APPROVAL_SECRET/ENTRA_TENANT_ID secrets provided; skipping."
           fi
+
+      - name: Align Function App runtime with build
+        run: |
+          az functionapp runtime config set \
+            --name func-clickthrough-prod \
+            --resource-group rg-clickthrough-prod \
+            --runtime-version 22 \
+            --output none
 
       - name: Deploy to Function App
         uses: Azure/functions-action@v1

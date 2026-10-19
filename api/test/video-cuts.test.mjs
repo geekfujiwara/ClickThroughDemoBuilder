@@ -9,13 +9,14 @@ import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { randomUUID, randomBytes } from 'node:crypto';
 import ffmpeg from 'ffmpeg-static';
-import { HttpRequest, InvocationContext } from '@azure/functions';
+import functions from '@azure/functions';
 import {
   normalizeCuts, remainingRanges, remapCutTime, remapClickPoints,
 } from '../dist/shared/videoCuts.js';
 import { convertVideo, probeVideo, runMediaProcess } from '../dist/services/videoConversionService.js';
 
 const require = createRequire(import.meta.url);
+const { HttpRequest, InvocationContext } = functions;
 const exec = promisify(execFile);
 let directory;
 let emulator;
@@ -43,14 +44,17 @@ before(async () => {
   process.env.JWT_SECRET = randomBytes(32).toString('hex');
   emulator = spawn(process.execPath, [
     require.resolve('azurite/dist/src/blob/main.js'), '--blobHost', '127.0.0.1',
-    '--blobPort', String(port), '--location', directory, '--silent', '--skipApiVersionCheck',
+    '--blobPort', String(port), '--location', directory, '--silent', '--skipApiVersionCheck', '--disableTelemetry',
   ], { env: { ...process.env, AZURITE_ACCOUNTS: `cuttest:${key}` }, stdio: ['ignore', 'pipe', 'pipe'] });
   await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Azurite startup timed out')), 15000);
-    emulator.once('error', reject);
-    emulator.once('exit', (code) => reject(new Error(`Azurite exited: ${code}`)));
+    let output = '';
+    const timeout = setTimeout(() => reject(new Error(`Azurite startup timed out: ${output}`)), 60000);
+    emulator.once('error', (error) => { clearTimeout(timeout); reject(error); });
+    emulator.once('exit', (code) => { clearTimeout(timeout); reject(new Error(`Azurite exited: ${code}: ${output}`)); });
+    emulator.stderr.on('data', (data) => { output += data.toString(); });
     emulator.stdout.on('data', (data) => {
-      if (data.toString().includes('successfully listens')) {
+      output += data.toString();
+      if (output.includes('successfully listens')) {
         clearTimeout(timeout);
         resolve();
       }

@@ -49,6 +49,7 @@
 - ジョブは既存の `masters` コンテナの `video-cuts/` に保存され、15 秒間隔のタイマーが順番に処理します。Blob lease と ETag で重複処理・更新競合を防ぎます。追加のキューや外部変換サービスは不要です。ホスト中断後は再開し、最大 3 回まで実行、1 回の変換は最大 25 分です。
 - Function App の既存 Blob 接続権限と `AzureWebJobsStorage` が必要です。`api/host.json` の実行上限は 30 分です。FFmpeg / FFprobe の Linux バイナリは API デプロイ時に npm から取得するため、ローカルの Windows バイナリを手動でアップロードしないでください。
 - 検証: `npm test --prefix api`（実 FFmpeg 変換と一時 Azurite による永続化・競合テスト）。API のデプロイワークフローでも実行します。
+- API のビルド・テスト・Azure 実行環境は Node.js 22 に揃えています（追加依存と現行 Azure SDK の要件）。デプロイワークフローで Function App の runtime version も設定します。
 
 ---
 
