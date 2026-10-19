@@ -3,7 +3,7 @@ import { requireRole } from '../middleware/auth.js';
 import {
   createCutJob, CutConflictError, isStorageConflict, publicCutJob, readCutJob, readProjectVersion,
 } from '../services/videoCutService.js';
-import { normalizeCuts } from '../shared/videoCuts.js';
+import { normalizeCuts, type VideoCutStatus } from '../shared/videoCuts.js';
 
 export async function handler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'designer');
@@ -20,7 +20,8 @@ export async function handler(req: HttpRequest, context: InvocationContext): Pro
     }
     if (req.method === 'GET') {
       const jobId = version.project.videoCutJobId;
-      return { jsonBody: jobId ? publicCutJob(await readCutJob(jobId)) : null };
+      const status: VideoCutStatus = { job: jobId ? publicCutJob(await readCutJob(jobId)) : null };
+      return { jsonBody: status };
     }
     let body: { cuts?: unknown; videoId?: unknown; updatedAt?: unknown };
     try {

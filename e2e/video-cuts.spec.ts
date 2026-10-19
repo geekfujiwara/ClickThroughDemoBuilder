@@ -57,7 +57,7 @@ async function setup(page: Page, initialJob?: VideoCutJob) {
         };
         job = { ...job, status: 'completed' };
       }
-      return route.fulfill({ json: job });
+      return route.fulfill({ json: { job } });
     }
     if (path.startsWith('/api/videos/')) {
       return route.fulfill({ json: { url: '/test-cut-video.webm' } });
@@ -98,6 +98,18 @@ async function addRange(page: Page, start: string, end: string) {
   await page.getByLabel('Cut end (seconds)').fill(end);
   await page.getByRole('button', { name: 'Add cut range', exact: true }).click();
 }
+
+test('opening cut editing for a project with no previous job loads valid JSON and enables editing', async ({ page }) => {
+  await setup(page);
+  const statusResponse = page.waitForResponse((response) =>
+    response.request().method() === 'GET'
+    && new URL(response.url()).pathname === '/api/projects/cut-test/video-cuts');
+  await page.getByRole('button', { name: 'Edit video cuts', exact: true }).click();
+  expect(await (await statusResponse).json()).toEqual({ job: null });
+  await expect(page.getByRole('button', { name: 'Add cut range', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0);
+  await expect(page.getByText(/Unexpected end of JSON/)).toHaveCount(0);
+});
 
 test('multiple cuts show affected points, require confirmation and update the project after cloud completion', async ({ page }) => {
   const state = await setup(page);

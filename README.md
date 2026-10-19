@@ -45,7 +45,7 @@
 
 - 出力は MP4（H.264 / 音声がある場合 AAC）、30fps です。映像の境界精度はフレーム単位です。全区間の削除はできず、最低 0.1 秒を残します。最大 50 区間を指定できます。
 - 完了したカットは Undo の対象外です。安全のため元動画・旧リビジョンはストレージに保持しますが、復元 UI と自動削除はありません。
-- API は `POST /api/projects/{id}/video-cuts`（`cuts`, `videoId`, `updatedAt`）で開始し、`GET` で最新ジョブを取得します。プロジェクト所有者のみ操作できます。
+- API は `POST /api/projects/{id}/video-cuts`（`cuts`, `videoId`, `updatedAt`）で開始し、`GET` で最新ジョブを `{ "job": {...} }` として取得します。未編集の場合も空レスポンスではなく `{ "job": null }` を返します。プロジェクト所有者のみ操作できます。
 - ジョブは既存の `masters` コンテナの `video-cuts/` に保存され、15 秒間隔のタイマーが順番に処理します。Blob lease と ETag で重複処理・更新競合を防ぎます。追加のキューや外部変換サービスは不要です。ホスト中断後は再開し、最大 3 回まで実行、1 回の変換は最大 25 分です。
 - Function App の既存 Blob 接続権限と `AzureWebJobsStorage` が必要です。`api/host.json` の実行上限は 30 分です。FFmpeg / FFprobe の Linux バイナリは API デプロイ時に npm から取得するため、ローカルの Windows バイナリを手動でアップロードしないでください。
 - Run-from-package の実行権限制約を避けるため、変換時に FFmpeg / FFprobe をジョブ専用の一時ディレクトリへコピーして実行します。入力・出力・バイナリを含む一時ファイルは処理後に削除します。

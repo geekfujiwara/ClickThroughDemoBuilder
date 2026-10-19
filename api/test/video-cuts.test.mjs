@@ -16,7 +16,7 @@ import {
 import { convertVideo, probeVideo, runMediaProcess } from '../dist/services/videoConversionService.js';
 
 const require = createRequire(import.meta.url);
-const { HttpRequest, InvocationContext } = functions;
+const { HttpRequest, HttpResponse, InvocationContext } = functions;
 const exec = promisify(execFile);
 let directory;
 let emulator;
@@ -182,12 +182,29 @@ test('API rejects missing authentication, other owners, invalid ranges and stale
   assert.equal((await handler(request(project, { ...body, updatedAt: 'stale' }), context)).status, 409);
 });
 
+test('status for a project without cuts serializes as a non-empty JSON response', async () => {
+  const { project } = await projectFixture();
+  const result = await handler(new HttpRequest({
+    method: 'GET', url: `http://localhost/api/projects/${project.id}/video-cuts`,
+    params: { id: project.id }, headers: { cookie: `session=${token}` },
+  }), context);
+  const response = new HttpResponse(result);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type'), /application\/json/);
+  assert.equal(await response.text(), '{"job":null}');
+});
+
 test('durable jobs publish a new video and remapped points together, and recover idempotently', async () => {
   const { project } = await projectFixture();
   const response = await handler(request(project, { cuts: [{ start: 1, end: 2 }, { start: 3, end: 4 }], videoId: project.video.videoId, updatedAt: project.updatedAt }), context);
   assert.equal(response.status, 202);
   assert.equal(response.jsonBody.project, undefined);
   const job = response.jsonBody;
+  const statusResponse = new HttpResponse(await handler(new HttpRequest({
+    method: 'GET', url: `http://localhost/api/projects/${project.id}/video-cuts`,
+    params: { id: project.id }, headers: { cookie: `session=${token}` },
+  }), context));
+  assert.deepEqual(await statusResponse.json(), JSON.parse(JSON.stringify({ job })));
   const locked = (await jobs.readProjectVersion(project.id)).project;
   await assert.rejects(() => jobs.assertNoActiveCut(locked), jobs.CutConflictError);
   await worker.processCutJob(job.id, context);

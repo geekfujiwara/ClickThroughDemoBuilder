@@ -13,6 +13,10 @@ export interface VideoCutJob {
   error?: string;
 }
 
+export interface VideoCutStatus {
+  job: VideoCutJob | null;
+}
+
 export function normalizeCuts(input: unknown, duration: number): CutRange[] {
   if (!Number.isFinite(duration) || duration <= 0 || !Array.isArray(input) || !input.length || input.length > 50) {
     throw new Error('Specify 1-50 cut ranges for a video with a valid duration.');
