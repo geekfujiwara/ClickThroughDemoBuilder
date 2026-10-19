@@ -66,10 +66,33 @@ jobs:
 
       - name: Align Function App runtime with build
         run: |
-          az functionapp runtime config set \
+          APP_ID=$(az functionapp show \
             --name func-clickthrough-prod \
             --resource-group rg-clickthrough-prod \
-            --runtime-version 22 \
+            --query id --output tsv)
+          CONFIG=$(az rest --method get \
+            --uri "$APP_ID?api-version=2024-04-01" \
+            --query properties.functionAppConfig --output json)
+          BODY=$(jq -n --argjson config "$CONFIG" \
+            '{properties: {functionAppConfig: ($config | .runtime.version = "22")}}')
+          az rest --method patch \
+            --uri "$APP_ID?api-version=2024-04-01" \
+            --body "$BODY" --output none
+
+      - name: Use managed identity for timer storage
+        run: |
+          ACCOUNT=$(az functionapp config appsettings list \
+            --name func-clickthrough-prod \
+            --resource-group rg-clickthrough-prod \
+            --query "[?name=='AzureWebJobsStorage__accountName'].value | [0]" --output tsv)
+          if [ -z "$ACCOUNT" ]; then
+            echo "::error::AzureWebJobsStorage__accountName must be configured before enabling video cuts."
+            exit 1
+          fi
+          az functionapp config appsettings delete \
+            --name func-clickthrough-prod \
+            --resource-group rg-clickthrough-prod \
+            --setting-names AzureWebJobsStorage \
             --output none
 
       - name: Deploy to Function App

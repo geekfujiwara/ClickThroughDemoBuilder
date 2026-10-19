@@ -50,6 +50,7 @@
 - Function App の既存 Blob 接続権限と `AzureWebJobsStorage` が必要です。`api/host.json` の実行上限は 30 分です。FFmpeg / FFprobe の Linux バイナリは API デプロイ時に npm から取得するため、ローカルの Windows バイナリを手動でアップロードしないでください。
 - 検証: `npm test --prefix api`（実 FFmpeg 変換と一時 Azurite による永続化・競合テスト）。API のデプロイワークフローでも実行します。
 - API のビルド・テスト・Azure 実行環境は Node.js 22 に揃えています（追加依存と現行 Azure SDK の要件）。デプロイワークフローで Function App の runtime version も設定します。
+- タイマーのホストストレージは `AzureWebJobsStorage__accountName` と Function App のマネージド ID を使用します。共有キーを禁止しているため、デプロイ時に旧 `AzureWebJobsStorage` 接続文字列を削除します。Function App の既存 Blob アクセス権限・VNet / Private Endpoint 接続が必要です。
 
 ---
 
