@@ -9,6 +9,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { requireRole } from '../middleware/auth.js';
 import * as blobService from '../services/blobService.js';
 import * as projectService from '../services/projectService.js';
+import { assertNoActiveCut, CutConflictError } from '../services/videoCutService.js';
 
 const ALLOWED_MIME_TYPES = new Set(['video/mp4', 'video/webm']);
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
@@ -24,6 +25,7 @@ async function verifyProjectOwner(projectId: string, creatorId: string | undefin
   if (project && project.creatorId && project.creatorId !== creatorId) {
     return { status: 403, jsonBody: { error: '他のデザイナーのプロジェクトの動画は操作できません' } };
   }
+  if (project) await assertNoActiveCut(project);
   return null;
 }
 
@@ -75,7 +77,9 @@ async function handler(req: HttpRequest, _context: InvocationContext): Promise<H
       try {
         const body = (await req.json()) as { blockIds?: unknown };
         blockIds = Array.isArray(body.blockIds) ? (body.blockIds as string[]) : [];
-      } catch {
+      } catch (error) {
+        if (error instanceof CutConflictError) return { status: 409, jsonBody: { error: error.message } };
+        _context.error('[videos-upload]', error);
         return { status: 400, jsonBody: { error: 'blockIds が不正です' } };
       }
       if (blockIds.length === 0) {

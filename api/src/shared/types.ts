@@ -15,6 +15,7 @@ export interface DemoProject {
   clickPoints: ClickPoint[];
   settings: DemoSettings;
   version: number;
+  videoCutJobId?: string;
   // ソーシャルカウント（集計値、実データは socialService で管理）
   likeCount?: number;
   playCount?: number;

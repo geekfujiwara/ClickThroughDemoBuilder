@@ -62,6 +62,7 @@ export async function duplicateProject(
   const dup: DemoProject = {
     ...original,
     id: newId,
+    videoCutJobId: undefined,
     demoNumber: maxNum + 1,
     title: `${original.title} (コピー)`,
     createdAt: now,

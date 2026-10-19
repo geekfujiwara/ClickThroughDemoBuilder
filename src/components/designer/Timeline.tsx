@@ -1,6 +1,7 @@
 import {} from 'react';
 import { makeStyles, tokens, Text } from '@fluentui/react-components';
 import type { ClickPoint } from '@/types';
+import type { CutRange } from '../../../api/src/shared/videoCuts';
 
 const useStyles = makeStyles({
   root: {
@@ -56,6 +57,7 @@ interface TimelineProps {
   currentTime: number;
   clickPoints: ClickPoint[];
   onSeek: (time: number) => void;
+  cuts?: CutRange[];
 }
 
 export default function Timeline({
@@ -63,6 +65,7 @@ export default function Timeline({
   currentTime,
   clickPoints,
   onSeek,
+  cuts = [],
 }: TimelineProps) {
   const classes = useStyles();
   const padding = 16; // px left/right padding
@@ -84,6 +87,14 @@ export default function Timeline({
   return (
     <div className={classes.root} onClick={handleClick}>
       <div className={classes.track} />
+      {cuts.map((cut) => (
+        <div key={`${cut.start}-${cut.end}`} style={{
+          position: 'absolute', top: '8px', bottom: '8px', backgroundColor: '#d1343866',
+          pointerEvents: 'none',
+          left: `calc(${padding}px + (100% - ${padding * 2}px) * ${timeToPercent(cut.start)} / 100)`,
+          width: `calc((100% - ${padding * 2}px) * ${timeToPercent(cut.end - cut.start)} / 100)`,
+        }} />
+      ))}
       {/* Playhead */}
       <div
         className={classes.playhead}

@@ -14,8 +14,10 @@ import * as projectService from '../services/projectService.js';
 /** ゲストユーザーのアクセス可否を確認 (guestAccessEnabled) */
 async function denyGuest(projectId: string, creatorId: string | undefined): Promise<boolean> {
   if (creatorId !== 'guest') return false;
-  const project = await projectService.getProject(projectId);
-  return !project || project.settings?.guestAccessEnabled === false;
+  const ownerProjectId = projectId.split('~')[0];
+  const project = await projectService.getProject(ownerProjectId);
+  return !project || project.settings?.guestAccessEnabled === false
+    || (projectId.includes('~') && project.video.videoId !== projectId);
 }
 
 /** `Range: bytes=start-end` をパース。無効/未指定は null。 */

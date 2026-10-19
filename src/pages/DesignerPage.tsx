@@ -21,6 +21,10 @@ import {
   MessageBar,
   MessageBarBody,
   Switch,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogContent,
 } from '@fluentui/react-components';
 import {
   ArrowLeftRegular,
@@ -34,6 +38,7 @@ import {
   ArrowExportRegular,
   DeleteRegular,
   ImageRegular,
+  CutRegular,
 } from '@fluentui/react-icons';
 import { useDesignerStore } from '@/stores/designerStore';
 import { useProjectStore } from '@/stores/projectStore';
@@ -51,7 +56,11 @@ import PropertyPanel from '@/components/designer/PropertyPanel';
 import ClickPointList from '@/components/designer/ClickPointList';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import ThumbnailPickerDialog from '@/components/designer/ThumbnailPickerDialog';
-import type { DemoCreator, VideoInfo } from '@/types';
+import VideoCutDialog from '@/components/designer/VideoCutDialog';
+import { apiGet } from '@/services/apiClient';
+import { getVideoCutJob } from '@/services/videoCutService';
+import { isCutJobActive } from '../../api/src/shared/videoCuts';
+import type { DemoCreator, DemoProject, VideoInfo } from '@/types';
 
 const useStyles = makeStyles({
   root: {
@@ -171,6 +180,9 @@ export default function DesignerPage() {
   const [pendingVideoFile, setPendingVideoFile] = useState<File | null>(null);
   const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false);
   const [creators, setCreators] = useState<DemoCreator[]>([]);
+  const [showVideoCuts, setShowVideoCuts] = useState(false);
+  const [isPreparingCuts, setIsPreparingCuts] = useState(false);
+  const [cutNotice, setCutNotice] = useState('');
 
   // requestAnimationFrame で高精度にcurrentTimeを追跡 (~60Hz)
   useEffect(() => {
@@ -208,16 +220,20 @@ export default function DesignerPage() {
   // プロジェクト読み込み
   useEffect(() => {
     if (projectId) {
-      getProject(projectId).then((p) => {
-        if (p) setProject(p);
-      });
+      apiGet<DemoProject>(`/projects/${projectId}`).then(async (p) => {
+        setProject(p);
+        if (p.videoCutJobId) {
+          const job = await getVideoCutJob(p.id);
+          if (job && isCutJobActive(job)) setShowVideoCuts(true);
+        }
+      }).catch((err: unknown) => alert(err instanceof Error ? err.message : MSG.cutStatusError));
       return;
     }
     resetDesigner();
     setVideoUrl(null);
     setIsPlaying(false);
     setCurrentTime(0);
-  }, [projectId, getProject, setProject, resetDesigner]);
+  }, [projectId, getProject, setProject, resetDesigner, MSG.cutStatusError]);
 
   const loadCreators = useCallback(async () => {
     try {
@@ -263,19 +279,24 @@ export default function DesignerPage() {
 
   // 自動保存 (3秒デバウンス)
   useEffect(() => {
-    if (!isDirty || !currentProject) return;
+    if (!isDirty || !currentProject || showVideoCuts || isPreparingCuts) return;
     const timer = setTimeout(async () => {
-      if (currentProject.id) {
-        await updateProject(currentProject.id, currentProject);
+      try {
+        if (currentProject.id) {
+          await updateProject(currentProject.id, currentProject);
+        }
+        markSaved();
+      } catch (err) {
+        alert(err instanceof Error ? err.message : MSG.error);
       }
-      markSaved();
     }, 3000);
     return () => clearTimeout(timer);
-  }, [isDirty, currentProject, updateProject, markSaved]);
+  }, [isDirty, currentProject, updateProject, markSaved, showVideoCuts, isPreparingCuts, MSG.error]);
 
   // キーボードショートカット
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (showVideoCuts || isPreparingCuts) return;
       if (e.ctrlKey && e.key === 'z') {
         e.preventDefault();
         undo();
@@ -325,6 +346,35 @@ export default function DesignerPage() {
     video.currentTime = time;
     setCurrentTime(time);
   }, []);
+
+  const handleOpenVideoCuts = async () => {
+    if (!currentProject) return;
+    videoRef.current?.pause();
+    setIsPlaying(false);
+    setIsPreparingCuts(true);
+    setCutNotice('');
+    try {
+      if (isDirty) await updateProject(currentProject.id, currentProject);
+      const saved = await apiGet<DemoProject>(`/projects/${currentProject.id}`);
+      setProject(saved);
+      setShowVideoCuts(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : MSG.cutStatusError);
+    } finally {
+      setIsPreparingCuts(false);
+    }
+  };
+
+  const handleCutsComplete = useCallback((project: DemoProject) => {
+    setProject(project);
+    useProjectStore.setState((state) => ({
+      projects: state.projects.map((existing) => existing.id === project.id ? project : existing),
+    }));
+    setCurrentTime(0);
+    setIsPlaying(false);
+    setShowVideoCuts(false);
+    setCutNotice(MSG.cutSuccess);
+  }, [setProject, MSG.cutSuccess]);
 
   // onTimeUpdate はフォールバック (一時停止中のシーク等)
   const handleTimeUpdate = useCallback(() => {
@@ -533,6 +583,7 @@ export default function DesignerPage() {
       </div>
 
       {/* ボディ */}
+      {cutNotice && <MessageBar intent="success"><MessageBarBody>{cutNotice}</MessageBarBody></MessageBar>}
       <div className={classes.body}>
         {/* 左サイドバー */}
         <div className={classes.sidebar}>
@@ -552,6 +603,11 @@ export default function DesignerPage() {
                 />
               </Tooltip>
               <ToolbarDivider />
+              <Tooltip content={MSG.cutTitle} relationship="label">
+                <ToolbarButton icon={<CutRegular />} aria-label={MSG.cutTitle}
+                  disabled={!currentProject?.id || !videoUrl || isPreparingCuts}
+                  onClick={() => void handleOpenVideoCuts()} />
+              </Tooltip>
               <Tooltip content="サムネイルを設定" relationship="label">
                 <ToolbarButton
                   icon={<ImageRegular />}
@@ -667,6 +723,19 @@ export default function DesignerPage() {
       />
 
       {/* サムネイルピッカー */}
+      {isPreparingCuts && (
+        <Dialog open>
+          <DialogSurface>
+            <DialogBody>
+              <DialogContent><Spinner label={MSG.cutLoading} /></DialogContent>
+            </DialogBody>
+          </DialogSurface>
+        </Dialog>
+      )}
+      {showVideoCuts && currentProject && videoUrl && (
+        <VideoCutDialog project={currentProject} videoUrl={videoUrl}
+          onClose={() => setShowVideoCuts(false)} onComplete={handleCutsComplete} />
+      )}
       {currentProject?.video && (
         <ThumbnailPickerDialog
           open={showThumbnailPicker}

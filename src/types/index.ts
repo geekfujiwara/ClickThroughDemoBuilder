@@ -15,6 +15,7 @@ export interface DemoProject {
   clickPoints: ClickPoint[];
   settings: DemoSettings;
   version: number; // スキーマバージョン
+  videoCutJobId?: string;
   lastExportFolderName?: string; // 最後にエクスポートしたフォルダパス
   lastExportedAt?: string; // 最後にエクスポートした日時 (ISO 8601)
   // ソーシャルカウント

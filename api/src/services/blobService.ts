@@ -77,7 +77,7 @@ function getClient(): BlobServiceClient {
   return _client;
 }
 
-function container(name: string): ContainerClient {
+export function container(name: string): ContainerClient {
   return getClient().getContainerClient(name);
 }
 
@@ -85,7 +85,7 @@ function container(name: string): ContainerClient {
 
 const initialized = new Set<string>();
 
-async function ensureContainer(name: string): Promise<ContainerClient> {
+export async function ensureContainer(name: string): Promise<ContainerClient> {
   const c = container(name);
   if (!initialized.has(name)) {
     await c.createIfNotExists();

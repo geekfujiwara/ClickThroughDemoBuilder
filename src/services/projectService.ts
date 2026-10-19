@@ -59,6 +59,7 @@ export async function updateProject(
   const updated: DemoProject = {
     ...existing,
     ...updates,
+    videoCutJobId: updates.video ? updates.videoCutJobId : existing.videoCutJobId,
     id,
     updatedAt: new Date().toISOString(),
   };
