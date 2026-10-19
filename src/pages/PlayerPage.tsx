@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogActions,
   Checkbox,
+  ToggleButton,
 } from '@fluentui/react-components';
 import {
   DismissRegular,
@@ -24,6 +25,7 @@ import {
   BookmarkRegular,
   BookmarkFilled,
   PresenterRegular,
+  ArrowExpandRegular,
 } from '@fluentui/react-icons';
 import type { DemoProject, ClickPoint, PlayerState } from '@/types';
 import { PULSE_DURATION_MAP, DEFAULT_DESCRIPTION_STYLE } from '@/types';
@@ -322,6 +324,8 @@ export default function PlayerPage() {
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
+  const [fitToScreen, setFitToScreen] = useState(true);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number | null>(null);
 
   // ソーシャル状態
   const [isLiked, setIsLiked] = useState(false);
@@ -398,6 +402,7 @@ export default function PlayerPage() {
         setHasStarted(false);
         setIsVideoReady(false);
         setIsBuffering(true);
+        setVideoAspectRatio(null);
         if (!loggedStartRef.current) {
           loggedStartRef.current = true;
           void logDemoUsage(projectId, 'view_start').catch(() => undefined);
@@ -646,6 +651,11 @@ export default function PlayerPage() {
   }
 
   const duration = project.video.duration || 0;
+  const aspectRatio = videoAspectRatio ?? (
+    project.video.width > 0 && project.video.height > 0
+      ? project.video.width / project.video.height
+      : null
+  );
 
   return (
     <div className={classes.root}>
@@ -664,6 +674,19 @@ export default function PlayerPage() {
           )}
         </div>
         <div className={classes.topBarActions}>
+          <Tooltip content={MSG.playerFitToScreen} relationship="label">
+            <ToggleButton
+              icon={<ArrowExpandRegular />}
+              appearance="subtle"
+              className={classes.topBarActionBtn}
+              aria-label={MSG.playerFitToScreen}
+              checked={fitToScreen}
+              onClick={() => setFitToScreen((fit) => !fit)}
+              onKeyDown={(event) => {
+                if (event.key === ' ' || event.key === 'Enter') event.stopPropagation();
+              }}
+            />
+          </Tooltip>
           {!isGuest && (
             <>
               <Tooltip content={isLiked ? MSG.unlike : MSG.like} relationship="label">
@@ -720,11 +743,23 @@ export default function PlayerPage() {
       )}
 
       {/* Video */}
-      <div className={isConferenceMode ? classes.conferenceVideoContainer : classes.videoContainer}>
+      <div
+        className={isConferenceMode ? classes.conferenceVideoContainer : classes.videoContainer}
+        style={fitToScreen && aspectRatio ? {
+          width: `min(100vw, calc((100vh - ${isConferenceMode ? 0 : 80}px) * ${aspectRatio}))`,
+        } : undefined}
+      >
         <video
           ref={videoRef}
           className={isConferenceMode ? classes.conferenceVideo : classes.video}
+          style={fitToScreen && aspectRatio ? { width: '100%' } : undefined}
           src={videoUrl}
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+              setVideoAspectRatio(video.videoWidth / video.videoHeight);
+            }
+          }}
           onCanPlay={handleCanPlay}
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => setIsBuffering(false)}

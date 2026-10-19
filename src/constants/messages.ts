@@ -141,6 +141,7 @@ const JA = {
   playerRestartFromBeginning: 'はじめから再生',
   playerPrevClickPoint: '前のクリックポイントへ',
   playerTimelineLabel: '再生位置',
+  playerFitToScreen: '画面に合わせて拡大',
 
   navHome: 'ホーム',
   navProjects: 'デモ',
@@ -524,6 +525,7 @@ const EN: Partial<MessageCatalog> = {
   playerRestartFromBeginning: 'Restart from beginning',
   playerPrevClickPoint: 'Previous click point',
   playerTimelineLabel: 'Playback position',
+  playerFitToScreen: 'Fit video to screen',
 
   navHome: 'Home',
   navProjects: 'Demos',
