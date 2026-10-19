@@ -67,6 +67,7 @@ before(async () => {
   const { createToken } = await import('../dist/middleware/auth.js');
   token = createToken('designer', 'owner');
   fixture = join(directory, 'source.mp4');
+  console.log((await runMediaProcess(ffmpeg, ['-version'])).split('\n')[0]);
   await runMediaProcess(ffmpeg, [
     '-y', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red:s=320x180:r=30:d=6',
     '-f', 'lavfi', '-i', 'sine=frequency=440:duration=6',

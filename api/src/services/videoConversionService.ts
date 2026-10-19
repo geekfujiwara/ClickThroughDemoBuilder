@@ -43,7 +43,7 @@ export async function convertVideo(input: string, output: string, thumbnail: str
   const shift = cuts.map((cut) => `gte(PTS*TB,${cut.end})*${cut.end - cut.start}`).join('+');
   // Remap original frame timestamps directly to avoid accumulating per-segment frame rounding.
   const filters = [
-    `[0:v:0]setpts=PTS-STARTPTS,select='not(${selection})',setpts='PTS-(${shift})/TB',setsar=1,pad=ceil(iw/2)*2:ceil(ih/2)*2[v]`,
+    `[0:v:0]settb=AVTB,setpts=PTS-STARTPTS,select='not(${selection})',setpts='PTS-(${shift})/TB',fps=30:start_time=0:round=near,setsar=1,pad=ceil(iw/2)*2:ceil(ih/2)*2[v]`,
   ];
   if (hasAudio) {
     filters.push(...ranges.map((range, index) =>
@@ -56,7 +56,7 @@ export async function convertVideo(input: string, output: string, thumbnail: str
     '-filter_complex_threads', '1', '-filter_complex', filters.join(';'),
     '-map', '[v]', ...(hasAudio ? ['-map', '[a]', '-c:a', 'aac', '-b:a', '128k'] : []),
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
-    '-r', '30', '-t', String(expectedDuration), '-movflags', '+faststart', output,
+    '-fps_mode', 'passthrough', '-t', String(expectedDuration), '-movflags', '+faststart', output,
   ], signal);
   const result = await probeVideo(output, signal);
   const video = result.streams.find((stream) => stream.codec_type === 'video');
