@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { chmod, copyFile, readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobe from '@ffprobe-installer/ffprobe';
 import { remainingRanges, type CutRange } from '../shared/videoCuts.js';
@@ -24,15 +25,24 @@ interface ProbeResult {
   streams: { codec_type: string; width?: number; height?: number }[];
 }
 
-export async function probeVideo(path: string, signal?: AbortSignal): Promise<ProbeResult> {
-  return JSON.parse(await runMediaProcess(ffprobe.path, [
+export async function probeVideo(path: string, signal?: AbortSignal, executable = ffprobe.path): Promise<ProbeResult> {
+  return JSON.parse(await runMediaProcess(executable, [
     '-v', 'error', '-show_format', '-show_streams', '-of', 'json', path,
   ], signal)) as ProbeResult;
 }
 
 export async function convertVideo(input: string, output: string, thumbnail: string, cuts: CutRange[], duration: number, signal?: AbortSignal) {
   if (typeof ffmpegPath !== 'string') throw new Error('FFmpeg binary is not installed.');
-  const source = await probeVideo(input, signal);
+  // Run-from-package mounts do not preserve executable permissions; execute private temporary copies.
+  let encoder: string = ffmpegPath;
+  let probe = ffprobe.path;
+  if (process.platform !== 'win32') {
+    encoder = join(dirname(output), 'ffmpeg');
+    probe = join(dirname(output), 'ffprobe');
+    await Promise.all([copyFile(ffmpegPath, encoder), copyFile(ffprobe.path, probe)]);
+    await Promise.all([chmod(encoder, 0o700), chmod(probe, 0o700)]);
+  }
+  const source = await probeVideo(input, signal, probe);
   const sourceDuration = Number(source.format.duration);
   if (!Number.isFinite(sourceDuration) || Math.abs(sourceDuration - duration) > 0.15) {
     throw new Error('Source video duration differs from the saved project. Replace or reload the source video.');
@@ -51,19 +61,19 @@ export async function convertVideo(input: string, output: string, thumbnail: str
     filters.push(ranges.map((_, index) => `[a${index}]`).join('') + `concat=n=${ranges.length}:v=0:a=1[a]`);
   }
   const expectedDuration = ranges.reduce((total, range) => total + range.end - range.start, 0);
-  await runMediaProcess(ffmpegPath, [
+  await runMediaProcess(encoder, [
     '-nostdin', '-y', '-v', 'error', '-threads', '2', '-i', input,
     '-filter_complex_threads', '1', '-filter_complex', filters.join(';'),
     '-map', '[v]', ...(hasAudio ? ['-map', '[a]', '-c:a', 'aac', '-b:a', '128k'] : []),
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p',
     '-fps_mode', 'passthrough', '-t', String(expectedDuration), '-movflags', '+faststart', output,
   ], signal);
-  const result = await probeVideo(output, signal);
+  const result = await probeVideo(output, signal, probe);
   const video = result.streams.find((stream) => stream.codec_type === 'video');
   if (!video?.width || !video.height || Math.abs(Number(result.format.duration) - expectedDuration) > 0.1) {
     throw new Error('Converted video failed duration or dimension validation.');
   }
-  await runMediaProcess(ffmpegPath, [
+  await runMediaProcess(encoder, [
     '-nostdin', '-y', '-v', 'error', '-i', output, '-frames:v', '1', '-vf', 'scale=320:-1', thumbnail,
   ], signal);
   return {

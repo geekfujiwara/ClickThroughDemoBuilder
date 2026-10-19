@@ -45,7 +45,10 @@ before(async () => {
   emulator = spawn(process.execPath, [
     require.resolve('azurite/dist/src/blob/main.js'), '--blobHost', '127.0.0.1',
     '--blobPort', String(port), '--location', directory, '--silent', '--skipApiVersionCheck', '--disableTelemetry',
-  ], { env: { ...process.env, AZURITE_ACCOUNTS: `cuttest:${key}` }, stdio: ['ignore', 'pipe', 'pipe'] });
+  ], {
+    env: { ...process.env, NODE_TEST_CONTEXT: undefined, AZURITE_ACCOUNTS: `cuttest:${key}` },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   await new Promise((resolve, reject) => {
     let output = '';
     const timeout = setTimeout(() => reject(new Error(`Azurite startup timed out: ${output}`)), 60000);

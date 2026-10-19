@@ -89,6 +89,11 @@ jobs:
             echo "::error::AzureWebJobsStorage__accountName must be configured before enabling video cuts."
             exit 1
           fi
+          az functionapp config appsettings set \
+            --name func-clickthrough-prod \
+            --resource-group rg-clickthrough-prod \
+            --settings AzureWebJobsStorage__credential=managedidentity \
+            --output none
           az functionapp config appsettings delete \
             --name func-clickthrough-prod \
             --resource-group rg-clickthrough-prod \
