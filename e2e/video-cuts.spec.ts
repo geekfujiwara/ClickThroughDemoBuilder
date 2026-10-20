@@ -150,6 +150,46 @@ test('first open receives valid JSON and renders the actual waveform', async ({ 
   await expect(page.getByText(/Unexpected end of JSON/)).toHaveCount(0);
 });
 
+test('editor maximizes and restores without losing edits, selection, playhead or history', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await setup(page);
+  await open(page);
+  await splitAt(page, 2);
+  await page.getByRole('button', { name: 'Mute selected clip', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom timeline in', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit video timeline', exact: true });
+  const original = (await dialog.boundingBox())!;
+  const preview = page.getByLabel('Edit preview', { exact: true });
+  const sourceTime = await preview.evaluate((video: HTMLVideoElement) => video.currentTime);
+  await page.getByRole('button', { name: 'Maximize video editor', exact: true }).click();
+  const expanded = (await dialog.boundingBox())!;
+  expect(expanded.x).toBeCloseTo(0, 0);
+  expect(expanded.y).toBeCloseTo(0, 0);
+  expect(expanded.width).toBe(1600);
+  expect(expanded.height).toBe(1000);
+  expect(expanded.width).toBeGreaterThan(original.width);
+  await expect(clips(page)).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Clip 2', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Mute selected clip', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Playhead (seconds)', { exact: true })).toHaveValue('2');
+  await expect(preview).toHaveJSProperty('currentTime', sourceTime);
+  await expect(dialog.getByText('2x', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Restore video editor size', exact: true }).click();
+  const restored = (await dialog.boundingBox())!;
+  expect(restored.width).toBeCloseTo(original.width, 0);
+  expect(restored.height).toBeCloseTo(original.height, 0);
+  await expect(page.getByLabel('Playhead (seconds)', { exact: true })).toHaveValue('2');
+  await page.getByRole('button', { name: 'Undo edit (Ctrl+Z)', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mute selected clip', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.setViewportSize({ width: 800, height: 600 });
+  await page.getByRole('button', { name: 'Maximize video editor', exact: true }).click();
+  const compact = (await dialog.boundingBox())!;
+  expect(compact.width).toBe(800);
+  expect(compact.height).toBe(600);
+  await expect(applyButton(page)).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Restore video editor size', exact: true })).toBeInViewport();
+});
+
 test('S and Delete ripple multiple clips, confirm conversion, and remap points', async ({ page }) => {
   const state = await setup(page);
   await open(page);

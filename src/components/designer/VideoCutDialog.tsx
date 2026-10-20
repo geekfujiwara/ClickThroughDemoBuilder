@@ -3,7 +3,7 @@ import {
   Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface,
   DialogTitle, Input, Label, MessageBar, MessageBarBody, Spinner, Text, ToggleButton, tokens,
 } from '@fluentui/react-components';
-import { CutRegular, DeleteRegular, PlayRegular, PauseRegular, ArrowUndoRegular, ArrowRedoRegular, SpeakerMuteRegular } from '@fluentui/react-icons';
+import { CutRegular, DeleteRegular, PlayRegular, PauseRegular, ArrowUndoRegular, ArrowRedoRegular, SpeakerMuteRegular, FullScreenMaximizeRegular, FullScreenMinimizeRegular } from '@fluentui/react-icons';
 import type { DemoProject } from '@/types';
 import { useMsg } from '@/hooks/useMsg';
 import { apiGet } from '@/services/apiClient';
@@ -37,6 +37,7 @@ export default function VideoCutDialog({ project, videoUrl, onClose, onComplete 
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [maximized, setMaximized] = useState(false);
   const [job, setJob] = useState<VideoCutJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
@@ -256,7 +257,9 @@ export default function VideoCutDialog({ project, videoUrl, onClose, onComplete 
     <Dialog open onOpenChange={(_, data) => {
       if (!data.open && !busy) { if (confirm) setConfirm(false); else onClose(); }
     }}>
-      <DialogSurface style={{ maxWidth: '1440px', width: '96vw', maxHeight: '96vh' }}
+      <DialogSurface style={maximized
+        ? { maxWidth: '100vw', width: '100vw', height: '100dvh', maxHeight: '100dvh', borderRadius: 0, boxSizing: 'border-box' }
+        : { maxWidth: '1440px', width: '96vw', maxHeight: '96vh' }}
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement
             || event.target instanceof HTMLSelectElement || (event.target instanceof HTMLElement && event.target.isContentEditable)) return;
@@ -276,16 +279,22 @@ export default function VideoCutDialog({ project, videoUrl, onClose, onComplete 
             void playPause();
           }
         }}>
-        <DialogBody>
-          <DialogTitle>{MSG.cutTitle}</DialogTitle>
-          <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <DialogBody style={maximized ? { height: '100%', minHeight: 0, gridTemplateRows: 'auto minmax(0, 1fr) auto' } : undefined}>
+          <DialogTitle action={
+            <Button appearance="subtle"
+              icon={maximized ? <FullScreenMinimizeRegular /> : <FullScreenMaximizeRegular />}
+              aria-label={maximized ? MSG.editRestoreSize : MSG.editMaximize}
+              title={maximized ? MSG.editRestoreSize : MSG.editMaximize}
+              onClick={() => setMaximized((value) => !value)} />
+          }>{MSG.cutTitle}</DialogTitle>
+          <DialogContent style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', minHeight: 0 }}>
             <Text>{MSG.editHelp}</Text>
             {error && <MessageBar intent="error"><MessageBarBody>{error}</MessageBarBody></MessageBar>}
             {statusError && <Button onClick={() => { setLoading(true); setRetry((value) => value + 1); }}>{MSG.retry}</Button>}
             {busy && <Spinner label={active || starting ? MSG.cutProcessing : MSG.cutLoading} />}
             <video ref={videoRef} src={videoUrl} playsInline
               aria-label={MSG.editPreview}
-              style={{ width: '100%', height: 'min(30vh, 320px)', backgroundColor: tokens.colorNeutralBackgroundInverted }}
+              style={{ width: '100%', height: maximized ? 'min(40vh, 480px)' : 'min(30vh, 320px)', flexShrink: 0, backgroundColor: tokens.colorNeutralBackgroundInverted }}
               onLoadedMetadata={() => seek(currentTime)}
               onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)}
               onEnded={() => { setIsPlaying(false); setCurrentTime(duration); }}
