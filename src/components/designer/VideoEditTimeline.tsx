@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { makeStyles, tokens, Text } from '@fluentui/react-components';
+import { makeStyles, tokens, Text, Tooltip } from '@fluentui/react-components';
 import type { ClickPoint } from '@/types';
 import type { AudioWaveform } from '../../../api/src/shared/videoCuts';
 import { FRAME_DURATION, sourceToTimeline, type TimelineClip } from '../../../api/src/shared/videoTimeline';
@@ -9,6 +9,7 @@ import { formatTime } from '@/utils/time';
 const useStyles = makeStyles({
   scroll: {
     overflowX: 'auto',
+    flexShrink: 0,
     border: `1px solid ${tokens.colorNeutralStroke1}`,
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground2,
@@ -54,9 +55,21 @@ const useStyles = makeStyles({
     pointerEvents: 'none', zIndex: 3,
   },
   point: {
-    position: 'absolute', bottom: '8px', width: '8px', height: '8px',
+    position: 'absolute', bottom: 0, width: '24px', height: '24px',
+    padding: '8px', border: 0, boxSizing: 'border-box',
+    backgroundColor: tokens.colorTransparentBackground, cursor: 'pointer',
+    transform: 'translateX(-50%)', zIndex: 4,
+    ':focus-visible': { outline: `2px solid ${tokens.colorStrokeFocus2}` },
+  },
+  pointDot: {
+    display: 'block', width: '8px', height: '8px',
     backgroundColor: tokens.colorBrandForeground1, borderRadius: '50%',
-    transform: 'translateX(-50%)', pointerEvents: 'none',
+  },
+  pointCard: {
+    width: '280px', maxWidth: 'calc(100vw - 32px)', padding: '12px',
+    maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto',
+    borderRadius: tokens.borderRadiusMedium, boxShadow: tokens.shadow8,
+    whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', userSelect: 'text',
   },
 });
 
@@ -175,8 +188,25 @@ export default function VideoEditTimeline(props: Props) {
         })}
         {clickPoints.map((point) => {
           const time = sourceToTimeline(clips, point.timestamp);
-          return time === null ? null : <span key={point.id} className={classes.point}
-            title={`CP${point.order}: ${point.description}`} style={{ left: `${time / duration * 100}%` }} />;
+          return time === null ? null : (
+            <Tooltip key={point.id} relationship="description" positioning="below" withArrow
+              content={{
+                className: classes.pointCard,
+                onPointerDown: (event) => event.stopPropagation(),
+                children: <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <Text weight="semibold">{MSG.editPoint(point.order, formatTime(time))}</Text>
+                  <Text>{point.description || MSG.editPointEmpty}</Text>
+                </div>,
+              }}>
+              <button type="button" className={classes.point} data-click-point-id={point.id}
+                aria-label={MSG.editPoint(point.order, formatTime(time))}
+                style={{ left: `${time / duration * 100}%` }}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => { if (!disabled) onSeek(time); }}>
+                <span className={classes.pointDot} />
+              </button>
+            </Tooltip>
+          );
         })}
         <div className={classes.playhead} style={{ left: `calc(${currentTime / duration * 100}% - 1px)` }} />
       </div>

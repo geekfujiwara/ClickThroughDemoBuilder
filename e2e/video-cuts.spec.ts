@@ -22,14 +22,14 @@ test.beforeAll(() => {
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-async function setup(page: Page, initialJob?: VideoCutJob) {
+async function setup(page: Page, initialJob?: VideoCutJob, descriptions: Record<string, string> = {}) {
   const videoInfo = {
     videoId: 'cut-test', fileName: 'cut.webm', mimeType: 'video/webm' as const,
     width: 320, height: 180, duration: 6, thumbnailDataUrl: '',
   };
   const point = (id: string, timestamp: number, order: number) => ({
     id, timestamp, order, position: { x: 25, y: 50 }, area: { type: 'circle' as const, radius: 20 },
-    description: id, descriptionOffset: { x: 5, y: -10 },
+    description: descriptions[id] ?? id, descriptionOffset: { x: 5, y: -10 },
     descriptionStyle: createDefaultProject({ video: videoInfo }).settings.defaultDescriptionStyle,
     pulseSpeed: 1 as const,
   });
@@ -150,6 +150,50 @@ test('first open receives valid JSON and renders the actual waveform', async ({ 
   await expect(page.getByText(/Unexpected end of JSON/)).toHaveCount(0);
 });
 
+test('click point cards show descriptions below markers and follow ripple edits', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1400 });
+  const description = `First line\n${'A long explanation without truncation. '.repeat(12)}\nLast line <b>plain text</b>`;
+  await setup(page, undefined, { before: description, after: '' });
+  await open(page);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  const first = timeline(page).locator('[data-click-point-id="before"]');
+  await first.hover();
+  const card = page.getByRole('tooltip');
+  await expect(card).toContainText(description);
+  await expect(card.locator('b')).toHaveCount(0);
+  const markerBox = (await first.boundingBox())!;
+  const cardBox = (await card.boundingBox())!;
+  expect(cardBox.y).toBeGreaterThanOrEqual(markerBox.y + markerBox.height);
+  await expect(page.getByLabel('Playhead (seconds)', { exact: true })).toHaveValue('0');
+  await first.click();
+  await expect(page.getByLabel('Playhead (seconds)', { exact: true })).toHaveValue('0.5');
+  await expect(clips(page).first()).toHaveAttribute('aria-pressed', 'false');
+  await page.mouse.move(0, 0);
+  await expect(card).toHaveCount(0);
+  await timeline(page).focus();
+  await first.focus();
+  await expect(card).toContainText(description);
+  await deleteRange(page, 1, 2);
+  await expect(timeline(page).locator('[data-click-point-id="removed"]')).toHaveCount(0);
+  const after = timeline(page).locator('[data-click-point-id="after"]');
+  await after.hover();
+  await expect(card).toContainText('Click point 3 / 00:03.5');
+  await expect(card).toContainText('No description.');
+  await page.getByRole('button', { name: 'Maximize video editor', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom timeline in', exact: true }).click();
+  await after.scrollIntoViewIfNeeded();
+  await after.hover();
+  await expect(card).toBeInViewport();
+  await expect(card).toContainText('Click point 3 / 00:03.5');
+  await page.setViewportSize({ width: 800, height: 600 });
+  await after.scrollIntoViewIfNeeded();
+  await after.hover();
+  await expect(card).toBeInViewport();
+  const compactCard = (await card.boundingBox())!;
+  expect(compactCard.x).toBeGreaterThanOrEqual(0);
+  expect(compactCard.x + compactCard.width).toBeLessThanOrEqual(800);
+});
+
 test('editor maximizes and restores without losing edits, selection, playhead or history', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await setup(page);
@@ -199,7 +243,7 @@ test('S and Delete ripple multiple clips, confirm conversion, and remap points',
   await selectClip(page, 3);
   await page.keyboard.press('Delete');
   await expect(page.getByText('After editing: 4.00 seconds / Points to delete: 1')).toBeVisible();
-  await expect(timeline(page).locator('[title^="CP"]')).toHaveCount(2);
+  await expect(timeline(page).locator('[data-click-point-id]')).toHaveCount(2);
   await applyButton(page).click();
   await expect(page.getByText(/1 click points inside deleted clips/)).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
