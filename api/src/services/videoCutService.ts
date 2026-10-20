@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BlobLeaseClient } from '@azure/storage-blob';
 import type { DemoProject } from '../shared/types.js';
-import { isCutJobActive, normalizeCuts, type VideoCutJob } from '../shared/videoCuts.js';
+import { isCutJobActive, normalizeVideoEdits, type VideoCutJob } from '../shared/videoCuts.js';
 import { ensureContainer } from './blobService.js';
 
 export interface StoredCutJob extends VideoCutJob {
@@ -64,6 +64,7 @@ export async function writeCutJob(job: StoredCutJob, lease?: BlobLeaseClient): P
 export function publicCutJob(job: StoredCutJob): VideoCutJob {
   return {
     id: job.id, projectId: job.projectId, status: job.status, cuts: job.cuts,
+    muteRanges: job.muteRanges ?? [], muteAll: job.muteAll ?? false,
     createdAt: job.createdAt, updatedAt: job.updatedAt, error: job.error,
   };
 }
@@ -74,9 +75,9 @@ export async function assertNoActiveCut(project: DemoProject): Promise<void> {
   }
 }
 
-export async function createCutJob(project: DemoProject, etag: string, input: unknown): Promise<StoredCutJob> {
+export async function createCutJob(project: DemoProject, etag: string, input: unknown, muteRanges?: unknown, muteAll?: unknown): Promise<StoredCutJob> {
   await assertNoActiveCut(project);
-  const cuts = normalizeCuts(input, project.video.duration);
+  const edits = normalizeVideoEdits(input, muteRanges, muteAll, project.video.duration);
   const id = randomUUID();
   const source = (await ensureContainer('videos')).getBlockBlobClient(
     `${project.video.videoId}/video.${project.video.mimeType === 'video/webm' ? 'webm' : 'mp4'}`,
@@ -86,7 +87,7 @@ export async function createCutJob(project: DemoProject, etag: string, input: un
   const now = new Date().toISOString();
   const updatedProject = { ...project, videoCutJobId: id, updatedAt: now };
   const job: StoredCutJob = {
-    id, projectId: project.id, status: 'preparing', cuts, createdAt: now, updatedAt: now,
+    id, projectId: project.id, status: 'preparing', ...edits, createdAt: now, updatedAt: now,
     project: updatedProject, projectEtag: etag, sourceEtag: sourceProperties.etag, attempts: 0,
   };
   await writeCutJob(job);

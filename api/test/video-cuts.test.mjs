@@ -11,9 +11,12 @@ import { randomUUID, randomBytes } from 'node:crypto';
 import ffmpeg from 'ffmpeg-static';
 import functions from '@azure/functions';
 import {
-  normalizeCuts, remainingRanges, remapCutTime, remapClickPoints,
+  normalizeCuts, normalizeVideoEdits, remainingRanges, remapCutTime, remapClickPoints,
 } from '../dist/shared/videoCuts.js';
 import { convertVideo, probeVideo, runMediaProcess } from '../dist/services/videoConversionService.js';
+import {
+  restoreTimeline, splitTimeline, timelineEdits, timelineDuration, timelineToSource, sourceToTimeline, deleteTimelineClip,
+} from '../dist/shared/videoTimeline.js';
 
 const require = createRequire(import.meta.url);
 const { HttpRequest, HttpResponse, InvocationContext } = functions;
@@ -26,6 +29,9 @@ let worker;
 let handler;
 let token;
 let fixture;
+let extractWaveform;
+let requestWaveform;
+let processWaveform;
 const errors = [];
 const context = new InvocationContext({ functionName: 'video-cut-test' });
 context.error = (...args) => errors.push(args);
@@ -64,6 +70,7 @@ before(async () => {
     });
   });
   blobs = await import('../dist/services/blobService.js');
+  ({ extractWaveform, requestWaveform, processWaveform } = await import('../dist/services/audioWaveformService.js'));
   jobs = await import('../dist/services/videoCutService.js');
   worker = await import('../dist/functions/video-cut-worker.js');
   ({ handler } = await import('../dist/functions/videos-cut.js'));
@@ -132,6 +139,77 @@ test('point times use half-open ranges and preserve all other point properties',
   assert.equal(original.timestamp, 4.5);
 });
 
+test('timeline splitting, ripple deletion and mute restoration preserve source/output mappings', () => {
+  const initial = restoreTimeline(6, [], { muteAll: false, muteRanges: [] });
+  const first = splitTimeline(initial, 1);
+  const split = splitTimeline(first, 2);
+  assert.equal(initial.clips.length, 1, 'Splitting must not mutate undo history');
+  assert.equal(split.clips.length, 3);
+  assert.deepEqual(timelineEdits(split, 6), { cuts: [], muteRanges: [], muteAll: false });
+  const removed = deleteTimelineClip(split, split.clips[1].id, 6);
+  assert.equal(timelineDuration(removed.clips), 5);
+  assert.equal(timelineToSource(removed.clips, 1), 2);
+  assert.equal(timelineToSource(removed.clips, 2.5), 3.5);
+  assert.equal(timelineToSource(removed.clips, 5), 6);
+  assert.equal(sourceToTimeline(removed.clips, 1.5), null);
+  assert.equal(sourceToTimeline(removed.clips, 2), 1);
+  assert.equal(sourceToTimeline(removed.clips, 4.5), 3.5);
+  const muted = { ...removed, clips: removed.clips.map((clip, index) => ({ ...clip, muted: index === 1 })) };
+  const edits = timelineEdits(muted, 6);
+  assert.deepEqual(edits, { cuts: [{ start: 1, end: 2 }], muteRanges: [{ start: 2, end: 6 }], muteAll: false });
+  assert.deepEqual(timelineEdits(restoreTimeline(6, edits.cuts, edits), 6), edits);
+  assert.throws(() => deleteTimelineClip(initial, initial.clips[0].id, 6), /0.1/);
+  for (const time of [0, 6, 0.001, NaN]) assert.throws(() => splitTimeline(initial, time));
+});
+
+test('mute-only edits are accepted, no-ops, malformed audio and excessive ranges are rejected', () => {
+  assert.deepEqual(normalizeVideoEdits([], [], true, 6), { cuts: [], muteRanges: [], muteAll: true });
+  assert.deepEqual(normalizeVideoEdits([], [{ start: 0, end: 6 }], false, 6).muteRanges, [{ start: 0, end: 6 }]);
+  for (const [cuts, muteRanges, muteAll] of [
+    [[], [], false], [[], [], 'true'], [[], [{ start: -1, end: 2 }], false],
+    [[], Array(51).fill({ start: 1, end: 2 }), false], [[{ start: 0, end: 6 }], [], true],
+  ]) assert.throws(() => normalizeVideoEdits(cuts, muteRanges, muteAll, 6));
+});
+
+async function decodeAudio(path) {
+  const { stdout } = await exec(ffmpeg, [
+    '-v', 'error', '-i', path, '-vn', '-ac', '1', '-ar', '8000', '-f', 'f32le', 'pipe:1',
+  ], { encoding: 'buffer' });
+  return (start, end) => {
+    let sum = 0;
+    let count = 0;
+    for (let index = Math.ceil(start * 8000); index < Math.min(Math.floor(end * 8000), stdout.length / 4); index++) {
+      sum += stdout.readFloatLE(index * 4) ** 2;
+      count++;
+    }
+    assert.ok(count > 0, `Missing audio samples at ${start}-${end}`);
+    return Math.sqrt(sum / count);
+  };
+}
+
+test('actual audio supports whole-video mute, partial mute and source-aligned mute after ripple cuts', async () => {
+  for (const [name, cuts, audio, silent, audible, expected] of [
+    ['all', [], { muteAll: true, muteRanges: [] }, [0.3, 3.3, 5.3], [], 6],
+    ['partial', [], { muteAll: false, muteRanges: [{ start: 1, end: 2 }, { start: 4, end: 5 }] }, [1.3, 4.3], [0.3, 2.3, 5.3], 6],
+    ['ripple', [{ start: 2, end: 3 }], { muteAll: false, muteRanges: [{ start: 1, end: 2 }, { start: 4, end: 5 }] }, [1.3, 3.3], [0.3, 2.3, 4.3], 5],
+  ]) {
+    const output = join(directory, `mute-${name}.mp4`);
+    const result = await convertVideo(fixture, output, join(directory, `mute-${name}.jpg`), cuts, 6, undefined, audio);
+    assert.equal(result.duration, expected);
+    const rms = await decodeAudio(output);
+    for (const time of silent) assert.ok(rms(time, time + 0.3) < 0.001, `${name}: expected silence at ${time}`);
+    for (const time of audible) assert.ok(rms(time, time + 0.3) > 0.05, `${name}: lost audible content at ${time}`);
+  }
+  const source = await extractWaveform(fixture, 6);
+  assert.equal(source.hasAudio, true);
+  assert.equal(source.peaks.length, 240);
+  assert.ok(source.peaks.every((peak) => Number.isFinite(peak) && peak >= 0 && peak <= 1));
+  assert.ok(source.peaks.filter((peak) => peak > 0.05).length > 220);
+  const partial = await extractWaveform(join(directory, 'mute-partial.mp4'), 6);
+  assert.ok(partial.peaks.slice(52, 72).every((peak) => peak < 0.001));
+  assert.ok(partial.peaks.slice(92, 112).every((peak) => peak > 0.05));
+});
+
 test('actual conversion removes multiple ranges, retains audio and shows the expected frames', async () => {
   const output = join(directory, 'converted.mp4');
   const result = await convertVideo(fixture, output, join(directory, 'thumb.jpg'), [{ start: 1, end: 2 }, { start: 3, end: 4 }], 6);
@@ -155,6 +233,10 @@ test('silent WebM and fractional head/tail cuts are supported', async () => {
   assert.equal(result.width, 180);
   assert.equal(result.height, 320);
   assert.equal((await probeVideo(output)).streams.length, 1);
+  assert.deepEqual(await extractWaveform(input, 3), { hasAudio: false, peaks: [] });
+  const muted = join(directory, 'silent-muted.mp4');
+  await convertVideo(input, muted, join(directory, 'silent-muted.jpg'), [], 3, undefined, { muteAll: true, muteRanges: [] });
+  assert.equal((await probeVideo(muted)).streams.length, 1);
 });
 
 test('fifty fractional cuts do not accumulate video-frame drift against the remapped timeline', async () => {
@@ -258,4 +340,58 @@ test('project changes during conversion cannot be overwritten', async () => {
   const updated = (await jobs.readProjectVersion(version.project.id)).project;
   assert.equal(updated.title, 'Concurrent edit');
   assert.equal(updated.video.videoId, version.project.video.videoId);
+});
+
+test('mute-only cloud jobs retain point timestamps and metadata exactly', async () => {
+  const version = await projectFixture();
+  const result = await handler(request(version.project, {
+    cuts: [], muteRanges: [{ start: 1, end: 2 }], muteAll: false,
+    videoId: version.project.video.videoId, updatedAt: version.project.updatedAt,
+  }), context);
+  assert.equal(result.status, 202);
+  await worker.processCutJob(result.jsonBody.id, context);
+  assert.equal((await jobs.readCutJob(result.jsonBody.id)).status, 'completed', JSON.stringify(errors));
+  const updated = (await jobs.readProjectVersion(version.project.id)).project;
+  assert.equal(updated.video.duration, 6);
+  assert.deepEqual(updated.clickPoints, version.project.clickPoints);
+});
+
+test('waveform API requires ownership and caches the real waveform by video revision with explicit retry', async () => {
+  const { handler: waveformHandler } = await import('../dist/functions/videos-waveform.js');
+  const { createToken } = await import('../dist/middleware/auth.js');
+  const { project } = await projectFixture();
+  const get = (session = token, method = 'GET') => waveformHandler(new HttpRequest({
+    method, url: `http://localhost/api/projects/${project.id}/waveform`,
+    params: { id: project.id }, headers: session ? { cookie: `session=${session}` } : {},
+  }), context);
+  assert.equal((await get('')).status, 401);
+  assert.equal((await get(createToken('viewer', 'owner'))).status, 403);
+  assert.equal((await get(createToken('designer', 'other'))).status, 403);
+  const responses = await Promise.all([get(), get()]);
+  for (const response of responses) assert.equal(response.jsonBody.status, 'queued');
+  const masters = await blobs.ensureContainer('masters');
+  const ownJobs = [];
+  for await (const item of masters.listBlobsFlat({ prefix: 'waveforms/' })) {
+    const blob = masters.getBlockBlobClient(item.name);
+    const data = JSON.parse((await blob.downloadToBuffer()).toString());
+    if (data.videoId === project.id) ownJobs.push({ name: item.name, blob, data });
+  }
+  assert.equal(ownJobs.length, 1, 'Concurrent requests should share a cached job');
+  await processWaveform(ownJobs[0].name, context);
+  const completed = (await get()).jsonBody;
+  assert.equal(completed.status, 'completed', JSON.stringify(errors));
+  assert.equal(completed.hasAudio, true);
+  assert.equal(completed.peaks.length, 240);
+  assert.equal(completed.sourceName, undefined, 'Internal storage information must not be public');
+  assert.deepEqual(await requestWaveform(project), completed);
+  const failed = JSON.stringify({ ...ownJobs[0].data, status: 'failed', attempts: 3 });
+  await ownJobs[0].blob.upload(failed, Buffer.byteLength(failed));
+  assert.equal((await get()).jsonBody.status, 'failed');
+  assert.equal((await get(token, 'POST')).jsonBody.status, 'queued');
+  await processWaveform(ownJobs[0].name, context);
+  assert.equal((await get()).jsonBody.status, 'completed');
+  await (await blobs.ensureContainer('videos')).getBlockBlobClient(`${project.id}/video.mp4`).uploadFile(fixture);
+  assert.equal((await get()).jsonBody.status, 'queued', 'A replaced source requires a new waveform');
+  await processWaveform(ownJobs[0].name, context);
+  assert.equal((await get()).jsonBody.status, 'queued', 'Old completed job cannot complete the new revision');
 });

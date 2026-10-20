@@ -3,7 +3,7 @@ import { requireRole } from '../middleware/auth.js';
 import {
   createCutJob, CutConflictError, isStorageConflict, publicCutJob, readCutJob, readProjectVersion,
 } from '../services/videoCutService.js';
-import { normalizeCuts, type VideoCutStatus } from '../shared/videoCuts.js';
+import { normalizeVideoEdits, type VideoCutStatus } from '../shared/videoCuts.js';
 
 export async function handler(req: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   const auth = requireRole(req, 'designer');
@@ -23,18 +23,18 @@ export async function handler(req: HttpRequest, context: InvocationContext): Pro
       const status: VideoCutStatus = { job: jobId ? publicCutJob(await readCutJob(jobId)) : null };
       return { jsonBody: status };
     }
-    let body: { cuts?: unknown; videoId?: unknown; updatedAt?: unknown };
+    let body: { cuts?: unknown; videoId?: unknown; updatedAt?: unknown; muteRanges?: unknown; muteAll?: unknown };
     try {
       body = await req.json() as typeof body;
       if (!body || typeof body !== 'object') throw new Error('Invalid request');
-      normalizeCuts(body.cuts, version.project.video.duration);
+      normalizeVideoEdits(body.cuts, body.muteRanges, body.muteAll, version.project.video.duration);
     } catch (error) {
       return { status: 400, jsonBody: { error: error instanceof Error ? error.message : 'Invalid cut ranges.' } };
     }
     if (body.videoId !== version.project.video.videoId || body.updatedAt !== version.project.updatedAt) {
       return { status: 409, jsonBody: { error: 'The project changed. Reload it before cutting.' } };
     }
-    const job = await createCutJob(version.project, version.etag, body.cuts);
+    const job = await createCutJob(version.project, version.etag, body.cuts, body.muteRanges, body.muteAll);
     return { status: 202, jsonBody: publicCutJob(job) };
   } catch (error) {
     if (error instanceof CutConflictError || isStorageConflict(error)) {

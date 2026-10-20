@@ -63,7 +63,9 @@ export async function processCutJob(id: string, context: InvocationContext): Pro
     await source.downloadToFile(input, 0, undefined, {
       conditions: { ifMatch: job.sourceEtag }, abortSignal: controller.signal,
     });
-    const metadata = await convertVideo(input, output, thumbnail, job.cuts, job.project.video.duration, controller.signal);
+    const metadata = await convertVideo(input, output, thumbnail, job.cuts, job.project.video.duration, controller.signal, {
+      muteAll: job.muteAll ?? false, muteRanges: job.muteRanges ?? [],
+    });
     controller.signal.throwIfAborted();
     await videos.getBlockBlobClient(`${outputId}/video.mp4`).uploadFile(output, {
       blobHTTPHeaders: { blobContentType: 'video/mp4' }, abortSignal: controller.signal,
@@ -77,7 +79,7 @@ export async function processCutJob(id: string, context: InvocationContext): Pro
         ...job.project.video, ...metadata, videoId: outputId, mimeType: 'video/mp4',
         fileName: job.project.video.fileName.replace(/\.[^.]+$/, '') + '-cut.mp4',
       },
-      clickPoints: remapClickPoints(job.project.clickPoints, job.cuts),
+      clickPoints: job.cuts.length ? remapClickPoints(job.project.clickPoints, job.cuts) : job.project.clickPoints,
     }, job.projectEtag);
     job.status = 'completed';
     await writeCutJob(job, lease);

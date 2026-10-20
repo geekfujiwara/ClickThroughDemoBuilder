@@ -8,6 +8,8 @@ export interface VideoCutJob {
   projectId: string;
   status: 'preparing' | 'queued' | 'processing' | 'completed' | 'failed';
   cuts: CutRange[];
+  muteRanges?: CutRange[];
+  muteAll?: boolean;
   createdAt: string;
   updatedAt: string;
   error?: string;
@@ -17,8 +19,47 @@ export interface VideoCutStatus {
   job: VideoCutJob | null;
 }
 
+export interface VideoAudioEdits {
+  muteRanges: CutRange[];
+  muteAll: boolean;
+}
+
+export interface AudioWaveform {
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  videoId: string;
+  duration: number;
+  peaks: number[];
+  hasAudio: boolean;
+  error?: string;
+}
+
+export function normalizeAudioEdits(muteRanges: unknown, muteAll: unknown, duration: number): VideoAudioEdits {
+  if (muteAll !== undefined && typeof muteAll !== 'boolean') throw new Error('muteAll must be a boolean.');
+  return { muteAll: muteAll === true, muteRanges: normalizeRanges(muteRanges ?? [], duration, true) };
+}
+
+export function normalizeVideoEdits(cuts: unknown, muteRanges: unknown, muteAll: unknown, duration: number) {
+  const normalizedCuts = normalizeRanges(cuts, duration, true);
+  const audio = normalizeAudioEdits(muteRanges, muteAll, duration);
+  if (remainingRanges(normalizedCuts, duration).reduce((sum, range) => sum + range.end - range.start, 0) < 0.1) {
+    throw new Error('At least 0.1 seconds of video must remain.');
+  }
+  if (!normalizedCuts.length && !audio.muteAll && !audio.muteRanges.length) {
+    throw new Error('Delete a clip or mute audio before applying changes.');
+  }
+  return { cuts: normalizedCuts, ...audio };
+}
+
 export function normalizeCuts(input: unknown, duration: number): CutRange[] {
-  if (!Number.isFinite(duration) || duration <= 0 || !Array.isArray(input) || !input.length || input.length > 50) {
+  const merged = normalizeRanges(input, duration);
+  if (remainingRanges(merged, duration).reduce((sum, range) => sum + range.end - range.start, 0) < 0.1) {
+    throw new Error('At least 0.1 seconds of video must remain.');
+  }
+  return merged;
+}
+
+function normalizeRanges(input: unknown, duration: number, allowEmpty = false): CutRange[] {
+  if (!Number.isFinite(duration) || duration <= 0 || !Array.isArray(input) || (!allowEmpty && !input.length) || input.length > 50) {
     throw new Error('Specify 1-50 cut ranges for a video with a valid duration.');
   }
   const ranges = input.map((range: unknown) => {
@@ -35,9 +76,6 @@ export function normalizeCuts(input: unknown, duration: number): CutRange[] {
     const previous = merged[merged.length - 1];
     if (previous && range.start <= previous.end) previous.end = Math.max(previous.end, range.end);
     else merged.push({ ...range });
-  }
-  if (remainingRanges(merged, duration).reduce((sum, range) => sum + range.end - range.start, 0) < 0.1) {
-    throw new Error('At least 0.1 seconds of video must remain.');
   }
   return merged;
 }

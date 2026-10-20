@@ -3,7 +3,7 @@ import { chmod, copyFile, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobe from '@ffprobe-installer/ffprobe';
-import { remainingRanges, type CutRange } from '../shared/videoCuts.js';
+import { remainingRanges, type CutRange, type VideoAudioEdits } from '../shared/videoCuts.js';
 
 export async function runMediaProcess(executable: string, args: string[], signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -31,17 +31,22 @@ export async function probeVideo(path: string, signal?: AbortSignal, executable 
   ], signal)) as ProbeResult;
 }
 
-export async function convertVideo(input: string, output: string, thumbnail: string, cuts: CutRange[], duration: number, signal?: AbortSignal) {
+export async function prepareMediaTools(directory: string) {
   if (typeof ffmpegPath !== 'string') throw new Error('FFmpeg binary is not installed.');
   // Run-from-package mounts do not preserve executable permissions; execute private temporary copies.
   let encoder: string = ffmpegPath;
   let probe = ffprobe.path;
   if (process.platform !== 'win32') {
-    encoder = join(dirname(output), 'ffmpeg');
-    probe = join(dirname(output), 'ffprobe');
+    encoder = join(directory, 'ffmpeg');
+    probe = join(directory, 'ffprobe');
     await Promise.all([copyFile(ffmpegPath, encoder), copyFile(ffprobe.path, probe)]);
     await Promise.all([chmod(encoder, 0o700), chmod(probe, 0o700)]);
   }
+  return { encoder, probe };
+}
+
+export async function convertVideo(input: string, output: string, thumbnail: string, cuts: CutRange[], duration: number, signal?: AbortSignal, audio: VideoAudioEdits = { muteAll: false, muteRanges: [] }) {
+  const { encoder, probe } = await prepareMediaTools(dirname(output));
   const source = await probeVideo(input, signal, probe);
   const sourceDuration = Number(source.format.duration);
   if (!Number.isFinite(sourceDuration) || Math.abs(sourceDuration - duration) > 0.15) {
@@ -49,15 +54,17 @@ export async function convertVideo(input: string, output: string, thumbnail: str
   }
   const ranges = remainingRanges(cuts, duration);
   const hasAudio = source.streams.some((stream) => stream.codec_type === 'audio');
-  const selection = cuts.map((cut) => `gte(t,${cut.start})*lt(t,${cut.end})`).join('+');
-  const shift = cuts.map((cut) => `gte(PTS*TB,${cut.end})*${cut.end - cut.start}`).join('+');
+  const selection = cuts.map((cut) => `gte(t,${cut.start})*lt(t,${cut.end})`).join('+') || '0';
+  const shift = cuts.map((cut) => `gte(PTS*TB,${cut.end})*${cut.end - cut.start}`).join('+') || '0';
   // Remap original frame timestamps directly to avoid accumulating per-segment frame rounding.
   const filters = [
     `[0:v:0]settb=AVTB,setpts=PTS-STARTPTS,select='not(${selection})',setpts='PTS-(${shift})/TB',fps=30:start_time=0:round=near,setsar=1,pad=ceil(iw/2)*2:ceil(ih/2)*2[v]`,
   ];
   if (hasAudio) {
+    const mute = audio.muteAll ? ',volume=0' : audio.muteRanges.map((range) =>
+      `,volume=0:enable='gte(t,${range.start})*lt(t,${range.end})':eval=frame`).join('');
     filters.push(...ranges.map((range, index) =>
-      `[0:a:0]aresample=48000:async=1:first_pts=0,apad,atrim=start=${range.start}:end=${range.end},asetpts=PTS-STARTPTS[a${index}]`));
+      `[0:a:0]aresample=48000:async=1:first_pts=0${mute},apad,atrim=start=${range.start}:end=${range.end},asetpts=PTS-STARTPTS[a${index}]`));
     filters.push(ranges.map((_, index) => `[a${index}]`).join('') + `concat=n=${ranges.length}:v=0:a=1[a]`);
   }
   const expectedDuration = ranges.reduce((total, range) => total + range.end - range.start, 0);
